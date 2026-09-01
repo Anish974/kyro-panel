@@ -5,7 +5,7 @@
 // count, and difficulty cannot run away.
 
 import assert from 'node:assert';
-import * as model from './model.js';
+import * as model from '../panel/model.js';
 
 model.reset();
 

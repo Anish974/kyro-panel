@@ -5,13 +5,13 @@ import * as model from './model.js';
 
 export const CUSTOMER_GAP = 'customer impact not addressed';
 
-// All three panelists bid on the same answer, in parallel, and each drafts its
-// reply in the same pass. One round trip of latency, not two — see workflow.md
-// section 3 for why this matters to the 700ms budget.
+// All three panelists bid on the same answer AND draft their reply in the same
+// pass, so a turn costs one round trip rather than two — see docs/workflow.md
+// section 3 for why that matters to the latency budget.
 //
-// With a key configured each panelist is a real LLM call. Without one, the
-// keyword scorer below runs instead, so the Agora contract stays testable
-// offline and the self-checks never touch the network.
+// With a key configured that pass is one LLM call carrying all three. Without
+// one, the keyword scorer below runs instead, so the Agora contract stays
+// testable offline and the self-checks never touch the network.
 
 const FALLBACK_REPLIES: Record<PanelistId, string> = {
   technical: 'Walk me through what happens to that design when the primary goes down mid-write.',

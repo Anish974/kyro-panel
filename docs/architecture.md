@@ -135,29 +135,32 @@ kyro-panel/
 │
 ├── server/                    express + tsx, port 8787
 │   └── src/
-│       ├── index.ts
+│       ├── index.ts           app, CORS, auth wiring
 │       ├── routes/
-│       │   ├── token.ts       Agora RTC tokens
+│       │   ├── token.ts       Agora RTC tokens — the App Certificate lives here
 │       │   ├── llm.ts         POST /chat/completions  ← Agora calls this
-│       │   └── events.ts      GET /events (SSE) → room UI
+│       │   ├── events.ts      SSE /events, /state, /reset, /scorecard
+│       │   └── auth.ts        shared secret on every write
 │       ├── panel/
 │       │   ├── model.ts       Shared Candidate Model
-│       │   ├── bidding.ts     three parallel bids + moderator
+│       │   ├── bidding.ts     all three bids + replies, one call
+│       │   ├── ledger.ts      Claims Ledger
+│       │   ├── scorecard.ts   three verdicts, never averaged
 │       │   ├── personas.ts    Arjun / Ananya / Rohan
-│       │   └── bidding.check.ts
+│       │   └── llm.ts         one thin OpenAI-compatible call
+│       ├── checks/            self-checks — assert only, no network
 │       └── scripts/agent.ts   start / stop the Agora agent
 │
 ├── web/                       vite + react + tailwind, port 3000
 │   └── src/
-│       ├── App.tsx            scaffold harness (temporary)
-│       ├── lib/useSession.ts  live state over SSE
-│       ├── screens/           Join · DeviceCheck · Room · Scorecard
-│       └── components/
+│       ├── App.tsx            picks Room or Scorecard
+│       ├── lib/               agora.ts (join), useSession.ts (SSE)
+│       ├── screens/           Room · Scorecard
+│       └── components/        PanelistTile · BidRail
 │
-├── design/                    the four screens, source files
-├── legacy/                    old prototype + spikes, superseded
-├── workflow.md                build plan, phase by phase
-└── README.md
+├── design/                    UI mockups the screens were built from
+├── docs/                      architecture · workflow · decisions · deck/
+└── README.md                  entry point
 ```
 
 ### `shared/src/types.ts` is the most important file
@@ -299,7 +302,7 @@ The two tracks stay independent. Anish should never wait on the voice pipeline; 
 
 Places where the deck, the code, and reality disagree. Worth fixing before the next submission.
 
-1. ~~**Interviewer names.**~~ Settled. `shared/src/types.ts` is the only place they are defined; the old prototype lives in `legacy/`.
+1. ~~**Interviewer names.**~~ Settled. `shared/src/types.ts` is the only place they are defined.
 2. ~~**Product name.**~~ Settled: **Kyro Panel**. "Huddle Panel" is gone from the code and the design mockups; the deck's body text and page-10 mockup still say it.
 3. **Placeholder in the deck.** Page 1 still reads `<Write your Team Name>vv`.
 4. ~~**Rohan's role.**~~ Settled: **Behavioural / HR**. The mockups that said "Hiring Manager" were changed to match `shared/src/types.ts`.
@@ -308,15 +311,15 @@ Places where the deck, the code, and reality disagree. Worth fixing before the n
 7. ~~**Stack line.**~~ Settled, and the README now says it: we run no speech pipeline. Agora's Conversational AI Engine supplies turn detection, barge-in, Deepgram nova-3 ASR and MiniMax TTS, both in `credential_mode: managed` — Agora authenticates and bills them, and we hold neither key. Deck page 11 still describes a Deepgram + Cartesia pipeline we run ourselves; that line needs replacing.
 8. ~~**Role-play has no mechanism.**~~ Built. A panelist opens a scenario from something the candidate already claimed; one at a time, closed after three answers. See `openScenario` in `server/src/panel/model.ts`.
 
-9. **`legacy/index.html` still uses Alex / Sarah / David.** Archived first prototype, imported by nothing. Left alone deliberately — delete it if the drift is more confusing than the history is worth.
+9. ~~**`legacy/` still used the old names.**~~ Deleted. It was the archived first prototype and nothing imported it; `git log` still has every line of it.
 
 ---
 
 ## 11. Reference
 
 - **Build plan, phase by phase** — [`workflow.md`](workflow.md)
-- **Repo overview** — [`README.md`](README.md)
-- **The contract** — [`shared/src/types.ts`](shared/src/types.ts)
+- **Repo overview** — [`README.md`](../README.md)
+- **The contract** — [`shared/src/types.ts`](../shared/src/types.ts)
 - Agora: [start an agent](https://docs.agora.io/en/conversational-ai/rest-api/agent/join) · [custom LLM](https://docs.agora.io/en/conversational-ai/develop/custom-llm) · [live transcripts](https://docs.agora.io/en/conversational-ai/develop/transcripts)
 
 ---
