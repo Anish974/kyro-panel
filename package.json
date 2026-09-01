@@ -1,0 +1,32 @@
+{
+  "name": "kyro-panel",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Kyro Panel — Adaptive Multi-Agent Voice Interview Platform for 360° Candidate Assessment",
+  "workspaces": [
+    "shared",
+    "server",
+    "web"
+  ],
+  "scripts": {
+    "dev": "concurrently -n server,web -c cyan,magenta \"npm run dev -w server\" \"npm run dev -w web\"",
+    "dev:server": "npm run dev -w server",
+    "dev:web": "npm run dev -w web",
+    "check": "npm run check -w server",
+    "build": "npm run build -w web",
+    "tunnel": "cloudflared tunnel --url http://localhost:8787"
+  },
+  "keywords": [
+    "ai-interview",
+    "multi-agent",
+    "voice-ai",
+    "agora",
+    "kyro-panel",
+    "echosphere-2026"
+  ],
+  "author": "Team Kyro (Anish Patankar & Nidhi Dharme)",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^10.0.5"
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "name": "@kyro/server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --env-file=../.env src/index.ts",
+    "start": "tsx --env-file=../.env src/index.ts",
+    "check": "tsx src/panel/bidding.check.ts && tsx src/panel/ledger.check.ts && tsx src/panel/scorecard.check.ts && tsx src/panel/scenario.check.ts && tsx src/panel/auth.check.ts",
+    "agent:start": "tsx --env-file=../.env src/scripts/agent.ts start",
+    "agent:dry": "tsx --env-file=../.env src/scripts/agent.ts start --dry",
+    "agent:stop": "tsx --env-file=../.env src/scripts/agent.ts stop"
+  },
+  "dependencies": {
+    "@kyro/shared": "*",
+    "agora-token": "^2.0.6",
+    "express": "^5.2.1"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.0.0",
+    "tsx": "^4.23.13",
+    "typescript": "^5.9.0"
+  }
+}

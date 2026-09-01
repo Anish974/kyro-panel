@@ -1,0 +1,17 @@
+# secrets — never commit
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# agora / service credentials
+**/credentials.json
+**/secrets.json
+
+node_modules/
+dist/
+build/
+.DS_Store
+Thumbs.db
+*.log
