@@ -1,0 +1,34 @@
+@import "tailwindcss";
+
+/* Design tokens from design/ — one place, used by every screen. */
+@theme {
+  --color-base: #0a0c10;
+  --color-panel: #0d1015;
+  --color-card: #12151b;
+  --color-raised: #171b23;
+  --color-edge: #1b1f28;
+  --color-edge-2: #232833;
+  --color-edge-3: #2e3542;
+  --color-ink: #e6e9ef;
+  --color-ink-2: #9aa3b2;
+  --color-ink-3: #6b7488;
+
+  --color-technical: #6a8bff;
+  --color-product: #c98bff;
+  --color-hr: #46c9b0;
+  --color-warn: #f0b429;
+  --color-danger: #ff7a6b;
+
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --font-display: "Space Grotesk", ui-sans-serif, sans-serif;
+}
+
+html, body, #root { height: 100%; }
+body {
+  margin: 0;
+  background: var(--color-base);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}

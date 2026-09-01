@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kyro Panel — join as candidate</title>
+<!-- Check https://docs.agora.io for the current Web SDK version if this 404s -->
+<script src="https://download.agora.io/sdk/release/AgoraRTC_N-4.20.0.js"></script>
+<style>
+  :root { color-scheme: dark; }
+  body { margin:0; background:#0a0c10; color:#e6e9ef; font:14px/1.5 ui-monospace,'IBM Plex Mono',monospace; padding:28px; }
+  h1 { font-size:17px; margin:0 0 4px; }
+  .sub { color:#6b7488; margin-bottom:22px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:12px; max-width:900px; }
+  label { display:flex; flex-direction:column; gap:5px; font-size:11px; letter-spacing:.08em; color:#6b7488; }
+  input { background:#12151b; border:1px solid #232833; border-radius:8px; color:#e6e9ef;
+          padding:9px 11px; font:13px ui-monospace,monospace; }
+  .row { display:flex; gap:10px; margin:18px 0; flex-wrap:wrap; }
+  button { border:none; border-radius:9px; padding:11px 20px; font:600 13px system-ui; cursor:pointer; }
+  #join { background:#6a8bff; color:#08090d; }
+  #leave { background:#12151b; color:#ff7a6b; border:1px solid #3a2420; }
+  button:disabled { opacity:.4; cursor:not-allowed; }
+  .panel { max-width:900px; border:1px solid #232833; background:#12151b; border-radius:12px;
+           padding:16px; margin-top:16px; }
+  .stat { display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid #1b1f28; }
+  .stat:last-child { border-bottom:none; }
+  .stat b { font-weight:500; color:#9aa3b2; }
+  #meter { height:8px; background:#1f2733; border-radius:4px; overflow:hidden; margin-top:10px; }
+  #meterFill { height:100%; width:0; background:#46c9b0; transition:width .08s; }
+  #log { max-width:900px; margin-top:16px; padding:14px; background:#0d1015; border:1px solid #1b1f28;
+         border-radius:12px; height:230px; overflow:auto; white-space:pre-wrap; font-size:12px; }
+  .ok { color:#46c9b0; } .err { color:#ff7a6b; } .dim { color:#6b7488; }
+  .warn { max-width:900px; margin-top:20px; padding:12px 14px; border:1px solid #2a2318;
+          background:#16120b; border-radius:10px; color:#c3b283; font-size:12px; }
+</style>
+</head>
+<body>
+
+<h1>Join as the candidate</h1>
+<div class="sub">Temporary harness until the Room screen exists. Start the agent first: <code>npm run agent:start -w server</code></div>
+
+<div class="grid">
+  <label>APP ID<input id="appId" placeholder="8a2d37e3..."></label>
+  <label>CHANNEL<input id="channel" value="demo-channel"></label>
+  <label>UID<input id="uid" value="1002"></label>
+  <label>TOKEN<input id="token" placeholder="click Get token, or paste one"></label>
+</div>
+
+<div class="row">
+  <button id="fetch">Get token</button>
+  <button id="join">Join channel</button>
+  <button id="leave" disabled>Leave</button>
+</div>
+
+<div class="panel">
+  <div class="stat"><b>Connection</b><span id="sState">not joined</span></div>
+  <div class="stat"><b>Remote users in channel</b><span id="sRemote">0</span></div>
+  <div class="stat"><b>Round trip time</b><span id="sRtt">—</span></div>
+  <div class="stat"><b>Your mic level</b><span id="sVol">0%</span></div>
+  <div id="meter"><div id="meterFill"></div></div>
+</div>
+
+<div id="log"></div>
+
+<div class="warn">
+  <b>Two-tab test:</b> a token is tied to one UID. To open a second tab, generate a
+  second temp token in the Agora console for UID <b>1002</b> and use that. Same channel.
+  Use headphones or you will get feedback.
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const FIELDS = ['appId','channel','uid','token'];
+
+// keep fields across refreshes while testing — sessionStorage dies with the tab
+FIELDS.forEach(f => {
+  try {
+    const v = sessionStorage.getItem('agora_' + f);
+    if (v) $(f).value = v;
+    $(f).addEventListener('input', () => sessionStorage.setItem('agora_' + f, $(f).value));
+  } catch (e) { /* private mode — fields just won't persist */ }
+});
+
+function log(msg, cls = '') {
+  const t = new Date().toLocaleTimeString();
+  $('log').innerHTML += `<span class="dim">${t}</span> <span class="${cls}">${msg}</span>\n`;
+  $('log').scrollTop = $('log').scrollHeight;
+}
+
+let client = null, micTrack = null, statsTimer = null;
+
+// Vite proxies /token to the server on :8787
+const TOKEN_SERVER = '';
+
+$('fetch').onclick = async () => {
+  const channel = $('channel').value.trim();
+  const uid = $('uid').value.trim();
+  try {
+    const r = await fetch(`${TOKEN_SERVER}/token?channel=${encodeURIComponent(channel)}&uid=${uid}`);
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || r.statusText);
+    $('token').value = data.token;
+    $('appId').value = data.appId;
+    FIELDS.forEach(f => { try { sessionStorage.setItem('agora_' + f, $(f).value); } catch (e) {} });
+    log(`token issued for uid ${data.uid}, valid ${data.expiresIn}s`, 'ok');
+  } catch (err) {
+    log(`token server unreachable: ${err.message}`, 'err');
+    log('Start it with: npm run token-server', 'dim');
+  }
+};
+
+$('join').onclick = async () => {
+  const appId = $('appId').value.trim();
+  const channel = $('channel').value.trim();
+  const token = $('token').value.trim() || null;
+  const uidRaw = $('uid').value.trim();
+  const uid = /^\d+$/.test(uidRaw) ? Number(uidRaw) : uidRaw;
+
+  if (!appId || !channel) { log('App ID and channel are required', 'err'); return; }
+
+  $('join').disabled = true;
+  try {
+    client = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
+
+    client.on('connection-state-change', (cur, prev) => {
+      $('sState').textContent = cur;
+      log(`connection: ${prev} -> ${cur}`);
+    });
+
+    client.on('user-published', async (user, mediaType) => {
+      await client.subscribe(user, mediaType);
+      log(`subscribed to ${user.uid} (${mediaType})`, 'ok');
+      if (mediaType === 'audio') user.audioTrack.play();
+      $('sRemote').textContent = client.remoteUsers.length;
+    });
+
+    client.on('user-unpublished', user => {
+      log(`${user.uid} unpublished`, 'dim');
+      $('sRemote').textContent = client.remoteUsers.length;
+    });
+
+    const joinedUid = await client.join(appId, channel, token, uid);
+    log(`joined "${channel}" as uid ${joinedUid}`, 'ok');
+
+    micTrack = await AgoraRTC.createMicrophoneAudioTrack();
+    await client.publish([micTrack]);
+    log('mic published — talk and watch the meter', 'ok');
+
+    statsTimer = setInterval(() => {
+      const vol = Math.round((micTrack.getVolumeLevel() || 0) * 100);
+      $('sVol').textContent = vol + '%';
+      $('meterFill').style.width = Math.min(vol * 2, 100) + '%';
+      const rtt = client.getRTCStats?.()?.RTT;
+      $('sRtt').textContent = rtt ? rtt + ' ms' : '—';
+      $('sRemote').textContent = client.remoteUsers.length;
+    }, 120);
+
+    $('leave').disabled = false;
+  } catch (err) {
+    log(`FAILED: ${err.code || ''} ${err.message}`, 'err');
+    log('Common causes: token expired, token generated for a different UID, or App ID mismatch.', 'dim');
+    $('join').disabled = false;
+  }
+};
+
+$('leave').onclick = async () => {
+  clearInterval(statsTimer);
+  if (micTrack) { micTrack.stop(); micTrack.close(); micTrack = null; }
+  if (client) { await client.leave(); client = null; }
+  $('sState').textContent = 'not joined';
+  $('sRemote').textContent = '0';
+  $('sRtt').textContent = '—';
+  $('meterFill').style.width = '0';
+  log('left channel', 'dim');
+  $('join').disabled = false;
+  $('leave').disabled = true;
+};
+</script>
+</body>
+</html>
