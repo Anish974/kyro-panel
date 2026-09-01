@@ -1,0 +1,140 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap">
+  <style>
+    body { margin: 0; background: #0a0c10; color: #e6e9ef; font-family: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+    * { box-sizing: border-box; }
+    a { color: #6a8bff; text-decoration: none; }
+    a:hover { color: #8aa5ff; }
+  </style>
+</helmet>
+
+<div style="width: 1440px; height: 900px; display: flex; background: #0a0c10; position: relative; overflow: hidden;">
+
+  <div style="position: absolute; top: -220px; left: -120px; width: 780px; height: 780px; border-radius: 50%; background: radial-gradient(circle, rgba(106,139,255,0.16) 0%, rgba(106,139,255,0) 68%); pointer-events: none;"></div>
+  <div style="position: absolute; bottom: -300px; left: 340px; width: 700px; height: 700px; border-radius: 50%; background: radial-gradient(circle, rgba(70,201,176,0.10) 0%, rgba(70,201,176,0) 70%); pointer-events: none;"></div>
+
+  <div style="width: 840px; height: 900px; padding: 48px 64px; display: flex; flex-direction: column; justify-content: space-between; position: relative;">
+
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <div style="width: 30px; height: 30px; border-radius: 9px; background: linear-gradient(140deg, #6a8bff 0%, #46c9b0 100%); display: flex; align-items: center; justify-content: center;">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#0a0c10" stroke-width="2.2" stroke-linecap="round">
+          <path d="M12 4v9"></path><path d="M8 7v3"></path><path d="M16 6v5"></path><path d="M5 17h14"></path>
+        </svg>
+      </div>
+      <span style="font-family: 'Space Grotesk', sans-serif; font-size: 17px; font-weight: 600; letter-spacing: -0.2px;">Kyro Panel</span>
+      <span style="margin-left: 6px; font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.10em; color: #6b7488; border: 1px solid #232833; border-radius: 4px; padding: 3px 7px;">BETA</span>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 30px; max-width: 640px;">
+      <div style="display: flex; align-items: center; gap: 8px; align-self: flex-start; border: 1px solid #232833; background: #12151b; border-radius: 999px; padding: 6px 13px 6px 9px;">
+        <span style="width: 6px; height: 6px; border-radius: 50%; background: #46c9b0; box-shadow: 0 0 0 3px rgba(70,201,176,0.16);"></span>
+        <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.06em; color: #9aa3b2;">PANEL READY &middot; 3 INTERVIEWERS</span>
+      </div>
+
+      <h1 style="margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: 58px; line-height: 1.04; font-weight: 600; letter-spacing: -1.8px; text-wrap: balance;">A panel that<br>argues about you.</h1>
+
+      <p style="margin: 0; font-size: 17px; line-height: 1.6; color: #9aa3b2; max-width: 520px; text-wrap: pretty;">Three AI interviewers &mdash; engineering, product and leadership &mdash; share one live model of your answers, bid for the floor, and file separate verdicts. No averaged score. No script.</p>
+
+      <div style="display: flex; gap: 14px; padding-top: 6px;">
+        <div style="display: flex; flex-direction: column; gap: 10px; align-items: center; width: 132px;">
+          <div style="width: 56px; height: 56px; border-radius: 18px; background: #171b23; border: 1px solid #2a3140; display: flex; align-items: center; justify-content: center; font-family: 'Space Grotesk', sans-serif; font-size: 19px; font-weight: 600; color: #6a8bff; box-shadow: inset 0 0 0 1px rgba(106,139,255,0.22);">A</div>
+          <div style="text-align: center; display: flex; flex-direction: column; gap: 2px;">
+            <span style="font-size: 13px; font-weight: 600;">Arjun</span>
+            <span style="font-size: 11px; color: #6b7488;">Tech Lead</span>
+          </div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 10px; align-items: center; width: 132px;">
+          <div style="width: 56px; height: 56px; border-radius: 18px; background: #171b23; border: 1px solid #2a3140; display: flex; align-items: center; justify-content: center; font-family: 'Space Grotesk', sans-serif; font-size: 19px; font-weight: 600; color: #c98bff; box-shadow: inset 0 0 0 1px rgba(201,139,255,0.22);">S</div>
+          <div style="text-align: center; display: flex; flex-direction: column; gap: 2px;">
+            <span style="font-size: 13px; font-weight: 600;">Ananya</span>
+            <span style="font-size: 11px; color: #6b7488;">Product Manager</span>
+          </div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 10px; align-items: center; width: 132px;">
+          <div style="width: 56px; height: 56px; border-radius: 18px; background: #171b23; border: 1px solid #2a3140; display: flex; align-items: center; justify-content: center; font-family: 'Space Grotesk', sans-serif; font-size: 19px; font-weight: 600; color: #46c9b0; box-shadow: inset 0 0 0 1px rgba(70,201,176,0.22);">D</div>
+          <div style="text-align: center; display: flex; flex-direction: column; gap: 2px;">
+            <span style="font-size: 13px; font-weight: 600;">Rohan</span>
+            <span style="font-size: 11px; color: #6b7488;">Behavioural / HR</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; gap: 40px; border-top: 1px solid #1b1f28; padding-top: 22px;">
+      <div style="display: flex; flex-direction: column; gap: 5px;">
+        <span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.10em; color: #6b7488;">ROLE</span>
+        <span style="font-size: 14px;">Senior Backend Engineer</span>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 5px;">
+        <span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.10em; color: #6b7488;">DURATION</span>
+        <span style="font-size: 14px;">~25 minutes</span>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 5px;">
+        <span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.10em; color: #6b7488;">FORMAT</span>
+        <span style="font-size: 14px;">Live voice &middot; interruptible</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="width: 600px; height: 900px; background: #0d1015; border-left: 1px solid #1b1f28; padding: 48px 56px; display: flex; flex-direction: column; justify-content: center; gap: 26px;">
+
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f0b429" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path>
+      </svg>
+      <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.10em; color: #f0b429;">AI DISCLOSURE &mdash; REQUIRED</span>
+    </div>
+
+    <h2 style="margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: 28px; font-weight: 600; letter-spacing: -0.7px; line-height: 1.2;">You will be interviewed by AI, not by people.</h2>
+
+    <div style="display: flex; flex-direction: column; gap: 2px; border: 1px solid #232833; border-radius: 14px; background: #12151b; overflow: hidden;">
+      <div style="display: flex; gap: 13px; padding: 17px 18px; border-bottom: 1px solid #1b1f28;">
+        <svg style="flex-shrink: 0; margin-top: 1px;" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6a8bff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="2"></rect><path d="M8 8V6a4 4 0 0 1 8 0v2"></path><path d="M12 13v3"></path></svg>
+        <div style="display: flex; flex-direction: column; gap: 3px;">
+          <span style="font-size: 14px; font-weight: 500;">All three interviewers are AI personas</span>
+          <span style="font-size: 13px; line-height: 1.5; color: #6b7488;">Arjun, Ananya and Rohan are synthetic voices. No human is listening live.</span>
+        </div>
+      </div>
+      <div style="display: flex; gap: 13px; padding: 17px 18px; border-bottom: 1px solid #1b1f28;">
+        <svg style="flex-shrink: 0; margin-top: 1px;" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6a8bff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><circle cx="12" cy="12" r="3.5"></circle></svg>
+        <div style="display: flex; flex-direction: column; gap: 3px;">
+          <span style="font-size: 14px; font-weight: 500;">Audio and transcript are recorded</span>
+          <span style="font-size: 13px; line-height: 1.5; color: #6b7488;">Used to generate your scorecard with quoted evidence. Retained 90 days.</span>
+        </div>
+      </div>
+      <div style="display: flex; gap: 13px; padding: 17px 18px;">
+        <svg style="flex-shrink: 0; margin-top: 1px;" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6a8bff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4v5c0 5-3.4 8.3-8 9-4.6-.7-8-4-8-9V7z"></path><path d="M9.5 12l1.8 1.8 3.4-3.6"></path></svg>
+        <div style="display: flex; flex-direction: column; gap: 3px;">
+          <span style="font-size: 14px; font-weight: 500;">A human reviews before any decision</span>
+          <span style="font-size: 13px; line-height: 1.5; color: #6b7488;">The panel produces evidence, not a hiring outcome.</span>
+        </div>
+      </div>
+    </div>
+
+    <label style="display: flex; gap: 12px; align-items: flex-start; cursor: pointer;">
+      <span style="flex-shrink: 0; margin-top: 1px; width: 19px; height: 19px; border-radius: 6px; background: #6a8bff; display: flex; align-items: center; justify-content: center;">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0a0c10" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"></path></svg>
+      </span>
+      <span style="font-size: 13px; line-height: 1.55; color: #9aa3b2;">I understand I am speaking with AI interviewers and consent to this session being recorded and transcribed. <a href="#">Full policy</a></span>
+    </label>
+
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+      <div style="height: 52px; border-radius: 12px; background: #6a8bff; color: #08090d; font-size: 15px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 9px;">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#08090d" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3.5 3.5 0 0 0 3.5-3.5V6a3.5 3.5 0 0 0-7 0v5.5A3.5 3.5 0 0 0 12 15z"></path><path d="M5.5 11.5A6.5 6.5 0 0 0 18.5 11.5"></path><path d="M12 18.5V21"></path></svg>
+        Continue to device check
+      </div>
+      <span style="text-align: center; font-size: 12px; color: #6b7488;">You can leave the panel at any time.</span>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

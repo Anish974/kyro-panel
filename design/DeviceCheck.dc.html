@@ -1,0 +1,202 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap">
+  <style>
+    body { margin: 0; background: #0a0c10; color: #e6e9ef; font-family: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+    * { box-sizing: border-box; }
+    a { color: #6a8bff; text-decoration: none; }
+    a:hover { color: #8aa5ff; }
+  </style>
+</helmet>
+
+<div style="width: 1440px; height: 900px; background: #0a0c10; display: flex; flex-direction: column;">
+
+  <div style="height: 64px; flex-shrink: 0; border-bottom: 1px solid #1b1f28; padding: 0 32px; display: flex; align-items: center; justify-content: space-between;">
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <div style="width: 26px; height: 26px; border-radius: 8px; background: linear-gradient(140deg, #6a8bff 0%, #46c9b0 100%); display: flex; align-items: center; justify-content: center;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0a0c10" stroke-width="2.2" stroke-linecap="round"><path d="M12 4v9"></path><path d="M8 7v3"></path><path d="M16 6v5"></path><path d="M5 17h14"></path></svg>
+      </div>
+      <span style="font-family: 'Space Grotesk', sans-serif; font-size: 15px; font-weight: 600;">Kyro Panel</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <span style="width: 22px; height: 3px; border-radius: 2px; background: #2e3542;"></span>
+      <span style="width: 22px; height: 3px; border-radius: 2px; background: #6a8bff;"></span>
+      <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.08em; color: #6b7488; margin-left: 6px;">STEP 2 OF 2 &middot; DEVICE CHECK</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <span style="font-size: 13px; color: #9aa3b2;">Anish Patankar</span>
+      <div style="width: 28px; height: 28px; border-radius: 9px; background: #171b23; border: 1px solid #2a3140; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: #9aa3b2;">AP</div>
+    </div>
+  </div>
+
+  <div style="flex-grow: 1; display: flex; align-items: center; justify-content: center; padding: 0 40px;">
+    <div style="width: 1180px; display: flex; gap: 28px;">
+
+      <div style="width: 716px; display: flex; flex-direction: column; gap: 18px;">
+        <div style="display: flex; flex-direction: column; gap: 7px;">
+          <h1 style="margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: 30px; font-weight: 600; letter-spacing: -0.8px;">Check your camera and mic</h1>
+          <p style="margin: 0; font-size: 14px; color: #6b7488;">The panel interrupts you mid-sentence, so a clean mic matters more than the camera.</p>
+        </div>
+
+        <div style="height: 404px; border-radius: 16px; border: 1px solid #232833; background: linear-gradient(160deg, #14181f 0%, #0f1319 100%); position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+          <div style="position: absolute; inset: 0; background-image: linear-gradient(#ffffff08 1px, transparent 1px), linear-gradient(90deg, #ffffff08 1px, transparent 1px); background-size: 44px 44px;"></div>
+          <div style="position: relative; display: flex; flex-direction: column; align-items: center; gap: 14px;">
+            <div style="width: 108px; height: 108px; border-radius: 50%; background: #1b2029; border: 1px solid #2e3542; display: flex; align-items: center; justify-content: center; font-family: 'Space Grotesk', sans-serif; font-size: 34px; font-weight: 600; color: #9aa3b2;">AP</div>
+            <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.10em; color: #6b7488;">[ CAMERA PREVIEW ]</span>
+          </div>
+
+          <div style="position: absolute; top: 16px; left: 16px; display: flex; align-items: center; gap: 7px; background: rgba(10,12,16,0.72); border: 1px solid #2a3140; border-radius: 8px; padding: 6px 11px;">
+            <span style="width: 6px; height: 6px; border-radius: 50%; background: #46c9b0;"></span>
+            <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #cbd2dd;">1080p &middot; 30fps</span>
+          </div>
+
+          <div style="position: absolute; bottom: 16px; left: 16px; right: 16px; display: flex; align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 10px; background: rgba(10,12,16,0.72); border: 1px solid #2a3140; border-radius: 10px; padding: 9px 13px;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#46c9b0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3.5 3.5 0 0 0 3.5-3.5V6a3.5 3.5 0 0 0-7 0v5.5A3.5 3.5 0 0 0 12 15z"></path><path d="M5.5 11.5A6.5 6.5 0 0 0 18.5 11.5"></path><path d="M12 18.5V21"></path></svg>
+              <div style="display: flex; align-items: flex-end; gap: 3px; height: 18px;">
+                <span style="width: 3px; height: 6px; border-radius: 2px; background: #46c9b0;"></span>
+                <span style="width: 3px; height: 11px; border-radius: 2px; background: #46c9b0;"></span>
+                <span style="width: 3px; height: 17px; border-radius: 2px; background: #46c9b0;"></span>
+                <span style="width: 3px; height: 13px; border-radius: 2px; background: #46c9b0;"></span>
+                <span style="width: 3px; height: 8px; border-radius: 2px; background: #46c9b0;"></span>
+                <span style="width: 3px; height: 4px; border-radius: 2px; background: #2e3542;"></span>
+                <span style="width: 3px; height: 4px; border-radius: 2px; background: #2e3542;"></span>
+                <span style="width: 3px; height: 4px; border-radius: 2px; background: #2e3542;"></span>
+              </div>
+              <span style="font-size: 12px; color: #9aa3b2;">Mic picking you up</span>
+            </div>
+
+            <div style="display: flex; gap: 10px;">
+              <div style="width: 46px; height: 46px; border-radius: 12px; background: #1b2029; border: 1px solid #2e3542; display: flex; align-items: center; justify-content: center;">
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#e6e9ef" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3.5 3.5 0 0 0 3.5-3.5V6a3.5 3.5 0 0 0-7 0v5.5A3.5 3.5 0 0 0 12 15z"></path><path d="M5.5 11.5A6.5 6.5 0 0 0 18.5 11.5"></path><path d="M12 18.5V21"></path></svg>
+              </div>
+              <div style="width: 46px; height: 46px; border-radius: 12px; background: #1b2029; border: 1px solid #2e3542; display: flex; align-items: center; justify-content: center;">
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#e6e9ef" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="13" height="12" rx="2.5"></rect><path d="M16 10.5l5-3v9l-5-3z"></path></svg>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px;">
+          <div style="border: 1px solid #232833; background: #12151b; border-radius: 12px; padding: 13px 14px; display: flex; flex-direction: column; gap: 7px;">
+            <span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.10em; color: #6b7488;">CAMERA</span>
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+              <span style="font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">FaceTime HD</span>
+              <svg style="flex-shrink: 0;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6b7488" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg>
+            </div>
+          </div>
+          <div style="border: 1px solid #232833; background: #12151b; border-radius: 12px; padding: 13px 14px; display: flex; flex-direction: column; gap: 7px;">
+            <span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.10em; color: #6b7488;">MICROPHONE</span>
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+              <span style="font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">AirPods Pro</span>
+              <svg style="flex-shrink: 0;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6b7488" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg>
+            </div>
+          </div>
+          <div style="border: 1px solid #232833; background: #12151b; border-radius: 12px; padding: 13px 14px; display: flex; flex-direction: column; gap: 7px;">
+            <span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.10em; color: #6b7488;">SPEAKER</span>
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+              <span style="font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">AirPods Pro</span>
+              <svg style="flex-shrink: 0;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6b7488" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="width: 436px; display: flex; flex-direction: column; gap: 16px;">
+
+        <div style="border: 1px solid #232833; background: #12151b; border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 16px;">
+          <div style="display: flex; align-items: center; justify-content: space-between;">
+            <span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.10em; color: #6b7488;">CONNECTION</span>
+            <span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #46c9b0;">
+              <span style="width: 6px; height: 6px; border-radius: 50%; background: #46c9b0;"></span>Excellent
+            </span>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px;">
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              <span style="font-family: 'Space Grotesk', sans-serif; font-size: 22px; font-weight: 600; letter-spacing: -0.5px;">42<span style="font-size: 12px; color: #6b7488; font-weight: 400;"> ms</span></span>
+              <span style="font-size: 11px; color: #6b7488;">Round trip</span>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              <span style="font-family: 'Space Grotesk', sans-serif; font-size: 22px; font-weight: 600; letter-spacing: -0.5px;">6<span style="font-size: 12px; color: #6b7488; font-weight: 400;"> ms</span></span>
+              <span style="font-size: 11px; color: #6b7488;">Jitter</span>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              <span style="font-family: 'Space Grotesk', sans-serif; font-size: 22px; font-weight: 600; letter-spacing: -0.5px;">0.0<span style="font-size: 12px; color: #6b7488; font-weight: 400;"> %</span></span>
+              <span style="font-size: 11px; color: #6b7488;">Loss</span>
+            </div>
+          </div>
+          <div style="display: flex; align-items: flex-end; gap: 3px; height: 34px;">
+            <span style="flex-grow: 1; height: 40%; border-radius: 2px; background: #1f2733;"></span>
+            <span style="flex-grow: 1; height: 55%; border-radius: 2px; background: #1f2733;"></span>
+            <span style="flex-grow: 1; height: 35%; border-radius: 2px; background: #1f2733;"></span>
+            <span style="flex-grow: 1; height: 70%; border-radius: 2px; background: #24303c;"></span>
+            <span style="flex-grow: 1; height: 50%; border-radius: 2px; background: #24303c;"></span>
+            <span style="flex-grow: 1; height: 62%; border-radius: 2px; background: #2b6f63;"></span>
+            <span style="flex-grow: 1; height: 45%; border-radius: 2px; background: #2b6f63;"></span>
+            <span style="flex-grow: 1; height: 78%; border-radius: 2px; background: #37a08c;"></span>
+            <span style="flex-grow: 1; height: 58%; border-radius: 2px; background: #37a08c;"></span>
+            <span style="flex-grow: 1; height: 88%; border-radius: 2px; background: #46c9b0;"></span>
+            <span style="flex-grow: 1; height: 66%; border-radius: 2px; background: #46c9b0;"></span>
+            <span style="flex-grow: 1; height: 100%; border-radius: 2px; background: #46c9b0;"></span>
+          </div>
+        </div>
+
+        <div style="border: 1px solid #232833; background: #12151b; border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 15px;">
+          <span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.10em; color: #6b7488;">PANEL STATUS</span>
+
+          <div style="display: flex; flex-direction: column; gap: 13px;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <div style="width: 36px; height: 36px; border-radius: 11px; background: #171b23; border: 1px solid #2a3140; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; color: #6a8bff;">A</div>
+              <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px;">
+                <span style="font-size: 13px; font-weight: 500;">Arjun</span>
+                <span style="font-size: 11px; color: #6b7488;">Technical Architect</span>
+              </div>
+              <span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.06em; color: #46c9b0; border: 1px solid #1f4c44; background: #10201d; border-radius: 5px; padding: 4px 8px;">READY</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <div style="width: 36px; height: 36px; border-radius: 11px; background: #171b23; border: 1px solid #2a3140; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; color: #c98bff;">S</div>
+              <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px;">
+                <span style="font-size: 13px; font-weight: 500;">Ananya</span>
+                <span style="font-size: 11px; color: #6b7488;">Product Manager</span>
+              </div>
+              <span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.06em; color: #46c9b0; border: 1px solid #1f4c44; background: #10201d; border-radius: 5px; padding: 4px 8px;">READY</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <div style="width: 36px; height: 36px; border-radius: 11px; background: #171b23; border: 1px solid #2a3140; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; color: #46c9b0;">D</div>
+              <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px;">
+                <span style="font-size: 13px; font-weight: 500;">Rohan</span>
+                <span style="font-size: 11px; color: #6b7488;">Behavioural / HR</span>
+              </div>
+              <span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.06em; color: #46c9b0; border: 1px solid #1f4c44; background: #10201d; border-radius: 5px; padding: 4px 8px;">READY</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 11px; border: 1px solid #2a2318; background: #16120b; border-radius: 12px; padding: 14px 15px;">
+          <svg style="flex-shrink: 0; margin-top: 1px;" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f0b429" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5"></path><path d="M12 7.5h.01"></path></svg>
+          <span style="font-size: 12px; line-height: 1.55; color: #c3b283;">Headphones recommended. The panel can interrupt you, and speaker echo makes barge-in unreliable.</span>
+        </div>
+
+        <div style="flex-grow: 1;"></div>
+
+        <div style="display: flex; gap: 12px;">
+          <div style="width: 122px; height: 50px; border-radius: 12px; border: 1px solid #2e3542; background: #12151b; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 500; color: #9aa3b2; cursor: pointer;">Back</div>
+          <div style="flex-grow: 1; height: 50px; border-radius: 12px; background: #6a8bff; color: #08090d; display: flex; align-items: center; justify-content: center; gap: 9px; font-size: 15px; font-weight: 600; cursor: pointer;">
+            Join the panel
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#08090d" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13"></path><path d="M12.5 6l6 6-6 6"></path></svg>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

@@ -1,0 +1,13 @@
+{
+  "artboards": [
+    { "file": "Join.dc.html", "x": 0, "y": 0, "w": 1440, "h": 900, "title": "1 — Join & AI Disclosure" },
+    { "file": "DeviceCheck.dc.html", "x": 1560, "y": 0, "w": 1440, "h": 900, "title": "2 — Device Check" },
+    { "file": "Main.dc.html", "x": 0, "y": 1080, "w": 1440, "h": 900, "title": "3 — Live Panel Room" },
+    { "file": "Scorecard.dc.html", "x": 1560, "y": 1080, "w": 1440, "h": 1240, "title": "4 — 360° Evidence Scorecard" }
+  ],
+  "annotations": [
+    { "id": "flow-note", "x": 0, "y": -150, "w": 620, "text": "Kyro Panel — candidate flow, left to right, top to bottom.\nDark control-room direction: IBM Plex Sans / Space Grotesk / Plex Mono, near-black slate, one accent per panelist (Arjun blue, Ananya violet, Rohan teal)." },
+    { "id": "room-note", "x": 0, "y": 2020, "w": 620, "text": "Screen 3 is the demo screen. Three things judges must see in 5 seconds: the speaking tile glows, the right rail shows live bid scores + claims ledger updating, and the caption bar names who is talking." }
+  ],
+  "launch": { "view": "canvas" }
+}
