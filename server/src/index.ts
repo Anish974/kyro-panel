@@ -1,8 +1,47 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import express from 'express';
 import { requireSecret } from './routes/auth.js';
 import tokenRoutes from './routes/token.js';
 import eventRoutes from './routes/events.js';
 import llmRoutes from './routes/llm.js';
+
+// Auto-load .env from repository root or current directory
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const envCandidates = [
+  path.resolve(process.cwd(), '.env'),
+  path.resolve(process.cwd(), '../.env'),
+  path.resolve(__dirname, '../../.env'),
+  path.resolve(__dirname, '../.env'),
+];
+
+for (const envPath of envCandidates) {
+  if (fs.existsSync(envPath)) {
+    try {
+      if (typeof process.loadEnvFile === 'function') {
+        process.loadEnvFile(envPath);
+      } else {
+        const content = fs.readFileSync(envPath, 'utf8');
+        for (const line of content.split('\n')) {
+          const trimmed = line.trim();
+          if (!trimmed || trimmed.startsWith('#')) continue;
+          const eq = trimmed.indexOf('=');
+          if (eq > 0) {
+            const key = trimmed.slice(0, eq).trim();
+            const val = trimmed.slice(eq + 1).trim();
+            if (!process.env[key]) {
+              process.env[key] = val;
+            }
+          }
+        }
+      }
+      break;
+    } catch (err) {
+      console.warn(`Could not load env file from ${envPath}:`, err);
+    }
+  }
+}
 
 const PORT = Number(process.env.PORT) || 8787;
 
