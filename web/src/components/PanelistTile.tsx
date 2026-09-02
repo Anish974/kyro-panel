@@ -4,97 +4,66 @@ interface Props {
   panelist: Panelist;
   bid?: Bid;
   speaking: boolean;
-  queuePosition?: number;
+  avatarUrl: string;
+  onSelect?: () => void;
 }
 
-/** Fixed bar heights — a waveform that looks alive without re-rendering state. */
-const WAVE = [6, 13, 18, 10, 16, 7, 12];
-
-export default function PanelistTile({ panelist, bid, speaking, queuePosition }: Props) {
-  const accent = panelist.color;
-
+export default function PanelistTile({ panelist, speaking, avatarUrl, onSelect }: Props) {
   return (
     <div
-      className="rounded-2xl p-4 flex flex-col justify-between border relative overflow-hidden transition-colors"
-      style={{
-        background: speaking ? 'linear-gradient(165deg,#1a1e2e,#131722)' : 'var(--color-card)',
-        borderColor: speaking ? accent : 'var(--color-edge-2)',
-        boxShadow: speaking ? `0 0 0 1px ${accent}33, 0 0 34px ${accent}1f` : 'none',
-      }}
+      onClick={onSelect}
+      className={`relative w-full flex-1 min-h-[155px] max-h-[195px] rounded-2xl overflow-hidden border transition-all duration-300 select-none cursor-pointer group ${
+        speaking
+          ? 'border-[#2563EB] ring-2 ring-[#2563EB]/40 shadow-lg shadow-blue-500/20'
+          : 'border-[#EBE6DF] hover:border-[#CBB9A4] shadow-xs hover:shadow-md'
+      }`}
     >
-      {speaking && (
-        <div
-          className="absolute -top-16 -right-12 w-52 h-52 rounded-full pointer-events-none"
-          style={{ background: `radial-gradient(circle, ${accent}2e 0%, transparent 70%)` }}
-        />
-      )}
+      {/* Background Avatar / Video Stream */}
+      <img
+        src={avatarUrl}
+        alt={panelist.name}
+        className="absolute inset-0 w-full h-full object-cover object-center transform group-hover:scale-[1.02] transition-transform duration-500"
+      />
 
-      <div className="flex items-start justify-between relative">
-        <div className="flex items-center gap-3">
-          <div
-            className="w-11 h-11 rounded-xl grid place-items-center font-display text-base font-semibold border"
-            style={{
-              background: 'var(--color-raised)',
-              borderColor: speaking ? accent : 'var(--color-edge-3)',
-              color: accent,
-              boxShadow: speaking ? `0 0 0 3px ${accent}24` : 'none',
-            }}
-          >
-            {panelist.name[0]}
-          </div>
-          <div className="flex flex-col gap-0.5">
-            <span className="text-sm font-semibold">{panelist.name}</span>
-            <span className="text-[11px] text-ink-3">{panelist.role}</span>
-          </div>
-        </div>
+      {/* Subtle vignette gradient for high contrast */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-black/20 pointer-events-none" />
 
+      {/* Top Right Status Badge */}
+      <div className="absolute top-3 right-3 z-10">
         {speaking ? (
-          <span
-            className="font-mono text-[10px] tracking-widest rounded-md px-2 py-1 border"
-            style={{ color: accent, borderColor: `${accent}55`, background: `${accent}1a` }}
-          >
-            FLOOR
-          </span>
-        ) : bid ? (
-          <span className="font-mono text-[10px] tracking-wider rounded-md px-2 py-1 border border-edge-3 text-ink-2">
-            BID {bid.score.toFixed(2)}
-          </span>
-        ) : null}
+          <div className="flex items-center gap-2 bg-[#2563EB] text-white px-3 py-1.5 rounded-full shadow-md text-xs font-bold tracking-wide">
+            {/* Audio waveform equalizer */}
+            <div className="flex items-center gap-[2.5px] h-3.5">
+              <span className="w-[2.5px] h-2.5 bg-white rounded-full animate-wave-1" />
+              <span className="w-[2.5px] h-3.5 bg-white rounded-full animate-wave-2" />
+              <span className="w-[2.5px] h-4 bg-white rounded-full animate-wave-3" />
+              <span className="w-[2.5px] h-2 bg-white rounded-full animate-wave-4" />
+              <span className="w-[2.5px] h-3.5 bg-white rounded-full animate-wave-5" />
+            </div>
+            <span>Speaking...</span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-1.5 bg-black/60 backdrop-blur-md text-white px-3 py-1.5 rounded-full text-xs font-medium border border-white/15 shadow-sm">
+            {/* Muted mic icon */}
+            <svg className="w-3.5 h-3.5 text-white/90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+              <line x1="1" y1="1" x2="23" y2="23" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+            <span>Listening</span>
+          </div>
+        )}
       </div>
 
-      <div className="flex flex-col gap-2 relative">
-        <div className="flex items-center justify-between">
-          <span className="font-mono text-[10px] tracking-widest" style={{ color: speaking ? accent : 'var(--color-ink-3)' }}>
-            {speaking ? 'SPEAKING' : queuePosition ? 'QUEUED TO SPEAK' : 'LISTENING'}
-          </span>
-
-          {speaking ? (
-            <div className="flex items-center gap-[3px] h-[18px]">
-              {WAVE.map((h, i) => (
-                <span
-                  key={i}
-                  className="w-[3px] rounded-sm animate-pulse"
-                  style={{ height: h, background: accent, animationDelay: `${i * 90}ms` }}
-                />
-              ))}
-            </div>
-          ) : (
-            <span className="text-[11px] text-ink-3">{queuePosition ? `${queuePosition}${queuePosition === 2 ? 'nd' : 'rd'}` : ''}</span>
-          )}
+      {/* Bottom Left Info Box */}
+      <div className="absolute bottom-3 left-3 z-10 bg-white/95 backdrop-blur-md rounded-xl px-3.5 py-2 shadow-sm border border-[#EBE6DF] flex flex-col gap-0.5 max-w-[85%]">
+        <span className="text-sm font-bold text-gray-900 tracking-tight leading-snug">{panelist.name}</span>
+        <span className="text-xs text-gray-500 font-medium leading-snug">{panelist.role}</span>
+        <div className="flex items-center gap-1 mt-0.5">
+          <svg className="w-3 h-3 text-[#2563EB]" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+          </svg>
+          <span className="text-[11px] font-bold text-[#2563EB]">AI Interviewer</span>
         </div>
-
-        {!speaking && bid && (
-          <div className="h-[3px] rounded-sm bg-edge-2 overflow-hidden">
-            <div
-              className="h-[3px] rounded-sm transition-all duration-500"
-              style={{ width: `${bid.score * 100}%`, background: accent }}
-            />
-          </div>
-        )}
-
-        {bid && !speaking && (
-          <span className="text-[11px] leading-snug text-ink-3 line-clamp-1">{bid.reason}</span>
-        )}
       </div>
     </div>
   );

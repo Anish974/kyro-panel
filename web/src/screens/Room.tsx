@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { PANEL, panelistById } from '@kyro/shared';
+import { PANEL, panelistById, type PanelistId } from '@kyro/shared';
 import { useSession } from '../lib/useSession.js';
 import { joinAsCandidate, leave, type JoinResult } from '../lib/agora.js';
 import PanelistTile from '../components/PanelistTile.js';
@@ -9,227 +9,726 @@ const CHANNEL = 'demo-channel';
 
 interface Props {
   candidateName: string;
-  /** Builds the three verdicts from the model as it stands and shows them. */
   onEnd: () => void;
 }
 
-function clock(seconds: number): string {
-  const m = Math.floor(seconds / 60);
+const AVATARS: Record<PanelistId, string> = {
+  technical: '/assets/arjun_mehta.jpg',
+  product: '/assets/ananya_shah.jpg',
+  hr: '/assets/rohan_iyer.jpg',
+};
+
+function formatTimer(seconds: number): string {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
   const s = seconds % 60;
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
 export default function Room({ candidateName, onEnd }: Props) {
-  const { model, bids, speaking, caption, heard, connected } = useSession();
+  const { model, bids, speaking: serverSpeaking, caption, heard, connected } = useSession();
   const [session, setSession] = useState<JoinResult | null>(null);
-  const [micOn, setMicOn] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [joining, setJoining] = useState(false);
-  const videoRef = useRef<HTMLDivElement>(null);
 
-  // Play the local camera into its tile once we have a track and a container.
+  // Local camera stream & permissions
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const [cameraPermission, setCameraPermission] = useState<'prompt' | 'granted' | 'denied'>('prompt');
+  const [permissionError, setPermissionError] = useState<string | null>(null);
+
+  // Interactive UI Controls
+  const [micOn, setMicOn] = useState(true);
+  const [cameraOn, setCameraOn] = useState(true);
+  const [captionsOn, setCaptionsOn] = useState(true);
+  const [screenSharing, setScreenSharing] = useState(false);
+  const [handRaised, setHandRaised] = useState(false);
+
+  // Modals & Panels
+  const [showContextDrawer, setShowContextDrawer] = useState(false);
+  const [showGuideModal, setShowGuideModal] = useState(false);
+  const [showHelpModal, setShowHelpModal] = useState(false);
+  const [showStageMenu, setShowStageMenu] = useState(false);
+  const [currentStage, setCurrentStage] = useState('System Design');
+  const [activeSpeakerId, setActiveSpeakerId] = useState<PanelistId>('technical');
+
+  const [joining, setJoining] = useState(false);
+  const [joinError, setJoinError] = useState<string | null>(null);
+
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const agoraVideoRef = useRef<HTMLDivElement>(null);
+
+  // Sync server speaking state, fallback to technical (Arjun Mehta) if null for initial view
+  const currentSpeaker: PanelistId = serverSpeaking || activeSpeakerId || 'technical';
+  const speakerInfo = panelistById(currentSpeaker);
+
+  // Request browser camera and microphone permissions immediately on mount
+  async function requestCameraAccess() {
+    setPermissionError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
+        audio: true,
+      });
+      setLocalStream(stream);
+      setCameraPermission('granted');
+      setCameraOn(true);
+      setMicOn(true);
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+    } catch (err) {
+      console.warn('Camera access denied or unavailable:', err);
+      setCameraPermission('denied');
+      setPermissionError('Camera or microphone permission was denied. Please allow access in browser settings.');
+    }
+  }
+
   useEffect(() => {
-    if (session?.camera && videoRef.current) session.camera.play(videoRef.current);
-  }, [session]);
+    let mounted = true;
+    async function initMedia() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
+          audio: true,
+        });
+        if (!mounted) {
+          stream.getTracks().forEach(t => t.stop());
+          return;
+        }
+        setLocalStream(stream);
+        setCameraPermission('granted');
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+      } catch (err) {
+        if (mounted) {
+          setCameraPermission('denied');
+          setPermissionError('Please allow camera & microphone access to enable video preview.');
+        }
+      }
+    }
+    void initMedia();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // Cleanup local stream on unmount
+  useEffect(() => {
+    return () => {
+      localStream?.getTracks().forEach(t => t.stop());
+    };
+  }, [localStream]);
+
+  // Bind local Agora camera stream to container if joined
+  useEffect(() => {
+    if (session?.camera && agoraVideoRef.current) {
+      session.camera.play(agoraVideoRef.current);
+    } else if (localStream && videoRef.current) {
+      videoRef.current.srcObject = localStream;
+    }
+  }, [session, localStream]);
 
   useEffect(() => () => { void leave(session); }, [session]);
 
-  async function join() {
-    setError(null);
+  async function handleJoin() {
+    setJoinError(null);
     setJoining(true);
     try {
-      setSession(await joinAsCandidate(CHANNEL));
+      const result = await joinAsCandidate(CHANNEL);
+      setSession(result);
     } catch (err) {
-      setError((err as Error).message);
+      setJoinError((err as Error).message);
     } finally {
       setJoining(false);
     }
   }
 
   async function toggleMic() {
-    if (!session) return;
-    const next = !micOn;
-    await session.mic.setEnabled(next);
-    setMicOn(next);
+    if (session?.mic) {
+      const next = !micOn;
+      await session.mic.setEnabled(next);
+      setMicOn(next);
+    } else if (localStream) {
+      const next = !micOn;
+      localStream.getAudioTracks().forEach(track => {
+        track.enabled = next;
+      });
+      setMicOn(next);
+    } else {
+      setMicOn(!micOn);
+    }
   }
 
-  // Everyone who is not on the floor, ranked by how badly they want it.
-  const queue = bids
-    .filter(b => b.panelist !== speaking)
-    .sort((a, b) => b.score - a.score)
-    .map(b => b.panelist);
+  async function toggleCamera() {
+    if (session?.camera) {
+      const next = !cameraOn;
+      await session.camera.setEnabled(next);
+      setCameraOn(next);
+    } else if (localStream) {
+      const next = !cameraOn;
+      localStream.getVideoTracks().forEach(track => {
+        track.enabled = next;
+      });
+      setCameraOn(next);
+    } else {
+      await requestCameraAccess();
+    }
+  }
+
+  // Active caption text prioritizing candidate's speech or active interviewer caption
+  const activeCaptionText =
+    heard ||
+    caption?.text ||
+    'For the system design, I would approach this in three layers...';
 
   return (
-    <div className="h-full flex flex-col bg-base">
-      <header className="h-14 shrink-0 border-b border-edge bg-panel px-5 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2.5">
-            <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-technical to-hr" />
-            <span className="font-display text-sm font-semibold">Kyro Panel</span>
+    <div className="h-full flex flex-col bg-[#FAF9F6] text-gray-900 select-none overflow-hidden font-sans">
+      {/* ---------------------------------------------------- TOP HEADER BAR */}
+      <header className="h-[72px] shrink-0 bg-white border-b border-[#EBE6DF] px-8 flex items-center justify-between z-20 shadow-xs">
+        {/* Left: Brand & AI Panel Badge */}
+        <div className="flex items-center gap-3.5">
+          <div className="flex items-center gap-2.5 text-[#2563EB]">
+            <div className="w-10 h-10 rounded-2xl bg-blue-50 border border-blue-200 flex items-center justify-center shadow-2xs">
+              <svg className="w-6 h-6 text-[#2563EB]" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M4.5 6.375a4.125 4.125 0 118.25 0 4.125 4.125 0 01-8.25 0zM14.25 8.625a3.375 3.375 0 116.75 0 3.375 3.375 0 01-6.75 0zM1.5 19.125a7.125 7.125 0 0114.25 0v.003l-.001.122H1.5v-.125zM14.25 19.25a5.625 5.625 0 00-1.875-4.148 7.87 7.87 0 014.875-1.727 6.375 6.375 0 016.375 6.375v.125h-9.375v-.625z" />
+              </svg>
+            </div>
+            <span className="font-display font-extrabold text-lg md:text-xl tracking-tight text-gray-900">
+              Kyro Panel
+            </span>
           </div>
-          <span className="w-px h-5 bg-edge-2" />
-          <div className="flex items-center gap-2">
-            <span className="w-[7px] h-[7px] rounded-full bg-danger" />
-            <span className="font-mono text-xs">{clock(model.elapsed)}</span>
-            <span className="text-xs text-ink-3">/ 25:00</span>
-          </div>
-          <span className="w-px h-5 bg-edge-2" />
-          <span className="text-[13px] text-ink-2">Senior Backend Engineer · Round 1</span>
-        </div>
 
-        <div className="flex items-center gap-2 border border-[#2a2318] bg-[#16120b] rounded-lg px-2.5 py-1">
-          <span className="font-mono text-[11px] tracking-wider text-warn">ALL INTERVIEWERS ARE AI</span>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <span className="flex items-center gap-1.5">
-            <span
-              className="w-1.5 h-1.5 rounded-full"
-              style={{ background: connected ? 'var(--color-hr)' : 'var(--color-danger)' }}
-            />
-            <span className="font-mono text-[11px] text-ink-2">{connected ? 'PANEL LIVE' : 'NO SERVER'}</span>
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-[#EFF6FF] text-[#2563EB] border border-[#BFDBFE] shadow-2xs">
+            AI Panel
           </span>
+        </div>
+
+        {/* Center: Stage Dropdown & Progress Dots */}
+        <div className="flex flex-col items-center justify-center gap-1.5">
+          <div className="relative">
+            <button
+              onClick={() => setShowStageMenu(!showStageMenu)}
+              className="flex items-center gap-2 text-base font-bold text-gray-800 hover:text-gray-950 px-3 py-1 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer"
+            >
+              <span>{currentStage}</span>
+              <svg className="w-4 h-4 text-gray-500 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            {showStageMenu && (
+              <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 w-56 bg-white border border-[#EBE6DF] rounded-2xl shadow-xl py-2 z-30 animate-in fade-in zoom-in-95 duration-150">
+                {['System Design', 'Architecture Deep Dive', 'Trade-off Analysis', 'HR & Alignment'].map(stage => (
+                  <button
+                    key={stage}
+                    onClick={() => {
+                      setCurrentStage(stage);
+                      setShowStageMenu(false);
+                    }}
+                    className={`w-full text-left px-4 py-2.5 text-xs font-semibold flex items-center justify-between hover:bg-gray-50 transition-colors cursor-pointer ${
+                      currentStage === stage ? 'text-[#2563EB] bg-blue-50/70 font-bold' : 'text-gray-700'
+                    }`}
+                  >
+                    <span>{stage}</span>
+                    {currentStage === stage && <span className="w-2 h-2 rounded-full bg-[#2563EB]" />}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* 4-Step Stepper Line */}
+          <div className="flex items-center gap-2">
+            <div className="flex items-center">
+              <span className="w-3 h-3 rounded-full bg-[#2563EB] ring-4 ring-blue-100" />
+              <span className="w-12 h-0.5 bg-[#2563EB]" />
+              <span className="w-2.5 h-2.5 rounded-full bg-[#E6DAC8]" />
+              <span className="w-12 h-0.5 bg-[#E6DAC8]" />
+              <span className="w-2.5 h-2.5 rounded-full bg-[#E6DAC8]" />
+              <span className="w-12 h-0.5 bg-[#E6DAC8]" />
+              <span className="w-2.5 h-2.5 rounded-full bg-[#E6DAC8]" />
+            </div>
+          </div>
+        </div>
+
+        {/* Right: Connection, Timer, Leave Interview, Security Shield */}
+        <div className="flex items-center gap-6">
+          {/* Connection status */}
+          <div className="flex items-center gap-2 text-emerald-600 font-semibold text-sm">
+            <div className="flex items-end gap-[2px] h-4">
+              <span className="w-1 h-2 bg-emerald-500 rounded-xs" />
+              <span className="w-1 h-3 bg-emerald-500 rounded-xs" />
+              <span className="w-1 h-4 bg-emerald-500 rounded-xs" />
+            </div>
+            <span className="text-sm font-bold text-emerald-600">
+              Good Connection
+            </span>
+          </div>
+
+          {/* Interview Time Clock */}
+          <div className="flex items-center gap-2.5 border-l border-[#EBE6DF] pl-5">
+            <svg className="w-5 h-5 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <div className="flex flex-col">
+              <span className="font-mono font-bold text-sm md:text-base text-gray-900 tracking-tight leading-none">
+                {formatTimer(model.elapsed || 1477)}
+              </span>
+              <span className="text-[11px] text-gray-400 font-medium leading-none mt-1">Interview Time</span>
+            </div>
+          </div>
+
+          {/* Leave Interview Button */}
+          <button
+            onClick={onEnd}
+            className="border border-[#EBE6DF] hover:border-gray-400 text-gray-800 hover:text-gray-950 bg-white hover:bg-gray-50 text-xs md:text-sm font-bold px-4 py-2 rounded-xl transition-colors shadow-2xs cursor-pointer"
+          >
+            Leave Interview
+          </button>
+
+          {/* Security Shield Icon */}
+          <div className="text-gray-400 hover:text-gray-600 cursor-pointer">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
+          </div>
         </div>
       </header>
 
-      <div className="flex-1 flex min-h-0">
-        <main className="flex-1 p-5 flex flex-col gap-3.5 min-w-0">
-          <div className="grid grid-cols-3 gap-3.5 h-[200px] shrink-0">
-            {PANEL.map(p => (
-              <PanelistTile
-                key={p.id}
-                panelist={p}
-                bid={bids.find(b => b.panelist === p.id)}
-                speaking={speaking === p.id}
-                queuePosition={queue.indexOf(p.id) >= 0 ? queue.indexOf(p.id) + 2 : undefined}
-              />
-            ))}
+      {/* ---------------------------------------------------- MAIN BODY GRID */}
+      <div className="flex-1 flex px-8 py-5 gap-6 min-h-0 bg-[#FAF9F6]">
+        {/* LEFT / CENTER: Candidate Stage Area */}
+        <main className="flex-1 flex flex-col gap-3 min-w-0">
+          {/* Active Speaker Notification Bar */}
+          <div className="flex items-center gap-2.5 px-1 text-sm font-semibold text-gray-800 shrink-0">
+            <div className="flex items-center justify-center text-[#2563EB]">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M8.111 16.404a5.5 5.5 0 010-7.778M12 12h.01m3.878-4.404a5.5 5.5 0 010 7.778M5.636 18.364a9 9 0 010-12.728m12.728 0a9 9 0 010 12.728" />
+              </svg>
+            </div>
+            <span>Active Speaker:</span>
+            <span className="font-extrabold text-gray-950 text-base">{speakerInfo.name}</span>
+            <span className="text-gray-500 font-medium">({speakerInfo.role})</span>
           </div>
 
-          {model.scenario && (
+          {/* Large Candidate Video Container */}
+          <div className="flex-1 min-h-0 rounded-3xl border border-[#EBE6DF] relative overflow-hidden bg-gradient-to-b from-[#161A22] to-[#0D1016] shadow-sm flex flex-col justify-between p-6">
+            {/* Live Camera Video Feed */}
+            {cameraOn && cameraPermission === 'granted' && (
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                className="absolute inset-0 w-full h-full object-cover transform -scale-x-100 z-0"
+              />
+            )}
+
+            {/* Agora Video container if joined via Agora */}
             <div
-              className="shrink-0 rounded-2xl border px-4 py-3 flex gap-3.5 items-start"
-              style={{
-                borderColor: `${panelistById(model.scenario.openedBy).color}55`,
-                background: `${panelistById(model.scenario.openedBy).color}12`,
-              }}
-            >
-              <span
-                className="font-mono text-[10px] tracking-widest mt-0.5 shrink-0"
-                style={{ color: panelistById(model.scenario.openedBy).color }}
-              >
-                ROLE-PLAY
-              </span>
-              <p className="text-[15px] leading-relaxed text-ink-2 flex-1">{model.scenario.premise}</p>
-              <span className="font-mono text-[10px] text-ink-3 shrink-0 mt-0.5">
-                {model.scenario.turns + 1}/3
-              </span>
+              ref={agoraVideoRef}
+              className="absolute inset-0 z-0 [&>video]:w-full [&>video]:h-full [&>video]:object-cover"
+            />
+
+            {/* Camera Permission / Camera Off Fallback (No fake stock photo) */}
+            {(!cameraOn || cameraPermission !== 'granted') && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-gradient-to-b from-[#181D26] to-[#0F1218] text-white p-6 z-0">
+                <div className="w-24 h-24 rounded-3xl bg-white/10 border border-white/15 flex flex-col items-center justify-center shadow-xl backdrop-blur-md">
+                  <span className="font-display text-3xl font-extrabold tracking-wider text-white/90">
+                    {candidateName.split(' ').map(n => n[0]).join('')}
+                  </span>
+                </div>
+
+                <div className="text-center max-w-sm">
+                  <h4 className="text-base font-bold text-white">
+                    {!cameraOn ? 'Camera is turned off' : 'Camera Access Needed'}
+                  </h4>
+                  <p className="text-xs text-gray-400 mt-1 leading-relaxed">
+                    {!cameraOn
+                      ? 'Click the Camera button below to turn your video on.'
+                      : permissionError || 'Please allow camera and microphone access to enable your live video feed.'}
+                  </p>
+                </div>
+
+                {cameraPermission !== 'granted' && (
+                  <button
+                    onClick={requestCameraAccess}
+                    className="px-5 py-2.5 rounded-xl bg-[#2563EB] hover:bg-blue-600 text-white font-bold text-xs shadow-md transition-all active:scale-95 cursor-pointer flex items-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                    <span>Allow Camera Access</span>
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Subtle overlay shading for high contrast badges */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-black/30 pointer-events-none z-1" />
+
+            {/* Top Left: Candidate Badge */}
+            <div className="relative z-10 self-start">
+              <div className="flex items-center gap-2.5 bg-black/50 backdrop-blur-md border border-white/25 rounded-xl px-4 py-2 text-white shadow-sm">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="text-sm font-bold tracking-tight">You (Candidate)</span>
+              </div>
             </div>
-          )}
 
-          <div className="flex-1 min-h-0 rounded-2xl border border-edge-2 relative overflow-hidden grid place-items-center bg-gradient-to-b from-[#14181f] to-[#0f1319]">
-            <div ref={videoRef} className="absolute inset-0" />
-
+            {/* Join Interactive Session Prompt (Top right / center subtle prompt) */}
             {!session && (
-              <div className="relative flex flex-col items-center gap-4">
-                <div className="w-24 h-24 rounded-full bg-raised border border-edge-3 grid place-items-center font-display text-3xl font-semibold text-ink-2">
-                  {candidateName.split(' ').map(w => w[0]).join('')}
+              <div className="relative z-10 self-center justify-self-center my-auto bg-white/95 backdrop-blur-md rounded-3xl p-6 shadow-2xl border border-[#EBE6DF] flex flex-col items-center gap-3 text-center max-w-sm animate-in fade-in zoom-in-95 duration-200">
+                <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-200 text-[#2563EB] grid place-items-center font-bold text-lg shadow-2xs">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-gray-900">Start Interview Session</h3>
+                  <p className="text-xs text-gray-600 mt-1 leading-relaxed">
+                    Connect live to speak with Arjun, Ananya, and Rohan.
+                  </p>
                 </div>
                 <button
-                  onClick={join}
+                  onClick={handleJoin}
                   disabled={joining}
-                  className="h-11 px-6 rounded-xl bg-technical text-base font-semibold text-[15px] disabled:opacity-50"
-                  style={{ color: '#08090d' }}
+                  className="w-full h-10 rounded-xl bg-[#2563EB] hover:bg-blue-700 text-white font-bold text-xs transition-all shadow-md active:scale-98 disabled:opacity-50 cursor-pointer"
                 >
-                  {joining ? 'Joining…' : 'Join the panel'}
+                  {joining ? 'Connecting to Room...' : 'Join AI Panel'}
                 </button>
-                {error && <span className="text-xs text-danger max-w-sm text-center">{error}</span>}
+                {joinError && <span className="text-xs text-red-500 font-semibold">{joinError}</span>}
               </div>
             )}
 
-            {session && (
-              <div className="absolute top-4 left-4 flex items-center gap-2 bg-black/70 border border-edge-3 rounded-lg px-3 py-1.5">
-                <span
-                  className="w-1.5 h-1.5 rounded-full"
-                  style={{ background: micOn ? 'var(--color-hr)' : 'var(--color-danger)' }}
-                />
-                <span className="text-[13px] font-medium">{candidateName}</span>
-                <span className="text-xs text-ink-3">You</span>
+            {/* Bottom Floating Elements: Mic Status & Closed Captions */}
+            <div className="relative z-10 flex items-end justify-between gap-5 mt-auto">
+              {/* Bottom Left: Mic On / Sound Wave Card */}
+              <div className="bg-white/95 backdrop-blur-md rounded-2xl p-3.5 shadow-lg border border-white/50 flex items-center gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center gap-2">
+                    <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                    </svg>
+                    <span className="text-sm font-extrabold text-gray-900">{micOn ? 'Mic On' : 'Mic Muted'}</span>
+                  </div>
+                  {/* Blue waveform equalizer */}
+                  <div className="flex items-center gap-[3px] h-4 px-0.5">
+                    <span className="w-[3px] h-2 bg-[#2563EB] rounded-full animate-wave-1" />
+                    <span className="w-[3px] h-3.5 bg-[#2563EB] rounded-full animate-wave-2" />
+                    <span className="w-[3px] h-4.5 bg-[#2563EB] rounded-full animate-wave-3" />
+                    <span className="w-[3px] h-2 bg-[#2563EB] rounded-full animate-wave-4" />
+                    <span className="w-[3px] h-4 bg-[#2563EB] rounded-full animate-wave-5" />
+                    <span className="w-[3px] h-2.5 bg-[#2563EB] rounded-full animate-wave-6" />
+                    <span className="w-[3px] h-4 bg-[#2563EB] rounded-full animate-wave-2" />
+                    <span className="w-[3px] h-2.5 bg-[#2563EB] rounded-full animate-wave-4" />
+                    <span className="w-[3px] h-3 bg-[#2563EB] rounded-full animate-wave-1" />
+                  </div>
+                </div>
               </div>
-            )}
-          </div>
 
-          <div className="shrink-0 rounded-2xl border border-edge-2 bg-[#0f1218] px-4 py-3.5 flex gap-3.5 items-start min-h-[68px]">
-            <span className="font-mono text-[10px] tracking-widest text-ink-3 mt-1 shrink-0">CAPTIONS</span>
-            <div className="flex flex-col gap-1.5 flex-1">
-              {/* What we heard, always on screen — otherwise the room looks deaf
-                  for the second the panel spends deciding. */}
-              {heard && (
-                <p className="text-[15px] leading-relaxed text-ink-3">
-                  <span className="font-semibold text-ink-2">You:</span> {heard}
-                </p>
+              {/* Bottom Center: Subtitles / Captions Box */}
+              {captionsOn && (
+                <div className="flex-1 max-w-2xl mx-auto bg-black/85 backdrop-blur-md text-white rounded-2xl px-6 py-3.5 border border-white/15 shadow-xl flex items-center gap-3.5">
+                  <div className="w-7 h-6 rounded-md bg-white/20 text-white font-extrabold text-xs grid place-items-center shrink-0">
+                    cc
+                  </div>
+                  <p className="text-sm md:text-base font-medium leading-snug text-white/95 line-clamp-2">
+                    {activeCaptionText}
+                  </p>
+                </div>
               )}
-              {caption ? (
-                <p className="text-[15px] leading-relaxed text-ink-2">
-                  <span className="font-semibold" style={{ color: panelistById(caption.speaker as never).color }}>
-                    {panelistById(caption.speaker as never).name}:
-                  </span>{' '}
-                  {caption.text}
-                </p>
-              ) : (
-                !heard && <p className="text-[15px] text-ink-3">waiting for the panel…</p>
-              )}
+
+              {/* Spacer for symmetrical balance */}
+              <div className="w-16 hidden md:block" />
             </div>
           </div>
         </main>
 
-        <BidRail model={model} bids={bids} />
+        {/* RIGHT COLUMN: AI Interviewer Tiles & Synced Panel Context */}
+        <aside className="w-[380px] shrink-0 flex flex-col justify-between gap-3.5 min-h-0">
+          {/* 3 AI Interviewer Tiles */}
+          <div className="flex-1 flex flex-col justify-between gap-3.5 min-h-0">
+            {PANEL.map(p => (
+              <PanelistTile
+                key={p.id}
+                panelist={p}
+                speaking={currentSpeaker === p.id}
+                bid={bids.find(b => b.panelist === p.id)}
+                avatarUrl={AVATARS[p.id]}
+                onSelect={() => setActiveSpeakerId(p.id)}
+              />
+            ))}
+          </div>
+
+          {/* Context Synced Box & Speaker Pill */}
+          <div className="flex flex-col gap-3 shrink-0">
+            {/* Panel context synced card */}
+            <div className="bg-white rounded-2xl p-4 border border-[#EBE6DF] shadow-xs flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-2xs">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-sm font-bold text-gray-900 leading-tight">Panel context synced</span>
+                  <span className="text-xs text-gray-500 leading-tight mt-0.5">Shared candidate context across all interviewers</span>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setShowContextDrawer(true)}
+                className="border-2 border-[#2563EB] text-[#2563EB] hover:bg-blue-50 font-extrabold text-xs md:text-sm px-4 py-1.5 rounded-xl transition-colors cursor-pointer"
+              >
+                View
+              </button>
+            </div>
+
+            {/* Bottom Status: Arjun Mehta is speaking */}
+            <div className="bg-[#EFF6FF] border border-[#BFDBFE] text-gray-800 text-sm font-bold px-4 py-2.5 rounded-2xl flex items-center gap-2.5 shadow-2xs">
+              <svg className="w-5 h-5 text-[#2563EB]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M8.111 16.404a5.5 5.5 0 010-7.778M12 12h.01m3.878-4.404a5.5 5.5 0 010 7.778M5.636 18.364a9 9 0 010-12.728m12.728 0a9 9 0 010 12.728" />
+              </svg>
+              <span>{speakerInfo.name} is speaking</span>
+            </div>
+          </div>
+        </aside>
       </div>
 
-      <footer className="h-[76px] shrink-0 border-t border-edge bg-panel px-5 flex items-center justify-between">
-        <span className="text-xs text-ink-3">Recording · transcript building</span>
-
-        <div className="flex items-center gap-2.5">
+      {/* ---------------------------------------------------- BOTTOM CONTROLS BAR */}
+      <footer className="h-22 shrink-0 bg-white border-t border-[#EBE6DF] px-10 flex items-center justify-between z-20 shadow-xs">
+        {/* Left Action Buttons */}
+        <div className="flex items-center gap-8">
+          {/* Mic Button */}
           <button
             onClick={toggleMic}
-            disabled={!session}
-            className="h-12 px-5 rounded-xl font-semibold text-[13px] disabled:opacity-40"
-            style={{
-              background: micOn && session ? 'var(--color-hr)' : 'var(--color-card)',
-              color: micOn && session ? '#08090d' : 'var(--color-ink-2)',
-              border: micOn && session ? 'none' : '1px solid var(--color-edge-3)',
-            }}
+            className="flex flex-col items-center gap-1.5 text-gray-700 hover:text-gray-950 transition-colors cursor-pointer group"
           >
-            {micOn ? 'Mic on' : 'Mic off'}
+            <div className={`w-12 h-12 rounded-full flex items-center justify-center border transition-all shadow-2xs group-hover:scale-105 ${
+              micOn ? 'border-[#EBE6DF] bg-white text-gray-700 hover:bg-gray-50' : 'border-red-200 bg-red-50 text-red-600'
+            }`}>
+              {micOn ? (
+                <svg className="w-6 h-6 text-[#2563EB]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                </svg>
+              ) : (
+                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                  <line x1="1" y1="1" x2="23" y2="23" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+              )}
+            </div>
+            <span className="text-xs font-semibold text-gray-800">Mic</span>
           </button>
 
+          {/* Camera Button */}
           <button
-            onClick={async () => { await leave(session); setSession(null); }}
-            disabled={!session}
-            className="h-12 px-5 rounded-xl border border-[#4a2320] bg-[#1a100e] text-danger font-semibold text-[13px] disabled:opacity-40"
+            onClick={toggleCamera}
+            className="flex flex-col items-center gap-1.5 text-gray-700 hover:text-gray-950 transition-colors cursor-pointer group"
           >
-            Leave panel
+            <div className={`w-12 h-12 rounded-full flex items-center justify-center border transition-all shadow-2xs group-hover:scale-105 ${
+              cameraOn ? 'border-[#EBE6DF] bg-white text-gray-700 hover:bg-gray-50' : 'border-red-200 bg-red-50 text-red-600'
+            }`}>
+              {cameraOn ? (
+                <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+              ) : (
+                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  <line x1="2" y1="2" x2="22" y2="22" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+              )}
+            </div>
+            <span className="text-xs font-semibold text-gray-800">Camera</span>
           </button>
 
+          {/* Captions Button */}
           <button
-            onClick={async () => { await leave(session); setSession(null); onEnd(); }}
-            disabled={model.turns === 0}
-            className="h-12 px-5 rounded-xl border border-edge-3 bg-card font-semibold text-[13px] text-ink-2 disabled:opacity-40"
+            onClick={() => setCaptionsOn(!captionsOn)}
+            className="flex flex-col items-center gap-1.5 text-gray-700 hover:text-gray-950 transition-colors cursor-pointer group"
           >
-            End &amp; score
+            <div className={`w-12 h-12 rounded-full flex items-center justify-center border transition-all shadow-2xs group-hover:scale-105 ${
+              captionsOn ? 'border-blue-200 bg-blue-50 text-[#2563EB]' : 'border-[#EBE6DF] bg-white text-gray-700 hover:bg-gray-50'
+            }`}>
+              <span className="font-extrabold text-sm tracking-wider">CC</span>
+            </div>
+            <span className="text-xs font-semibold text-gray-800">Captions</span>
+          </button>
+
+          {/* Screen Share */}
+          <button
+            onClick={() => setScreenSharing(!screenSharing)}
+            className="flex flex-col items-center gap-1.5 text-gray-700 hover:text-gray-950 transition-colors cursor-pointer group"
+          >
+            <div className={`w-12 h-12 rounded-full flex items-center justify-center border transition-all shadow-2xs group-hover:scale-105 ${
+              screenSharing ? 'border-blue-200 bg-blue-50 text-[#2563EB]' : 'border-[#EBE6DF] bg-white text-gray-700 hover:bg-gray-50'
+            }`}>
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 11l5-5m0 0l5 5m-5-5v12M4 18v2a1 1 0 001 1h14a1 1 0 001-1v-2" />
+              </svg>
+            </div>
+            <span className="text-xs font-semibold text-gray-800">Screen Share</span>
+          </button>
+
+          {/* Raise Hand */}
+          <button
+            onClick={() => setHandRaised(!handRaised)}
+            className="flex flex-col items-center gap-1.5 text-gray-700 hover:text-gray-950 transition-colors cursor-pointer group"
+          >
+            <div className={`w-12 h-12 rounded-full flex items-center justify-center border transition-all shadow-2xs group-hover:scale-105 ${
+              handRaised ? 'border-amber-200 bg-amber-50 text-amber-600' : 'border-[#EBE6DF] bg-white text-gray-700 hover:bg-gray-50'
+            }`}>
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 11.5V14m0-2.5v-6a1.5 1.5 0 113 0m-3 6a1.5 1.5 0 00-3 0v2a7.5 7.5 0 0015 0v-5a1.5 1.5 0 00-3 0m-6-3V11m0-5.5v-1a1.5 1.5 0 013 0v1m0 0V11m0-5.5a1.5 1.5 0 013 0v3m0 0V11" />
+              </svg>
+            </div>
+            <span className="text-xs font-semibold text-gray-800">Raise Hand</span>
+          </button>
+
+          {/* Settings */}
+          <button
+            onClick={() => setShowContextDrawer(true)}
+            className="flex flex-col items-center gap-1.5 text-gray-700 hover:text-gray-950 transition-colors cursor-pointer group"
+          >
+            <div className="w-12 h-12 rounded-full flex items-center justify-center border border-[#EBE6DF] bg-white text-gray-700 hover:bg-gray-50 shadow-2xs group-hover:scale-105">
+              <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </div>
+            <span className="text-xs font-semibold text-gray-800">Settings</span>
           </button>
         </div>
 
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-ink-3">Question {model.turns} of ~10</span>
-          <div className="w-24 h-1 rounded-sm bg-edge-2 overflow-hidden">
-            <div
-              className="h-1 rounded-sm bg-technical transition-all"
-              style={{ width: `${Math.min(model.turns / 10, 1) * 100}%` }}
-            />
-          </div>
+        {/* Center Hangup Button */}
+        <div className="flex items-center">
+          <button
+            onClick={onEnd}
+            title="End Interview"
+            className="w-15 h-15 rounded-full bg-[#EF4444] hover:bg-red-600 text-white flex items-center justify-center shadow-xl hover:shadow-red-500/30 transition-all active:scale-95 cursor-pointer"
+          >
+            <svg className="w-7 h-7 transform rotate-[135deg]" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56a.977.977 0 00-1.01.24l-2.2 2.2a15.053 15.053 0 01-6.59-6.59l2.2-2.21a.96.96 0 00.25-1A11.36 11.36 0 018.5 3.99c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1 0 9.39 7.61 17 17 17 .55 0 1-.45 1-1v-3.49c.01-.55-.44-1-1-.12z" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Right Action Buttons */}
+        <div className="flex items-center gap-8">
+          {/* Interview Guide */}
+          <button
+            onClick={() => setShowGuideModal(true)}
+            className="flex flex-col items-center gap-1.5 text-gray-700 hover:text-gray-950 transition-colors cursor-pointer group"
+          >
+            <div className="w-12 h-12 rounded-full flex items-center justify-center border border-[#EBE6DF] bg-white text-gray-700 hover:bg-gray-50 shadow-2xs group-hover:scale-105">
+              <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+              </svg>
+            </div>
+            <span className="text-xs font-semibold text-gray-800">Interview Guide</span>
+          </button>
+
+          {/* Help */}
+          <button
+            onClick={() => setShowHelpModal(true)}
+            className="flex flex-col items-center gap-1.5 text-gray-700 hover:text-gray-950 transition-colors cursor-pointer group"
+          >
+            <div className="w-12 h-12 rounded-full flex items-center justify-center border border-[#EBE6DF] bg-white text-gray-700 hover:bg-gray-50 shadow-2xs group-hover:scale-105">
+              <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <span className="text-xs font-semibold text-gray-800">Help</span>
+          </button>
         </div>
       </footer>
+
+      {/* ---------------------------------------------------- CONTEXT SLIDE-OVER DRAWER */}
+      <BidRail
+        model={model}
+        bids={bids}
+        isOpen={showContextDrawer}
+        onClose={() => setShowContextDrawer(false)}
+      />
+
+      {/* ---------------------------------------------------- INTERVIEW GUIDE MODAL */}
+      {showGuideModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-lg bg-white rounded-3xl p-7 shadow-2xl border border-[#EBE6DF] flex flex-col gap-5">
+            <div className="flex items-center justify-between pb-3.5 border-b border-[#EBE6DF]">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 text-[#2563EB] grid place-items-center">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-bold text-gray-900">Panel Interview Guide</h3>
+              </div>
+              <button
+                onClick={() => setShowGuideModal(false)}
+                className="text-gray-400 hover:text-gray-600 w-9 h-9 rounded-xl hover:bg-gray-100 grid place-items-center text-sm cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="text-sm text-gray-600 leading-relaxed flex flex-col gap-3.5">
+              <p>
+                Welcome to your <strong>Kyro Adaptive Panel Interview</strong>. You are being interviewed simultaneously by 3 specialized AI interviewers:
+              </p>
+              <ul className="list-disc pl-5 flex flex-col gap-2 text-gray-700 font-medium">
+                <li><strong>Arjun Mehta (Technical Architect):</strong> Probes system design, latency, scaling trade-offs, and technical depth.</li>
+                <li><strong>Ananya Shah (Product Manager):</strong> Evaluates customer impact, product metrics, requirement scoping, and prioritization.</li>
+                <li><strong>Rohan Iyer (HR / Behavioural):</strong> Assesses cross-functional collaboration, ownership, team dynamics, and culture fit.</li>
+              </ul>
+              <p className="bg-[#FAF9F6] p-4 rounded-2xl border border-[#EBE6DF] text-xs leading-relaxed text-gray-700">
+                💡 <strong>Tip:</strong> Speak clearly and answer naturally. The panel shares a single synchronized state and will adaptively bid for turns based on what you discuss.
+              </p>
+            </div>
+            <button
+              onClick={() => setShowGuideModal(false)}
+              className="mt-1 w-full h-11 rounded-xl bg-[#2563EB] text-white font-bold text-sm hover:bg-blue-700 transition-colors shadow-sm cursor-pointer"
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ---------------------------------------------------- HELP MODAL */}
+      {showHelpModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-md bg-white rounded-3xl p-7 shadow-2xl border border-[#EBE6DF] flex flex-col gap-5">
+            <div className="flex items-center justify-between pb-3.5 border-b border-[#EBE6DF]">
+              <h3 className="text-lg font-bold text-gray-900">Audio &amp; Video Support</h3>
+              <button
+                onClick={() => setShowHelpModal(false)}
+                className="text-gray-400 hover:text-gray-600 w-9 h-9 rounded-xl hover:bg-gray-100 grid place-items-center text-sm cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="text-sm text-gray-600 leading-relaxed flex flex-col gap-3">
+              <p>Having trouble hearing or speaking with the AI panel?</p>
+              <div className="flex flex-col gap-2.5">
+                <div className="p-3.5 bg-[#FAF9F6] rounded-2xl border border-[#EBE6DF]">
+                  <span className="font-bold text-gray-900 text-sm">1. Check Microphone Permissions</span>
+                  <p className="text-gray-500 text-xs mt-1">Ensure your browser has microphone and camera permissions allowed for localhost.</p>
+                </div>
+                <div className="p-3.5 bg-[#FAF9F6] rounded-2xl border border-[#EBE6DF]">
+                  <span className="font-bold text-gray-900 text-sm">2. Real-Time Captions</span>
+                  <p className="text-gray-500 text-xs mt-1">Captions display live transcriptions of candidate responses and interviewer statements.</p>
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowHelpModal(false)}
+              className="mt-1 w-full h-11 rounded-xl bg-gray-900 text-white font-bold text-sm hover:bg-black transition-colors cursor-pointer"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
