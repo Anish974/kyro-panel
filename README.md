@@ -122,7 +122,7 @@ That is the point — it is the only thing keeping two developers in sync.
 | Claims Ledger — contradictions, unquantified claims, corroboration | done |
 | Role-play scenarios built from the candidate's own claims | done |
 | Adaptive difficulty | done |
-| Room screen, 360° Evidence Scorecard | done |
+| Room screen, Evidence Scorecard | done |
 | Shared secret on every write | done |
 | Join + AI disclosure screen, device check | not yet |
 | Deployment | done ([Live on Render](https://kyro-panel.onrender.com/)) |

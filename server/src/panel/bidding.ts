@@ -163,7 +163,7 @@ export function context(answer: string): string {
       : m.turns >= CONCLUDE_AT_TURN
         ? [
             'FINAL TURN / CONCLUSION: The interview has reached its target duration of 10-12 minutes (10 turns).',
-            'Rohan or the highest bidder should politely wrap up the interview, thank the candidate by name for their time, and state that the panel is concluding to finalize their 360° scorecard.',
+            'Rohan or the highest bidder should politely wrap up the interview, thank the candidate by name for their time, and state that the panel is concluding to finalize their scorecard.',
             'Do NOT ask another open-ended technical challenge. Keep it a warm, professional closing sentence.',
           ].join('\n')
         : m.turns >= LATE_STAGE_TURN

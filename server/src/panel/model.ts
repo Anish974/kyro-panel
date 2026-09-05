@@ -122,7 +122,7 @@ let scorecardsHistory: Scorecard[] = [
     ],
     claims: [
       { id: 'c1', text: 'Implemented pre-join device verification greenroom with real-time mic waveform analyzer.', t: 150, status: 'verified' },
-      { id: 'c2', text: 'Engineered 360° candidate assessment matrix and interactive recruiter dashboard.', t: 390, status: 'verified' },
+      { id: 'c2', text: 'Engineered candidate assessment matrix and interactive recruiter dashboard.', t: 390, status: 'verified' },
     ],
   },
 ];

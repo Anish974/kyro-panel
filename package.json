@@ -2,7 +2,7 @@
   "name": "kyro-panel",
   "version": "1.0.0",
   "private": true,
-  "description": "Kyro Panel — Adaptive Multi-Agent Voice Interview Platform for 360° Candidate Assessment",
+  "description": "Kyro Panel — Adaptive Multi-Agent Voice Interview Platform",
   "workspaces": [
     "shared",
     "server",

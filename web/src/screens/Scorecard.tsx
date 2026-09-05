@@ -72,7 +72,7 @@ export default function Scorecard({ scorecard, onBack }: Props) {
           <div className="flex flex-col gap-2.5">
             <div className="flex items-center gap-2">
               <span className="text-xs font-extrabold tracking-widest text-[#A48D78] uppercase font-mono">
-                360° Assessment Scorecard
+                Assessment Scorecard
               </span>
               {scorecard.level && (
                 <span className="inline-flex items-center text-[11px] font-bold px-2.5 py-0.5 rounded-md bg-blue-50 text-[#2563EB] border border-blue-200">

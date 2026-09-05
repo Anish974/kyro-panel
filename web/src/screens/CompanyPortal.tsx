@@ -125,7 +125,7 @@ const DEFAULT_COMPANY_HISTORY: Scorecard[] = [
     ],
     claims: [
       { id: 'c1', text: 'Implemented pre-join device verification greenroom with real-time mic waveform analyzer.', t: 150, status: 'verified' },
-      { id: 'c2', text: 'Engineered 360° candidate assessment matrix and interactive recruiter dashboard.', t: 390, status: 'verified' },
+      { id: 'c2', text: 'Engineered candidate assessment matrix and interactive recruiter dashboard.', t: 390, status: 'verified' },
     ],
   },
 ];
@@ -225,7 +225,7 @@ export default function CompanyPortal({ onBack, onSelectScorecard, localHistory 
               Candidate Assessments &amp; Scorecards
             </h1>
             <p className="text-xs sm:text-sm text-gray-600 font-medium">
-              Review AI interview evaluations, cross-examinations, competency scores, and full 360° candidate reports.
+              Review AI interview evaluations, cross-examinations, competency scores, and full candidate reports.
             </p>
           </div>
 
