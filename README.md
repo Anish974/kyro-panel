@@ -2,6 +2,8 @@
 
 **Three AI interviewers on one voice call, arguing over who asks you next.**
 
+🌐 **Live Deployment / Hosted App**: [https://kyro-panel.onrender.com/](https://kyro-panel.onrender.com/)
+
 Built for EchoSphere: Agora Hackathon 2026 — track *Coordinated AI Interview Panel*.
 
 A normal AI interviewer asks a question, waits, asks the next one. Kyro Panel puts
@@ -123,7 +125,7 @@ That is the point — it is the only thing keeping two developers in sync.
 | Room screen, 360° Evidence Scorecard | done |
 | Shared secret on every write | done |
 | Join + AI disclosure screen, device check | not yet |
-| Deployment | not yet |
+| Deployment | done ([Live on Render](https://kyro-panel.onrender.com/)) |
 
 Five self-check files, both workspaces typecheck clean.
 
