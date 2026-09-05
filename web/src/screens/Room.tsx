@@ -38,15 +38,27 @@ const AGENT_STATE_LABEL: Record<AgentState, string | null> = {
 };
 
 function formatTimer(seconds: number): string {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
+  const m = Math.floor(seconds / 60);
   const s = seconds % 60;
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
 export default function Room({ candidateName, role, onEnd }: Props) {
   const { model, bids, speaking: serverSpeaking, caption, heard, connected } = useSession();
   const [session, setSession] = useState<JoinResult | null>(null);
+  const [elapsedSec, setElapsedSec] = useState<number>(0);
+
+  // Live timer ticking up while interview session is connected
+  useEffect(() => {
+    if (!session) {
+      setElapsedSec(0);
+      return;
+    }
+    const timer = setInterval(() => {
+      setElapsedSec(prev => prev + 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [session]);
 
   // Local camera stream & permissions
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
@@ -730,9 +742,11 @@ export default function Room({ candidateName, role, onEnd }: Props) {
             </svg>
             <div className="flex flex-col">
               <span className="font-mono font-bold text-sm md:text-base text-gray-900 tracking-tight leading-none">
-                {formatTimer(model.elapsed || 1477)}
+                {formatTimer(session ? elapsedSec : (model.elapsed || 0))}
               </span>
-              <span className="text-[11px] text-gray-400 font-medium leading-none mt-1">Interview Time</span>
+              <span className="text-[11px] text-gray-500 font-medium leading-none mt-1">
+                {model.turns > 0 ? `Turn ${model.turns} / ~10` : '10-12 min max'}
+              </span>
             </div>
           </div>
 

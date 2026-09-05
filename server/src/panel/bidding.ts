@@ -120,7 +120,7 @@ export function context(answer: string): string {
     `Competency scores so far (0-1): ${JSON.stringify(m.skills)}`,
     `Open gaps the panel noticed: ${m.gaps.length ? m.gaps.join('; ') : 'none'}`,
     `Who spoke last: ${m.lastSpeaker ?? 'nobody'}`,
-    `Question ${m.turns} of about 10. Difficulty level ${m.difficulty} of 5 — level 1 is a`,
+    `Question ${m.turns} of about 10 (Target duration: 10-12 minutes). Difficulty level ${m.difficulty} of 5 — level 1 is a`,
     'warm-up, level 5 is a staff engineer being pushed on the hardest part of their answer.',
     'Pitch what you ask at that level.',
     '',
@@ -136,7 +136,18 @@ export function context(answer: string): string {
           'Whoever the introduction speaks to most should score highest — the other two score',
           'lower but still write the question they would have asked.',
         ].join('\n')
-      : '',
+      : m.turns >= 10
+        ? [
+            'FINAL TURN / CONCLUSION: The interview has reached its target duration of 10-12 minutes (10 turns).',
+            'Rohan or the highest bidder should politely wrap up the interview, thank the candidate by name for their time, and state that the panel is concluding to finalize their 360° scorecard.',
+            'Do NOT ask another open-ended technical challenge. Keep it a warm, professional closing sentence.',
+          ].join('\n')
+        : m.turns >= 8
+          ? [
+              'LATE STAGE: Approaching the 10-12 minute mark (Question 8-9 of 10).',
+              'Focus on closing any remaining unanswered gaps or asking a final key trade-off question before wrapping up.',
+            ].join('\n')
+          : '',
     m.scenario
       ? [
           `ROLE-PLAY RUNNING (answer ${m.scenario.turns + 1} of ${SCENARIO_LENGTH}), opened by ${m.scenario.openedBy}:`,
@@ -144,7 +155,7 @@ export function context(answer: string): string {
           'Stay inside it. Press on what they would actually do, step by step.',
           'Do not start another one.',
         ].join('\n')
-      : canOpen
+      : canOpen && m.turns < 8
         ? [
             'No role-play is running, and you may start one. Put the candidate inside a',
             'concrete situation built from something they have ALREADY claimed — their own',
