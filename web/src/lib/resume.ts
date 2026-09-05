@@ -28,28 +28,52 @@ export async function extractResumeText(file: File): Promise<string> {
   throw new Error('Upload a PDF, TXT or MD file.');
 }
 
-async function readPdf(file: File): Promise<string> {
-  // pdf.js is the heaviest thing in the app and only a candidate who actually
-  // attaches a PDF should pay for it, so it is imported here rather than at the
-  // top — Vite splits it into its own chunk and the login screen stays light.
-  const pdfjs = await import('pdfjs-dist');
-  const worker = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
-  pdfjs.GlobalWorkerOptions.workerSrc = worker.default;
+async function extractRawPdfText(file: File): Promise<string> {
+  const buffer = await file.arrayBuffer();
+  const bytes = new Uint8Array(buffer);
+  const text = new TextDecoder('latin1').decode(bytes);
+  const matches = text.match(/\((.*?)\)\s*Tj/g) || text.match(/\[(.*?)\]\s*TJ/g) || [];
+  const extracted = matches
+    .map(m => m.replace(/^[\(\[]/, '').replace(/[\)\]]\s*T[jJ]$/, ''))
+    .join(' ');
+  return extracted;
+}
 
-  const doc = await pdfjs.getDocument({ data: await file.arrayBuffer() }).promise;
-  const pages: string[] = [];
-  for (let n = 1; n <= Math.min(doc.numPages, MAX_PAGES); n++) {
-    const content = await (await doc.getPage(n)).getTextContent();
-    pages.push(content.items.map(item => ('str' in item ? item.str : '')).join(' '));
+async function readPdf(file: File): Promise<string> {
+  // pdf.js is imported dynamically so the login screen stays fast
+  try {
+    const pdfjs = await import('pdfjs-dist');
+    const worker = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
+    pdfjs.GlobalWorkerOptions.workerSrc = worker.default;
+
+    const doc = await pdfjs.getDocument({ data: await file.arrayBuffer() }).promise;
+    const pages: string[] = [];
+    for (let n = 1; n <= Math.min(doc.numPages, MAX_PAGES); n++) {
+      const content = await (await doc.getPage(n)).getTextContent();
+      pages.push(content.items.map(item => ('str' in item ? item.str : '')).join(' '));
+    }
+
+    const text = tidy(pages.join('\n\n'));
+    if (text.length >= 40) return text;
+  } catch (err) {
+    console.warn('pdf.js parser encountered an issue, trying raw extractor:', err);
+    try {
+      const raw = tidy(await extractRawPdfText(file));
+      if (raw.length >= 40) return raw;
+    } catch {
+      // ignore
+    }
+
+    const errMsg = (err as Error).message || '';
+    if (errMsg.includes('Failed to fetch dynamically imported module') || errMsg.includes('404')) {
+      throw new Error('A new version was just deployed! Please hard-refresh your browser tab (Cmd+Shift+R / Ctrl+F5).');
+    }
+    throw err;
   }
 
-  const text = tidy(pages.join('\n\n'));
   // A scanned or image-only resume parses to nothing. Saying so beats silently
   // handing the panel an empty document and letting it ask generic questions.
-  if (text.length < 40) {
-    throw new Error('No selectable text in that PDF — it looks scanned. Try a TXT export.');
-  }
-  return text;
+  throw new Error('No selectable text in that PDF — it looks scanned. Try a TXT export.');
 }
 
 /** pdf.js emits ragged whitespace; the panel prompt pays for every character. */
