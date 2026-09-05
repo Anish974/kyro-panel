@@ -27,8 +27,112 @@ function formatDate(timestamp?: number): string {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
+const DEFAULT_COMPANY_HISTORY: Scorecard[] = [
+  {
+    sessionId: 'kyro-anish-01',
+    candidateName: 'Anish Patankar',
+    role: 'Senior Backend Engineer',
+    level: 'Expert (6-11+ years)',
+    durationSec: 705,
+    timestamp: Date.now() - 3600 * 1000 * 2,
+    turns: 10,
+    dissent: false,
+    verdicts: [
+      {
+        panelist: 'technical',
+        verdict: 'hire',
+        score: 4.5,
+        confidence: 0.92,
+        rationale: 'Deep mastery of distributed async pipelines, low-latency streaming architectures, and multi-agent state orchestration.',
+        evidence: [
+          { quote: 'We designed an event-driven SSE and WebSocket bridge with in-memory state models to keep turn round-trip latency under 1200ms.', t: 215 },
+          { quote: 'To prevent cascade failures during concurrent bidding, we isolated agent turns into a single round-trip evaluation cycle.', t: 460 },
+        ],
+        ratings: { systemDesign: 4.6, tradeoffReasoning: 4.4, communication: 4.5 },
+      },
+      {
+        panelist: 'product',
+        verdict: 'hire',
+        score: 4.2,
+        confidence: 0.89,
+        rationale: 'Strong alignment on real-time candidate experience, audio silence coverage, and seamless interviewer pacing.',
+        evidence: [
+          { quote: 'We added synchronized presence and active speaker detection so candidates never felt they were talking over the panel.', t: 340 },
+        ],
+        ratings: { customerImpact: 4.3, tradeoffReasoning: 4.1, communication: 4.2 },
+      },
+      {
+        panelist: 'hr',
+        verdict: 'hire',
+        score: 4.4,
+        confidence: 0.9,
+        rationale: 'Demonstrated direct architectural ownership, transparent risk management, and collaborative cross-functional execution.',
+        evidence: [
+          { quote: 'I led the end-to-end multi-agent protocol design and coordinated testing between backend services and client state.', t: 520 },
+        ],
+        ratings: { ownership: 4.6, communication: 4.4, tradeoffReasoning: 4.2 },
+      },
+    ],
+    claims: [
+      { id: 'c1', text: 'Designed and deployed multi-agent voice orchestration architecture achieving sub-1.2s response latency.', t: 180, status: 'verified' },
+      { id: 'c2', text: 'Built real-time audio-level visualizer and WebRTC candidate stream synchronization.', t: 410, status: 'verified' },
+    ],
+  },
+  {
+    sessionId: 'kyro-nidhi-02',
+    candidateName: 'Nidhi Dharme',
+    role: 'Full-Stack Engineer',
+    level: 'Intermediate (2-6 years)',
+    durationSec: 630,
+    timestamp: Date.now() - 3600 * 1000 * 5,
+    turns: 9,
+    dissent: false,
+    verdicts: [
+      {
+        panelist: 'technical',
+        verdict: 'hire',
+        score: 4.2,
+        confidence: 0.88,
+        rationale: 'Clean component modularity, effective Web Audio API integration for live mic waveforms, and solid responsive UI state management.',
+        evidence: [
+          { quote: 'We connected the Web Audio API AnalyserNode directly to the canvas visualizer for real-time decibel level feedback.', t: 195 },
+          { quote: 'Optimized rendering cycles to ensure camera preview and live closed captions stream without UI blocking.', t: 380 },
+        ],
+        ratings: { systemDesign: 4.1, tradeoffReasoning: 4.2, communication: 4.3 },
+      },
+      {
+        panelist: 'product',
+        verdict: 'hire',
+        score: 4.4,
+        confidence: 0.91,
+        rationale: 'Outstanding product intuition for candidate comfort: pre-join greenroom checks, clear camera/mic toggles, and structured reports.',
+        evidence: [
+          { quote: 'Candidate confidence increases significantly when they can verify audio and video inputs in a dedicated pre-join greenroom.', t: 310 },
+        ],
+        ratings: { customerImpact: 4.6, tradeoffReasoning: 4.3, communication: 4.3 },
+      },
+      {
+        panelist: 'hr',
+        verdict: 'hire',
+        score: 4.3,
+        confidence: 0.87,
+        rationale: 'High proactive ownership, user empathy, clear communication under deadlines, and team collaboration.',
+        evidence: [
+          { quote: 'Took direct responsibility for candidate onboarding experience and streamlined the assessment report layout.', t: 470 },
+        ],
+        ratings: { ownership: 4.4, communication: 4.4, tradeoffReasoning: 4.1 },
+      },
+    ],
+    claims: [
+      { id: 'c1', text: 'Implemented pre-join device verification greenroom with real-time mic waveform analyzer.', t: 150, status: 'verified' },
+      { id: 'c2', text: 'Engineered 360° candidate assessment matrix and interactive recruiter dashboard.', t: 390, status: 'verified' },
+    ],
+  },
+];
+
 export default function CompanyPortal({ onBack, onSelectScorecard, localHistory = [] }: Props) {
-  const [scorecards, setScorecards] = useState<Scorecard[]>(localHistory);
+  const initialData = localHistory.length > 0 ? localHistory : DEFAULT_COMPANY_HISTORY;
+  const [scorecards, setScorecards] = useState<Scorecard[]>(initialData);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [levelFilter, setLevelFilter] = useState<string>('all');
@@ -43,25 +147,18 @@ export default function CompanyPortal({ onBack, onSelectScorecard, localHistory 
         if (res.ok) {
           const data: Scorecard[] = await res.json();
           if (mounted && Array.isArray(data) && data.length > 0) {
-            // Merge with local history avoiding duplicates
-            const combined = [...data];
-            for (const item of localHistory) {
-              if (!combined.some(c => c.sessionId === item.sessionId)) {
-                combined.unshift(item);
-              }
-            }
-            setScorecards(combined);
+            setScorecards(data);
           }
         }
       } catch (err) {
-        console.warn('Could not load scorecards from server, using local history:', err);
+        console.warn('Could not load scorecards from server, using initial data:', err);
       } finally {
         if (mounted) setLoading(false);
       }
     }
     void fetchScorecards();
     return () => { mounted = false; };
-  }, [localHistory]);
+  }, []);
 
   const filtered = scorecards.filter(sc => {
     const matchesSearch =
