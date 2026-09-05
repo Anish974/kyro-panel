@@ -118,25 +118,10 @@ export default function Login({ onLogin }: Props) {
     });
   };
 
-  const handleQuickDemo = () => {
-    setName('Anish Patankar');
-    setRole(ROLES[0]);
-    void enterRoom({
-      name: 'Anish Patankar',
-      role: ROLES[0],
-      ...(resumeText ? { resumeText } : {}),
-    });
-  };
-
   return (
     <div className="min-h-screen w-full bg-[#FAF9F6] flex flex-col justify-center items-center px-4 py-12 select-none">
       {/* Top Brand Tag / Logo */}
       <div className="w-full max-w-md mb-8 text-center">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#F4F1EA] border border-[#EBE6DF] text-xs font-mono text-[#4B5565] uppercase tracking-wider mb-4">
-          <span className="w-2 h-2 rounded-full bg-[#059669] animate-pulse"></span>
-          AI-Powered Multi-Panel Platform
-        </div>
-
         {/* Prominent Headline / Topic */}
         <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-[#181A20] font-display">
           Kyro Panel
@@ -219,10 +204,6 @@ export default function Login({ onLogin }: Props) {
                 className="mt-2 w-full px-4 py-3 rounded-xl bg-[#FAF9F6] border border-[#EBE6DF] text-[#181A20] placeholder-[#8C93A3] text-sm focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent transition-all"
               />
             )}
-
-            <p className="mt-2 text-xs text-[#8C93A3]">
-              The panel pitches every question at this role, and it heads your scorecard.
-            </p>
           </div>
 
           {/* Resume — optional. What it buys the candidate is that the panel
@@ -303,17 +284,6 @@ export default function Login({ onLogin }: Props) {
             )}
           </button>
         </form>
-
-        <div className="mt-6 pt-6 border-t border-[#EBE6DF] flex items-center justify-between text-xs text-[#8C93A3]">
-          <span>Any Gmail &amp; password accepted</span>
-          <button
-            type="button"
-            onClick={handleQuickDemo}
-            className="text-[#2563EB] hover:underline font-medium cursor-pointer"
-          >
-            Quick Fill Demo
-          </button>
-        </div>
       </div>
 
       {/* Footer minimal info */}
