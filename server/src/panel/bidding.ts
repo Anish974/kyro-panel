@@ -132,8 +132,18 @@ export function context(answer: string): string {
     // like a quiz bot.
     m.turns <= 1
       ? [
-          'This is their INTRODUCTION — the first thing they have said.',
-          'Pick one specific thing out of it, or out of their resume, and ask about that at their experience level.',
+          'This is their INTRODUCTION — the first thing they have said about themselves.',
+          'Pick one specific thing THEY just said and ask about that, at their experience level.',
+          '',
+          'Do NOT bring up the resume on this turn. They have only just started talking;',
+          'opening with a deep question about something on paper that they have not',
+          'mentioned yet reads as if nobody listened to them. The resume is there for',
+          'later turns, to check what they claim against what they wrote.',
+          '',
+          'If the introduction was too thin to follow up on, warmly ask them to say a',
+          'little more about themselves and what they have been working on. Do not fill',
+          'the gap with a technical question.',
+          '',
           'No generic opener, no "tell me about your experience", no textbook question.',
           'Whoever the introduction speaks to most should score highest — the other two score',
           'lower but still write the question they would have asked.',

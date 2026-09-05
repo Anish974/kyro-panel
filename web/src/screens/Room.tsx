@@ -825,6 +825,21 @@ export default function Room({ candidateName, role, level, onEnd }: Props) {
             ) : (
               <span className="font-medium text-gray-500 text-sm">None (Panel listening to candidate)</span>
             )}
+
+            {/* Signaling carries the live word-by-word captions and the agent's
+                own state. It is optional — the room still works on end-of-turn
+                captions from SSE — but when it silently fails the room looks
+                deaf until the candidate speaks, and that is worth knowing
+                BEFORE a demo rather than during one. */}
+            {session && !session.rtm && (
+              <span
+                className="ml-auto inline-flex items-center gap-1.5 text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1"
+                title="Agora Signaling did not connect. Captions will only appear once each turn completes, and the panel's thinking/speaking state is unavailable."
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                Live captions off
+              </span>
+            )}
           </div>
 
           {/* Large Candidate Video Container */}

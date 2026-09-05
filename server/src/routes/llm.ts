@@ -3,6 +3,7 @@ import { panelistById, type Panelist } from '@kyro/shared';
 import { runPanel } from '../panel/bidding.js';
 import { ingest } from '../panel/ledger.js';
 import { getModel } from '../panel/model.js';
+import { classify, replyTo } from '../panel/utterance.js';
 import { broadcast } from './events.js';
 
 // Agora's Conversational AI Engine calls this as if it were an LLM, in
@@ -34,6 +35,22 @@ router.post('/chat/completions', async (req, res) => {
   // Show what we heard before the panel spends a second thinking about it.
   // Without this the room looks deaf while the LLM call is in flight.
   broadcast({ type: 'caption', speaker: 'candidate', text: answer, final: true });
+
+  // Logistics and clarifying questions are not answers. A human panel confirms
+  // and waits — it does not grade "am I audible" and it does not spend one of
+  // the ten questions on it. Answering here keeps runPanel (and therefore
+  // addTurn) out of it entirely, so the candidate's real introduction is still
+  // turn 1 when it arrives.
+  const kind = classify(answer);
+  if (kind !== 'answer') {
+    const model = getModel();
+    const asker = model.lastSpeaker ?? 'technical';
+    // The last thing a panelist actually said, to hand back on a "repeat that".
+    const lastQuestion =
+      [...model.transcript].reverse().find(t => t.speaker !== 'candidate')?.text ?? null;
+    console.log(`[llm] ${kind} — answering without spending a turn (turns stay at ${model.turns})`);
+    return stream(res, panelistById(asker), replyTo(kind, lastQuestion), true);
+  }
 
   // Ledger first: the panel should be able to bid on a fresh contradiction.
   const claims = ingest(answer);

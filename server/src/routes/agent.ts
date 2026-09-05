@@ -1,6 +1,7 @@
 import { Router, type Request } from 'express';
-import { AgentConfigError, running, startAgent, stopAgent } from '../panel/agora-agent.js';
+import { AgentConfigError, greeting, running, startAgent, stopAgent } from '../panel/agora-agent.js';
 import { profile, resetSessionTimer } from '../panel/model.js';
+import { broadcast } from './events.js';
 
 // Lets the room start and stop the AI panel itself, so an interview needs a
 // browser and nothing else. Before this, every session needed someone running
@@ -64,6 +65,16 @@ router.post('/agent/start', async (req, res) => {
   try {
     const agent = await startAgent(publicUrl(req));
     resetSessionTimer();
+
+    // Agora speaks greeting_message straight from the join request — it never
+    // reaches /chat/completions, so nothing in the room would otherwise know it
+    // was said. The caption bar stayed empty through the whole introduction and
+    // only filled in once the candidate spoke, which read as a broken room.
+    //
+    // Sent as a caption rather than a transcript turn: it is not scored, and
+    // recording it would set lastSpeaker and quietly change who wins turn 1.
+    broadcast({ type: 'speaking', panelist: 'technical', text: greeting(candidate) });
+
     console.log(`[agent] started ${agent.agentId} in ${agent.channel} for ${candidate.name} (clock reset to 0s)`);
     res.json({ running: true, ...agent });
   } catch (err) {
