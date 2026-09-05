@@ -12,6 +12,7 @@ Yeh guide Kyro Panel project ko start se finish tak run karne ke saare zaroori c
 5. [Git Workflow Commands](#5-git-workflow-commands)
 6. [Self-Checks & Verification](#6-self-checks--verification)
 7. [Important Troubleshooting Notes](#7-important-troubleshooting-notes)
+8. [Deploy to Render (Tunnel se chhutkara)](#8-deploy-to-render)
 
 ---
 
@@ -170,3 +171,64 @@ npm run build -w web
 | **AI Panel bol nahi raha (Silent)** | `ORCHESTRATOR_URL` mismatch | `npm run tunnel` restart hone par naya URL deta hai. `.env` me naya URL daal kar agent restart karein. |
 | **401 Unauthorized / 503 Error** | Missing `ORCHESTRATOR_API_KEY` | `.env` me `ORCHESTRATOR_API_KEY` set karein (koi bhi secret string). |
 | **Microphone not working** | Browser permissions | Browser settings me jakar `localhost:3000` ke liye mic allow karein. |
+| **Panel generic sawal poochta hai, naam nahi leta** | Agent sign-in se pehle start ho gaya | Agent stop karein, browser me sign in karein, phir `agent:start` chalayein. |
+
+---
+
+## 8. Deploy to Render
+
+Tunnel har restart par naya URL deta hai aur har baar `.env` edit karna padta hai. Deploy karne
+par URL permanent ho jaata hai — ek baar set karo, phir kabhi haath mat lagao.
+
+> **Serverless par deploy mat karna (Vercel / Netlify functions).** Panel pura interview
+> memory me rakhta hai (`server/src/panel/model.ts`) aur `/events` ek long-lived SSE stream
+> hai. Cold start ya multi-instance dono interview beech me tod dete hain.
+
+### Step 1: Code push karein
+```bash
+git push origin main
+```
+`render.yaml` repo root me hai — Render usko khud padh lega.
+
+### Step 2: Render par Blueprint banayein
+1. [render.com](https://render.com) par **New → Blueprint**
+2. Repo select karein. Render `render.yaml` detect karke 6 secrets maangega:
+   `AGORA_APP_ID`, `AGORA_APP_CERTIFICATE`, `ORCHESTRATOR_API_KEY`,
+   `LLM_BASE_URL`, `LLM_MODEL`, `LLM_API_KEY`
+   (values apni local `.env` se copy karein)
+3. Deploy. URL milega, jaise `https://kyro-panel.onrender.com`
+
+> Agora ke RESTful credentials (`AGORA_CUSTOMER_ID` / `AGORA_CUSTOMER_SECRET`) yahan
+> **nahi** jaate — wo sirf `agent.ts` padhta hai, jo aapki apni machine par chalta hai.
+
+### Step 3: Local `.env` me deployed URL daalein
+```env
+SERVER_URL=https://kyro-panel.onrender.com
+ORCHESTRATOR_URL=https://kyro-panel.onrender.com
+```
+Bas. Ab `npm run tunnel` ki zaroorat nahi.
+
+### Step 4: Interview chalayein
+1. Deployed URL browser me kholein — web app aur API dono wahin se aate hain
+2. Sign in karein (naam, role, resume)
+3. Local terminal se agent start karein:
+   ```bash
+   npm run agent:start -w server
+   ```
+4. Room me **Join AI Panel** dabayein
+
+### ⚠️ Free tier ka catch
+Render ka free plan **15 minute idle ke baad sleep** kar jaata hai — cold start ~50s lagta hai
+aur in-memory session udd jaata hai. Demo se 2-3 minute pehle URL khol kar warm kar lein
+(`/health` hit karna kaafi hai), ya `render.yaml` me `plan: free` ko `plan: starter` kar dein.
+
+```bash
+# Demo se pehle warm-up
+curl https://kyro-panel.onrender.com/health
+```
+
+### ⚠️ Open endpoint
+`POST /candidate` par koi secret nahi hai (browser ke paas secret ho hi nahi sakta). Throwaway
+tunnel URL par ye chhoti baat thi, permanent public URL par koi bhi candidate profile
+overwrite kar sakta hai. Sizes capped hain aur resume prompt me fenced data hai, par public
+demo se pehle ispar rate-limit lagana chahiye.

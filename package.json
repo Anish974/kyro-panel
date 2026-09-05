@@ -14,6 +14,7 @@
     "dev:web": "npm run dev -w web",
     "check": "npm run check -w server",
     "build": "npm run build -w web",
+    "start": "npm run start -w server",
     "tunnel": "cloudflared tunnel --url http://localhost:8787",
     "agent:start": "npm run agent:start -w server",
     "agent:dry": "npm run agent:dry -w server",

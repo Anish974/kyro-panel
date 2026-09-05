@@ -66,6 +66,17 @@ app.use(tokenRoutes);
 app.use(eventRoutes);
 app.use(llmRoutes);
 
+// In production the built web app ships from this same origin, so every fetch
+// in the browser stays a relative path: no CORS, no second host, and no build
+// -time URL to keep in sync with wherever this ended up deployed. Absent in
+// dev, where vite serves the app on :3000 and proxies these routes back here.
+//
+// Mounted last so a route above always wins — dist only holds index.html and
+// assets/, but the ordering is the part that must not be re-arranged.
+const webDist = path.resolve(__dirname, '../../web/dist');
+const servingWeb = fs.existsSync(webDist);
+if (servingWeb) app.use(express.static(webDist));
+
 app.listen(PORT, () => {
   console.log(`kyro server  http://localhost:${PORT}`);
   console.log(`  GET  /token?channel=&uid=   RTC token`);
@@ -74,7 +85,13 @@ app.listen(PORT, () => {
   console.log(`  POST /candidate             name, role and resume from the login screen`);
   console.log(`  POST /chat/completions      <- Agora calls this (needs the secret)`);
   console.log(`  POST /reset                 clear the session (needs the secret)`);
+  if (servingWeb) console.log(`  GET  /                      the built web app`);
   console.log('');
-  console.log('Agora runs in the cloud: expose this with `npm run tunnel` and');
-  console.log('put the public URL in ORCHESTRATOR_URL before starting an agent.');
+  if (servingWeb) {
+    console.log('Web app and API share this origin — point ORCHESTRATOR_URL and');
+    console.log('SERVER_URL at the public address of this server.');
+  } else {
+    console.log('Agora runs in the cloud: expose this with `npm run tunnel` and');
+    console.log('put the public URL in ORCHESTRATOR_URL before starting an agent.');
+  }
 });

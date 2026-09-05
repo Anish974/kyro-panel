@@ -1,0 +1,56 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+#
+# One web service, serving the API and the built web app from the same origin.
+#
+# Why a web service and not a serverless function: the panel keeps the whole
+# interview in memory (server/src/panel/model.ts) and /events is a long-lived
+# SSE stream. A platform that cold-starts between requests, or spreads them
+# across instances, loses the interview mid-sentence.
+#
+# Deploy: push this file, then in Render pick "New > Blueprint" and point it at
+# the repo. Render prompts for every secret below — none of them live in git.
+
+services:
+  - type: web
+    name: kyro-panel
+    runtime: node
+    # Closest region to India. The candidate's audio round-trips through here,
+    # so this is the one setting that shows up as felt latency in the room.
+    region: singapore
+    # ponytail: free tier sleeps after 15 minutes idle, and a sleeping server
+    # has forgotten the interview. Fine for a demo you warm up first; move to
+    # starter the moment a real session must survive a quiet stretch.
+    plan: free
+
+    # Render sets NODE_ENV=production, which makes a plain `npm ci` skip
+    # devDependencies — and vite lives there, so the web build would fail.
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+
+    envVars:
+      - key: NODE_VERSION
+        value: 22.13.1
+
+      # Only what the SERVER process reads. The Agora RESTful customer
+      # credentials are not here on purpose: agent.ts runs on the operator's
+      # machine, so AGORA_CUSTOMER_ID, AGORA_CUSTOMER_SECRET, AGORA_CHANNEL,
+      # ORCHESTRATOR_URL and SERVER_URL stay in the local .env and never reach
+      # this box.
+      #
+      # sync: false means "prompt for this in the dashboard" — never a value
+      # in this file, which is committed.
+      - key: AGORA_APP_ID
+        sync: false
+      - key: AGORA_APP_CERTIFICATE
+        sync: false
+      # Agora sends this straight back as the Authorization header on every
+      # turn. Without it every /chat/completions is a 401 and the panel is mute.
+      - key: ORCHESTRATOR_API_KEY
+        sync: false
+      - key: LLM_BASE_URL
+        sync: false
+      - key: LLM_MODEL
+        sync: false
+      - key: LLM_API_KEY
+        sync: false
