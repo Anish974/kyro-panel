@@ -70,6 +70,9 @@ export default function Room({ candidateName, role, onEnd }: Props) {
 
   const [joining, setJoining] = useState(false);
   const [joinError, setJoinError] = useState<string | null>(null);
+  // Distinct from joinError: the candidate is in the room, but the panel never
+  // arrived. The join card is gone by then, so this needs its own place to show.
+  const [panelError, setPanelError] = useState<string | null>(null);
   const [micVolume, setMicVolume] = useState<number>(0);
 
   // Live from Agora Signaling, not from our own SSE feed. SSE only carries a
@@ -174,6 +177,7 @@ export default function Room({ candidateName, role, onEnd }: Props) {
 
   async function handleJoin() {
     setJoinError(null);
+    setPanelError(null);
     setJoining(true);
     try {
       const result = await joinAsCandidate(CHANNEL, undefined, {
@@ -186,11 +190,34 @@ export default function Room({ candidateName, role, onEnd }: Props) {
         onAgentState: setAgentState,
       });
       setSession(result);
+
+      // The panel joins AFTER the candidate is in the room. Its greeting is
+      // spoken the moment it arrives, so starting it first would play the
+      // introduction to an empty channel.
+      const res = await fetch('/agent/start', { method: 'POST' });
+      if (!res.ok) {
+        const body = (await res.json().catch(() => null)) as { error?: string } | null;
+        setPanelError(body?.error ?? `The panel could not start (${res.status}).`);
+      }
     } catch (err) {
       setJoinError((err as Error).message);
     } finally {
       setJoining(false);
     }
+  }
+
+  /**
+   * Takes the panel out of the channel on the way out. Best effort — a failed
+   * stop must not trap the candidate in the room, and Agora's idle_timeout
+   * collects the agent anyway.
+   */
+  async function handleLeave() {
+    try {
+      await fetch('/agent/stop', { method: 'POST' });
+    } catch {
+      // Nothing the candidate can do about it.
+    }
+    onEnd();
   }
 
   async function toggleMic() {
@@ -345,7 +372,7 @@ export default function Room({ candidateName, role, onEnd }: Props) {
 
           {/* Leave Interview Button */}
           <button
-            onClick={onEnd}
+            onClick={() => void handleLeave()}
             className="border border-[#EBE6DF] hover:border-gray-400 text-gray-800 hover:text-gray-950 bg-white hover:bg-gray-50 text-xs md:text-sm font-bold px-4 py-2 rounded-xl transition-colors shadow-2xs cursor-pointer"
           >
             Leave Interview
@@ -372,7 +399,14 @@ export default function Room({ candidateName, role, onEnd }: Props) {
               </svg>
             </div>
             <span>Active Speaker:</span>
-            {speakerInfo ? (
+            {panelError ? (
+              <span className="font-semibold text-sm text-red-600 flex items-center gap-1.5">
+                <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                {panelError}
+              </span>
+            ) : speakerInfo ? (
               <>
                 <span className="font-extrabold text-gray-950 text-base">{speakerInfo.name}</span>
                 <span className="text-gray-500 font-medium">({speakerInfo.role})</span>

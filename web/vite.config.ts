@@ -13,6 +13,7 @@ export default defineConfig({
       '/events': 'http://localhost:8787',
       '/state': 'http://localhost:8787',
       '/candidate': 'http://localhost:8787',
+      '/agent': 'http://localhost:8787',
       '/scorecard': 'http://localhost:8787',
       '/reset': 'http://localhost:8787',
     },

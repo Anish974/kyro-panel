@@ -32,18 +32,28 @@ services:
       - key: NODE_VERSION
         value: 22.13.1
 
-      # Only what the SERVER process reads. The Agora RESTful customer
-      # credentials are not here on purpose: agent.ts runs on the operator's
-      # machine, so AGORA_CUSTOMER_ID, AGORA_CUSTOMER_SECRET, AGORA_CHANNEL,
-      # ORCHESTRATOR_URL and SERVER_URL stay in the local .env and never reach
-      # this box.
-      #
       # sync: false means "prompt for this in the dashboard" — never a value
       # in this file, which is committed.
       - key: AGORA_APP_ID
         sync: false
       - key: AGORA_APP_CERTIFICATE
         sync: false
+
+      # The RESTful API credentials, from the Agora console. The server needs
+      # them because the room starts the AI panel itself (POST /agent/start) —
+      # an interview needs a browser and nothing else. They used to live only on
+      # the operator's laptop, back when `npm run agent:start` was the only way
+      # in. Anything that can read these can create billable agents.
+      - key: AGORA_CUSTOMER_ID
+        sync: false
+      - key: AGORA_CUSTOMER_SECRET
+        sync: false
+
+      # Which channel the panel and the candidate meet in. One fixed room, so
+      # one interview at a time — the same limit the in-memory session already
+      # imposes.
+      - key: AGORA_CHANNEL
+        value: demo-channel
       # Agora sends this straight back as the Authorization header on every
       # turn. Without it every /chat/completions is a 401 and the panel is mute.
       - key: ORCHESTRATOR_API_KEY

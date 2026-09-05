@@ -6,6 +6,7 @@ import { requireSecret } from './routes/auth.js';
 import tokenRoutes from './routes/token.js';
 import eventRoutes from './routes/events.js';
 import llmRoutes from './routes/llm.js';
+import agentRoutes from './routes/agent.js';
 
 // Auto-load .env from repository root or current directory
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -65,6 +66,7 @@ app.use('/reset', requireSecret);
 app.use(tokenRoutes);
 app.use(eventRoutes);
 app.use(llmRoutes);
+app.use(agentRoutes);
 
 // In production the built web app ships from this same origin, so every fetch
 // in the browser stays a relative path: no CORS, no second host, and no build
@@ -85,6 +87,7 @@ app.listen(PORT, () => {
   console.log(`  POST /candidate             name, role and resume from the login screen`);
   console.log(`  POST /chat/completions      <- Agora calls this (needs the secret)`);
   console.log(`  POST /reset                 clear the session (needs the secret)`);
+  console.log(`  POST /agent/start|stop      put the AI panel in the channel, or take it out`);
   if (servingWeb) console.log(`  GET  /                      the built web app`);
   console.log('');
   if (servingWeb) {
