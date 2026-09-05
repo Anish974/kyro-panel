@@ -72,14 +72,16 @@ function buildVerdict(id: PanelistId): PanelistVerdict {
   const gap = model.gaps.length ? ` Open with the panel: ${model.gaps[0]}.` : '';
   const rationale = evidence.length
     ? `${COMPETENCIES[weakest]} was the weakest part of what I heard (${ratings[weakest]}/5).${gap}`
-    : `Nothing in this interview spoke to what I grade on, so this verdict is low confidence.${gap}`;
+    : model.turns === 0
+      ? `Interview concluded early before candidate responses were recorded. Insufficient data to evaluate.`
+      : `Limited candidate responses on this domain during the session (${model.turns} turns completed). Confidence is low.${gap}`;
 
   return {
     panelist: id,
     verdict: verdictFor(score),
     score,
     // Confidence is evidence-bound: no quotes, no confidence.
-    confidence: Math.min(0.35 + evidence.length * 0.2 + model.turns * 0.03, 0.95),
+    confidence: model.turns === 0 ? 0.2 : Math.min(0.35 + evidence.length * 0.2 + model.turns * 0.03, 0.95),
     rationale,
     evidence,
     ratings,
@@ -88,17 +90,25 @@ function buildVerdict(id: PanelistId): PanelistVerdict {
 
 const HIRE_SIDE = (v: Verdict): boolean => v === 'hire' || v === 'lean_hire';
 
-export function buildScorecard(candidateName = 'Candidate', role = 'Senior Backend Engineer'): Scorecard {
+export function buildScorecard(
+  candidateName = 'Candidate',
+  role = 'Senior Backend Engineer',
+  level?: string,
+): Scorecard {
   const model = getModel();
+  const currentLevel = level || model.profile?.level || 'Intermediate (2-6 years)';
   const verdicts = PANEL.map(p => buildVerdict(p.id));
 
   return {
     sessionId: model.sessionId,
     role,
+    level: currentLevel,
     candidateName,
     durationSec: model.elapsed,
     verdicts,
     claims: model.claims,
     dissent: new Set(verdicts.map(v => HIRE_SIDE(v.verdict))).size > 1,
+    timestamp: Date.now(),
+    turns: model.turns,
   };
 }

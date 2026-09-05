@@ -1,6 +1,13 @@
 import { Router, type Response } from 'express';
 import type { SessionEvent } from '@kyro/shared';
-import { getModel, profile, reset, setProfile } from '../panel/model.js';
+import {
+  getModel,
+  getScorecardsHistory,
+  profile,
+  reset,
+  saveScorecardToHistory,
+  setProfile,
+} from '../panel/model.js';
 import { buildScorecard } from '../panel/scorecard.js';
 
 // One-way push to the room UI: bids, captions, claims, state.
@@ -66,7 +73,7 @@ router.post('/candidate', (req, res) => {
     return res.status(400).json({ error: 'name and role are required' });
   }
   console.log(
-    `[candidate] ${saved.name} — ${saved.role}` +
+    `[candidate] ${saved.name} — ${saved.role} (${saved.level || 'Intermediate'})` +
     (saved.resumeText ? ` | resume ${saved.resumeText.length} chars` : ' | no resume'),
   );
   broadcast({ type: 'state', model: getModel() });
@@ -89,9 +96,16 @@ router.get('/scorecard', (req, res) => {
   const scorecard = buildScorecard(
     saved?.name ?? String(req.query.name ?? 'Candidate'),
     saved?.role ?? String(req.query.role || 'Senior Backend Engineer'),
+    saved?.level ?? (req.query.level ? String(req.query.level) : undefined),
   );
+  saveScorecardToHistory(scorecard);
   broadcast({ type: 'scorecard', scorecard });
   res.json(scorecard);
+});
+
+// Recruiter / Company Portal endpoint: list all historical candidate assessments
+router.get('/scorecards', (_req, res) => {
+  res.json(getScorecardsHistory());
 });
 
 export default router;

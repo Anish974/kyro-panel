@@ -61,7 +61,7 @@ export default function Scorecard({ scorecard, onBack }: Props) {
           onClick={onBack}
           className="h-10 px-5 rounded-xl border border-[#EBE6DF] bg-white hover:bg-gray-50 text-xs md:text-sm font-bold text-gray-800 hover:text-gray-950 transition-colors shadow-2xs cursor-pointer"
         >
-          ← Return to Interview Room
+          ← Return
         </button>
       </header>
 
@@ -70,9 +70,16 @@ export default function Scorecard({ scorecard, onBack }: Props) {
         {/* Top Summary Header */}
         <section className="bg-white rounded-3xl p-8 md:p-10 border border-[#EBE6DF] shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-8">
           <div className="flex flex-col gap-2.5">
-            <span className="text-xs font-extrabold tracking-widest text-[#A48D78] uppercase">
-              360° Assessment Scorecard
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-extrabold tracking-widest text-[#A48D78] uppercase font-mono">
+                360° Assessment Scorecard
+              </span>
+              {scorecard.level && (
+                <span className="inline-flex items-center text-[11px] font-bold px-2.5 py-0.5 rounded-md bg-blue-50 text-[#2563EB] border border-blue-200">
+                  {scorecard.level}
+                </span>
+              )}
+            </div>
             <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-gray-950 font-display">
               {scorecard.role}
             </h1>
@@ -233,34 +240,40 @@ export default function Scorecard({ scorecard, onBack }: Props) {
             <span className="text-xs text-gray-500 font-semibold">{scorecard.claims.length} claims tracked</span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {scorecard.claims.map(claim => {
-              const s = CLAIM_LABEL[claim.status];
-              return (
-                <div
-                  key={claim.id}
-                  className="rounded-2xl border bg-white p-5 flex flex-col gap-2.5 shadow-2xs"
-                  style={{ borderColor: s.border }}
-                >
-                  <div className="flex items-center justify-between">
-                    <span
-                      className="text-xs font-bold tracking-wider px-2.5 py-1 rounded-md"
-                      style={{ color: s.color, background: s.bg }}
-                    >
-                      {s.label}
-                    </span>
-                    <span className="font-mono text-xs font-semibold text-gray-400">{mmss(claim.t)}</span>
+          {scorecard.claims.length === 0 ? (
+            <div className="bg-white rounded-2xl p-6 border border-[#EBE6DF] text-center text-sm text-gray-500">
+              No technical or project claims were flagged during this session.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {scorecard.claims.map(claim => {
+                const s = CLAIM_LABEL[claim.status];
+                return (
+                  <div
+                    key={claim.id}
+                    className="rounded-2xl border bg-white p-5 flex flex-col gap-2.5 shadow-2xs"
+                    style={{ borderColor: s.border }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span
+                        className="text-xs font-bold tracking-wider px-2.5 py-1 rounded-md"
+                        style={{ color: s.color, background: s.bg }}
+                      >
+                        {s.label}
+                      </span>
+                      <span className="font-mono text-xs font-semibold text-gray-400">{mmss(claim.t)}</span>
+                    </div>
+                    <p className="text-sm font-medium text-gray-900 leading-relaxed">&ldquo;{claim.text}&rdquo;</p>
+                    {claim.note && (
+                      <p className="text-xs font-semibold" style={{ color: s.color }}>
+                        {claim.note}
+                      </p>
+                    )}
                   </div>
-                  <p className="text-sm font-medium text-gray-900 leading-relaxed">&ldquo;{claim.text}&rdquo;</p>
-                  {claim.note && (
-                    <p className="text-xs font-semibold" style={{ color: s.color }}>
-                      {claim.note}
-                    </p>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </section>
       </div>
     </div>

@@ -12,6 +12,7 @@ interface Props {
   candidateName: string;
   /** What the candidate is interviewing for, chosen on the login screen. */
   role: string;
+  level?: string;
   onEnd: () => void;
 }
 
@@ -43,7 +44,7 @@ function formatTimer(seconds: number): string {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
-export default function Room({ candidateName, role, onEnd }: Props) {
+export default function Room({ candidateName, role, level, onEnd }: Props) {
   const { model, bids, speaking: serverSpeaking, caption, heard, connected } = useSession();
   const [session, setSession] = useState<JoinResult | null>(null);
   const [elapsedSec, setElapsedSec] = useState<number>(0);
@@ -313,7 +314,7 @@ export default function Room({ candidateName, role, onEnd }: Props) {
       await fetch('/candidate', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ name: candidateName, role }),
+        body: JSON.stringify({ name: candidateName, role, level }),
       }).catch(err => console.warn('Candidate sync warning:', err));
 
       const result = await joinAsCandidate(CHANNEL, undefined, {
@@ -568,9 +569,16 @@ export default function Room({ candidateName, role, onEnd }: Props) {
                     </div>
                     <div className="flex items-center justify-between pt-2 border-t border-[#EBE6DF]">
                       <span className="text-xs font-mono uppercase text-gray-500 font-bold">Target Role</span>
-                      <span className="text-xs font-bold text-[#2563EB] bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-lg">
-                        {role}
-                      </span>
+                      <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                        <span className="text-xs font-bold text-[#2563EB] bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-lg">
+                          {role}
+                        </span>
+                        {level && (
+                          <span className="text-[11px] font-bold text-gray-700 bg-white border border-[#EBE6DF] px-2 py-1 rounded-lg">
+                            {level}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -659,13 +667,20 @@ export default function Room({ candidateName, role, onEnd }: Props) {
 
           <span className="w-px h-6 bg-[#EBE6DF]" />
 
-          {/* Candidate Name & Role (Always visible) */}
+          {/* Candidate Name & Role & Level (Always visible) */}
           <div className="flex flex-col leading-tight">
             <span className="text-sm font-bold text-gray-900">{candidateName}</span>
-            <span className="text-xs font-semibold text-[#2563EB] bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200/60 inline-flex items-center gap-1 w-fit mt-0.5">
-              <span>🎯</span>
-              <span>{role}</span>
-            </span>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className="text-xs font-semibold text-[#2563EB] bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200/60 inline-flex items-center gap-1 w-fit">
+                <span>🎯</span>
+                <span>{role}</span>
+              </span>
+              {level && (
+                <span className="text-[10px] font-bold text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded-md border border-gray-200">
+                  {level}
+                </span>
+              )}
+            </div>
           </div>
         </div>
 

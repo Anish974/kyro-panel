@@ -1,16 +1,18 @@
 import { useRef, useState } from 'react';
-import { PROFILE_LIMITS } from '@kyro/shared';
+import { EXPERIENCE_LEVELS, PROFILE_LIMITS, type ExperienceLevel } from '@kyro/shared';
 import { RESUME_ACCEPT, extractResumeText } from '../lib/resume.js';
 
 export interface Candidate {
   name: string;
   role: string;
+  level: string;
   /** Plain text pulled out of the uploaded resume, if one was attached. */
   resumeText?: string;
 }
 
 interface Props {
   onLogin: (candidate: Candidate) => void;
+  onOpenCompany: () => void;
 }
 
 /**
@@ -30,12 +32,10 @@ const ROLES = [
 
 const OTHER_ROLE = 'Other — type it in';
 
-export default function Login({ onLogin }: Props) {
-  // Name, role and resume are the only things the panel can actually use.
-  // There was an email and a password here that accepted anything and went
-  // nowhere — pure typing on demo day.
+export default function Login({ onLogin, onOpenCompany }: Props) {
   const [name, setName] = useState('');
   const [role, setRole] = useState<string>(ROLES[0]);
+  const [level, setLevel] = useState<ExperienceLevel>('Intermediate (2-6 years)');
   const [customRole, setCustomRole] = useState('');
   const [error, setError] = useState('');
 
@@ -75,13 +75,6 @@ export default function Login({ onLogin }: Props) {
     if (fileRef.current) fileRef.current.value = '';
   }
 
-  /**
-   * Hands the panel who it is about to interview, then enters the room.
-   *
-   * The POST is what makes the panel open by name, so a failure is worth
-   * saying out loud rather than silently degrading to a stranger in the room —
-   * but it must not lock anyone out of a demo either, so it warns and proceeds.
-   */
   async function enterRoom(candidate: Candidate) {
     setSubmitting(true);
     try {
@@ -114,26 +107,45 @@ export default function Login({ onLogin }: Props) {
     void enterRoom({
       name: name.trim(),
       role: effectiveRole,
+      level,
       ...(resumeText ? { resumeText } : {}),
     });
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#FAF9F6] flex flex-col justify-center items-center px-4 py-12 select-none">
+    <div className="min-h-screen w-full bg-[#FAF9F6] flex flex-col justify-center items-center px-4 py-12 select-none relative">
+      {/* Top Right: Login as Company Portal */}
+      <div className="absolute top-6 right-6 sm:top-8 sm:right-8 z-10">
+        <button
+          type="button"
+          onClick={onOpenCompany}
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white hover:bg-gray-50 text-gray-800 hover:text-gray-950 font-bold text-xs sm:text-sm border border-[#EBE6DF] shadow-xs hover:shadow-md transition-all cursor-pointer group"
+        >
+          <div className="w-6 h-6 rounded-lg bg-blue-50 text-[#2563EB] grid place-items-center group-hover:bg-[#2563EB] group-hover:text-white transition-colors">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+            </svg>
+          </div>
+          <span>Login as Company</span>
+          <svg className="w-4 h-4 text-gray-400 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+      </div>
+
       {/* Top Brand Tag / Logo */}
       <div className="w-full max-w-md mb-8 text-center">
-        {/* Prominent Headline / Topic */}
         <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-[#181A20] font-display">
           Kyro Panel
         </h1>
         <p className="mt-2 text-base text-[#4B5565] font-sans">
-          Tell us who you are and what you are interviewing for, then enter the room
+          Tell us who you are and select your experience level, then enter the room
         </p>
       </div>
 
       {/* Login Card */}
       <div className="w-full max-w-md bg-[#FFFFFF] rounded-2xl border border-[#EBE6DF] shadow-sm p-8 sm:p-10">
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-5">
           {error && (
             <div className="p-3 text-sm text-[#EF4444] bg-[#FEF2F2] border border-[#FEE2E2] rounded-xl flex items-center gap-2">
               <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -172,8 +184,6 @@ export default function Login({ onLogin }: Props) {
               Interviewing For
             </label>
             <div className="relative">
-              {/* Native select on purpose: keyboard, screen readers and mobile
-                  pickers all work for free, and the list is short. */}
               <select
                 id="role"
                 value={role}
@@ -206,9 +216,37 @@ export default function Login({ onLogin }: Props) {
             )}
           </div>
 
-          {/* Resume — optional. What it buys the candidate is that the panel
-              opens on their real projects instead of a textbook question, so
-              the label says that rather than "upload a file". */}
+          {/* Experience Level Selector */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label htmlFor="level" className="block text-xs font-semibold uppercase tracking-wider text-[#4B5565] font-mono">
+                Experience Level
+              </label>
+              <span className="text-[11px] text-[#2563EB] font-semibold">Calibrates AI Questions</span>
+            </div>
+            <div className="relative">
+              <select
+                id="level"
+                value={level}
+                onChange={(e) => setLevel(e.target.value as ExperienceLevel)}
+                className="w-full appearance-none px-4 py-3 pr-11 rounded-xl bg-[#FAF9F6] border border-[#EBE6DF] text-[#181A20] text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent transition-all cursor-pointer"
+              >
+                {EXPERIENCE_LEVELS.map((lvl) => (
+                  <option key={lvl} value={lvl}>{lvl}</option>
+                ))}
+              </select>
+              <div className="absolute right-3.5 top-3.5 text-[#8C93A3] pointer-events-none">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
+            <p className="mt-1.5 text-[11px] text-[#64748B]">
+              The panel will strictly ask questions matched to the <strong>{level}</strong> tier.
+            </p>
+          </div>
+
+          {/* Resume — optional */}
           <div>
             <div className="flex items-center justify-between mb-2">
               <label htmlFor="resume" className="block text-xs font-semibold uppercase tracking-wider text-[#4B5565] font-mono">

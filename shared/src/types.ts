@@ -89,6 +89,19 @@ export interface Scenario {
 
 // ------------------------------------------------------------------ profile
 
+export type ExperienceLevel =
+  | 'Intern'
+  | 'Beginner (0-2 years)'
+  | 'Intermediate (2-6 years)'
+  | 'Expert (6-11+ years)';
+
+export const EXPERIENCE_LEVELS = [
+  'Intern',
+  'Beginner (0-2 years)',
+  'Intermediate (2-6 years)',
+  'Expert (6-11+ years)',
+] as const;
+
 /**
  * Who is in the room, captured on the login screen before the panel joins.
  * The panel reads this so it can open by name and probe the candidate's own
@@ -101,6 +114,7 @@ export interface Scenario {
 export interface CandidateProfile {
   name: string;
   role: string;
+  level?: string;
   email?: string;
   /** Plain text extracted from the uploaded resume. Absent when none was given. */
   resumeText?: string;
@@ -110,6 +124,7 @@ export interface CandidateProfile {
 export const PROFILE_LIMITS = {
   name: 80,
   role: 80,
+  level: 80,
   email: 160,
   resumeText: 20_000,
 } as const;
@@ -176,12 +191,15 @@ export interface PanelistVerdict {
 export interface Scorecard {
   sessionId: string;
   role: string;
+  level?: string;
   candidateName: string;
   durationSec: number;
   verdicts: PanelistVerdict[];
   claims: Claim[];
   /** True when the panel did not agree — surfaced prominently, not smoothed over. */
   dissent: boolean;
+  timestamp?: number;
+  turns?: number;
 }
 
 // -------------------------------------------- server -> browser (SSE /events)

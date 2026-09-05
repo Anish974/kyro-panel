@@ -59,7 +59,8 @@ export function greeting(p: CandidateProfile | null): string {
 
   const firstName = p.name.split(' ')[0];
   const resume = p.resumeText ? ' We have read your resume.' : '';
-  return `Hi ${firstName}, thanks for making the time. ${intro} We are here for the ${p.role} role.${resume} ${ask}`;
+  const levelNotice = p.level ? ` (${p.level})` : '';
+  return `Hi ${firstName}, thanks for making the time. ${intro} We are here for the ${p.role}${levelNotice} role.${resume} ${ask}`;
 }
 
 /** Thrown for every configuration problem so callers can report one shape. */
