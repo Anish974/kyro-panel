@@ -83,12 +83,32 @@ export default function Room({ candidateName, role, onEnd }: Props) {
   const [liveCandidate, setLiveCandidate] = useState<string | null>(null);
   const [agentState, setAgentState] = useState<AgentState>('idle');
 
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const prejoinVideoRef = useRef<HTMLVideoElement>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const prejoinVideoRef = useRef<HTMLVideoElement | null>(null);
   const agoraVideoRef = useRef<HTMLDivElement>(null);
 
   const audioCtxRef = useRef<AudioContext | null>(null);
   const animFrameRef = useRef<number | null>(null);
+
+  const bindPrejoinVideo = (el: HTMLVideoElement | null) => {
+    prejoinVideoRef.current = el;
+    if (el && localStream) {
+      if (el.srcObject !== localStream) {
+        el.srcObject = localStream;
+      }
+      el.play().catch(() => {});
+    }
+  };
+
+  const bindRoomVideo = (el: HTMLVideoElement | null) => {
+    videoRef.current = el;
+    if (el && localStream) {
+      if (el.srcObject !== localStream) {
+        el.srcObject = localStream;
+      }
+      el.play().catch(() => {});
+    }
+  };
 
   // Real-time audio analyser for pre-join mic check (Google Meet style)
   useEffect(() => {
@@ -171,18 +191,25 @@ export default function Room({ candidateName, role, onEnd }: Props) {
   async function requestCameraAccess() {
     setPermissionError(null);
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
-        audio: true,
-      });
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
+          audio: true,
+        });
+      } catch {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      }
       setLocalStream(stream);
       setCameraPermission('granted');
       setCameraOn(true);
       if (prejoinVideoRef.current) {
         prejoinVideoRef.current.srcObject = stream;
+        prejoinVideoRef.current.play().catch(() => {});
       }
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        videoRef.current.play().catch(() => {});
       }
     } catch (err) {
       console.warn('Media access denied or unavailable:', err);
@@ -195,10 +222,15 @@ export default function Room({ candidateName, role, onEnd }: Props) {
     let mounted = true;
     async function initMedia() {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
-          audio: true,
-        });
+        let stream: MediaStream;
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
+            audio: true,
+          });
+        } catch {
+          stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        }
         if (!mounted) {
           stream.getTracks().forEach(t => t.stop());
           return;
@@ -207,9 +239,11 @@ export default function Room({ candidateName, role, onEnd }: Props) {
         setCameraPermission('granted');
         if (prejoinVideoRef.current) {
           prejoinVideoRef.current.srcObject = stream;
+          prejoinVideoRef.current.play().catch(() => {});
         }
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
+          videoRef.current.play().catch(() => {});
         }
       } catch (err) {
         if (mounted) {
@@ -231,15 +265,22 @@ export default function Room({ candidateName, role, onEnd }: Props) {
     };
   }, [localStream]);
 
-  // Bind local Agora camera stream to container if joined
+  // Bind local Agora camera stream or preview stream to containers
   useEffect(() => {
     if (session?.camera && agoraVideoRef.current) {
       session.camera.play(agoraVideoRef.current);
-    } else if (localStream) {
-      if (videoRef.current) videoRef.current.srcObject = localStream;
-      if (prejoinVideoRef.current) prejoinVideoRef.current.srcObject = localStream;
     }
-  }, [session, localStream]);
+    if (localStream) {
+      if (videoRef.current && videoRef.current.srcObject !== localStream) {
+        videoRef.current.srcObject = localStream;
+        videoRef.current.play().catch(() => {});
+      }
+      if (prejoinVideoRef.current && prejoinVideoRef.current.srcObject !== localStream) {
+        prejoinVideoRef.current.srcObject = localStream;
+        prejoinVideoRef.current.play().catch(() => {});
+      }
+    }
+  }, [session, localStream, cameraOn]);
 
   useEffect(() => () => { void leave(session); }, [session]);
 
@@ -323,11 +364,25 @@ export default function Room({ candidateName, role, onEnd }: Props) {
     if (session?.camera) {
       await session.camera.setEnabled(next);
       setCameraOn(next);
-    } else if (localStream) {
+    } else if (localStream && localStream.getVideoTracks().length > 0) {
       localStream.getVideoTracks().forEach(track => {
         track.enabled = next;
       });
       setCameraOn(next);
+      if (next) {
+        if (prejoinVideoRef.current) {
+          if (prejoinVideoRef.current.srcObject !== localStream) {
+            prejoinVideoRef.current.srcObject = localStream;
+          }
+          prejoinVideoRef.current.play().catch(() => {});
+        }
+        if (videoRef.current) {
+          if (videoRef.current.srcObject !== localStream) {
+            videoRef.current.srcObject = localStream;
+          }
+          videoRef.current.play().catch(() => {});
+        }
+      }
     } else {
       await requestCameraAccess();
     }
@@ -349,16 +404,17 @@ export default function Room({ candidateName, role, onEnd }: Props) {
             {/* Left: Video Preview & Device Controls */}
             <div className="flex-1 bg-[#11141C] p-6 sm:p-8 flex flex-col justify-between relative min-h-[340px] sm:min-h-[420px]">
               {/* Video container */}
-              <div className="absolute inset-0 z-0 overflow-hidden">
-                {cameraOn && cameraPermission === 'granted' ? (
-                  <video
-                    ref={prejoinVideoRef}
-                    autoPlay
-                    playsInline
-                    muted
-                    className="w-full h-full object-cover transform -scale-x-100"
-                  />
-                ) : (
+              <div className="absolute inset-0 z-0 overflow-hidden bg-[#0D1017]">
+                <video
+                  ref={bindPrejoinVideo}
+                  autoPlay
+                  playsInline
+                  muted
+                  className={`w-full h-full object-cover transform -scale-x-100 ${
+                    cameraOn && cameraPermission === 'granted' ? 'block' : 'hidden'
+                  }`}
+                />
+                {(!cameraOn || cameraPermission !== 'granted') && (
                   <div className="w-full h-full flex flex-col items-center justify-center gap-4 bg-gradient-to-b from-[#181D28] to-[#0D1017] text-white p-6">
                     <div className="w-24 h-24 rounded-full bg-blue-600/20 border border-blue-500/30 flex items-center justify-center shadow-xl">
                       <span className="font-display text-3xl font-extrabold text-blue-400">
@@ -742,20 +798,22 @@ export default function Room({ candidateName, role, onEnd }: Props) {
           {/* Large Candidate Video Container */}
           <div className="flex-1 min-h-0 rounded-3xl border border-[#EBE6DF] relative overflow-hidden bg-gradient-to-b from-[#161A22] to-[#0D1016] shadow-sm flex flex-col justify-between p-6">
             {/* Live Camera Video Feed */}
-            {cameraOn && cameraPermission === 'granted' && (
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                className="absolute inset-0 w-full h-full object-cover transform -scale-x-100 z-0"
-              />
-            )}
+            <video
+              ref={bindRoomVideo}
+              autoPlay
+              playsInline
+              muted
+              className={`absolute inset-0 w-full h-full object-cover transform -scale-x-100 z-0 ${
+                cameraOn && cameraPermission === 'granted' && !session?.camera ? 'block' : 'hidden'
+              }`}
+            />
 
             {/* Agora Video container if joined via Agora */}
             <div
               ref={agoraVideoRef}
-              className="absolute inset-0 z-0 [&>video]:w-full [&>video]:h-full [&>video]:object-cover"
+              className={`absolute inset-0 z-0 [&>video]:w-full [&>video]:h-full [&>video]:object-cover ${
+                cameraOn && session?.camera ? 'block' : 'hidden'
+              }`}
             />
 
             {/* Camera Permission / Camera Off Fallback */}
