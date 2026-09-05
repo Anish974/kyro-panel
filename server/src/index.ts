@@ -57,7 +57,20 @@ app.use((_req, res, next) => {
   next();
 });
 
-app.get('/health', (_req, res) => res.json({ ok: true }));
+// Health check endpoints for UptimeRobot, Render keep-alive, and monitoring
+const handleHealthCheck: express.RequestHandler = (_req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    ok: true,
+    service: 'kyro-panel',
+    uptime: Math.floor(process.uptime()),
+    timestamp: new Date().toISOString(),
+  });
+};
+
+app.get('/health', handleHealthCheck);
+app.get('/healthz', handleHealthCheck);
+app.get('/ping', handleHealthCheck);
 
 // Everything that WRITES to the interview is behind the shared secret. Reads
 // (/events, /state, /scorecard) stay open so the room UI needs no credentials.
@@ -81,6 +94,7 @@ if (servingWeb) app.use(express.static(webDist));
 
 app.listen(PORT, () => {
   console.log(`kyro server  http://localhost:${PORT}`);
+  console.log(`  GET  /health (or /ping)     health check & keep-alive`);
   console.log(`  GET  /token?channel=&uid=   RTC token`);
   console.log(`  GET  /events                SSE -> room UI`);
   console.log(`  GET  /state                 shared candidate model`);
