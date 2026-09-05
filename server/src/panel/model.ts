@@ -132,6 +132,10 @@ export const getModel = (): CandidateModel => ({
   elapsed: Math.floor((Date.now() - startedAt) / 1000),
 });
 
+export function resetSessionTimer(): void {
+  startedAt = Date.now();
+}
+
 /**
  * Wipes the interview. The profile survives by default — it is who is sitting
  * in the room, not something they said, and a re-run of the same demo should
@@ -170,6 +174,10 @@ export function setProfile(raw: unknown): CandidateProfile | null {
   const level = line(input.level, PROFILE_LIMITS.level) || 'Intermediate (2-6 years)';
   const email = line(input.email, PROFILE_LIMITS.email);
   const resumeText = clean(input.resumeText, PROFILE_LIMITS.resumeText).replace(/\n{3,}/g, '\n\n');
+
+  // Reset interview session and clock to 0s for the candidate
+  startedAt = Date.now();
+  model = emptyModel(`s-${Date.now()}`, null);
 
   model.profile = {
     name,

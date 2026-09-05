@@ -1,6 +1,6 @@
 import { Router, type Request } from 'express';
 import { AgentConfigError, running, startAgent, stopAgent } from '../panel/agora-agent.js';
-import { profile } from '../panel/model.js';
+import { profile, resetSessionTimer } from '../panel/model.js';
 
 // Lets the room start and stop the AI panel itself, so an interview needs a
 // browser and nothing else. Before this, every session needed someone running
@@ -63,7 +63,8 @@ router.post('/agent/start', async (req, res) => {
 
   try {
     const agent = await startAgent(publicUrl(req));
-    console.log(`[agent] started ${agent.agentId} in ${agent.channel} for ${candidate.name}`);
+    resetSessionTimer();
+    console.log(`[agent] started ${agent.agentId} in ${agent.channel} for ${candidate.name} (clock reset to 0s)`);
     res.json({ running: true, ...agent });
   } catch (err) {
     // A misconfigured server is a 503: nothing the caller did is wrong, and

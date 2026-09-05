@@ -13,7 +13,7 @@ interface Props {
   /** What the candidate is interviewing for, chosen on the login screen. */
   role: string;
   level?: string;
-  onEnd: () => void;
+  onEnd: (actualDurationSec?: number) => void;
 }
 
 const AVATARS: Record<PanelistId, string> = {
@@ -349,12 +349,13 @@ export default function Room({ candidateName, role, level, onEnd }: Props) {
   }
 
   async function handleLeave() {
+    const actualDuration = elapsedSec;
     try {
       await fetch('/agent/stop', { method: 'POST' });
     } catch {
       // Best effort
     }
-    onEnd();
+    onEnd(actualDuration);
   }
 
   async function toggleMic() {
@@ -1122,7 +1123,7 @@ export default function Room({ candidateName, role, level, onEnd }: Props) {
         {/* Center Hangup Button */}
         <div className="flex items-center">
           <button
-            onClick={onEnd}
+            onClick={() => void handleLeave()}
             title="End Interview"
             className="w-15 h-15 rounded-full bg-[#EF4444] hover:bg-red-600 text-white flex items-center justify-center shadow-xl hover:shadow-red-500/30 transition-all active:scale-95 cursor-pointer"
           >

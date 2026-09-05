@@ -11,18 +11,23 @@ export default function App() {
   const [scorecard, setScorecard] = useState<ScorecardData | null>(null);
   const [returnToView, setReturnToView] = useState<'login' | 'company' | 'room'>('login');
 
-  async function endInterview() {
+  async function endInterview(actualDurationSec?: number) {
     if (!candidate) return;
+    const durationParam = typeof actualDurationSec === 'number' ? actualDurationSec : 0;
     const query = new URLSearchParams({
       name: candidate.name,
       role: candidate.role,
       level: candidate.level || 'Intermediate (2-6 years)',
+      duration: String(durationParam),
     }).toString();
 
     try {
       const res = await fetch(`/scorecard?${query}`);
       if (res.ok) {
         const data: ScorecardData = await res.json();
+        if (typeof actualDurationSec === 'number') {
+          data.durationSec = actualDurationSec;
+        }
         setScorecard(data);
         setReturnToView('room');
         setView('scorecard');
@@ -38,7 +43,7 @@ export default function App() {
       candidateName: candidate.name,
       role: candidate.role,
       level: candidate.level,
-      durationSec: 0,
+      durationSec: durationParam,
       timestamp: Date.now(),
       turns: 0,
       dissent: false,

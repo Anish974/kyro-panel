@@ -94,17 +94,21 @@ export function buildScorecard(
   candidateName = 'Candidate',
   role = 'Senior Backend Engineer',
   level?: string,
+  customDuration?: number,
 ): Scorecard {
   const model = getModel();
   const currentLevel = level || model.profile?.level || 'Intermediate (2-6 years)';
   const verdicts = PANEL.map(p => buildVerdict(p.id));
+  const durationSec = typeof customDuration === 'number' && customDuration >= 0
+    ? customDuration
+    : model.elapsed;
 
   return {
     sessionId: model.sessionId,
     role,
     level: currentLevel,
     candidateName,
-    durationSec: model.elapsed,
+    durationSec,
     verdicts,
     claims: model.claims,
     dissent: new Set(verdicts.map(v => HIRE_SIDE(v.verdict))).size > 1,
