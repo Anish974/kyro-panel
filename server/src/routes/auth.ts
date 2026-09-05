@@ -22,6 +22,7 @@ export function requireSecret(req: Request, res: Response, next: NextFunction): 
   const header = req.get('authorization') ?? '';
   const token = header.replace(/^Bearer\s+/i, '').trim();
   if (token !== SECRET) {
+    console.warn(`[auth] 401 Unauthorized for ${req.method} ${req.path} | Received Auth: "${header}" | Expected SECRET: "${SECRET}"`);
     res.status(401).json({ error: 'unauthorized' });
     return;
   }

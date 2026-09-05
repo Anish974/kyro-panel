@@ -21,10 +21,13 @@ router.post('/chat/completions', async (req, res) => {
   const lastUser = [...messages].reverse().find(m => m.role === 'user');
   const answer = (lastUser?.content ?? '').trim();
 
+  console.log(`[llm] received /chat/completions turn from Agora | candidate heard: "${answer}"`);
+
   // Agora fires a turn on silence too. Running the whole panel on an empty
   // string burns three LLM calls to produce a non-sequitur, so answer it here.
   if (!answer) {
     const asker = getModel().lastSpeaker ?? 'technical';
+    console.log(`[llm] empty answer, asking candidate to repeat`);
     return stream(res, panelistById(asker), "Sorry, I didn't catch that — could you say it again?", true);
   }
 
@@ -40,13 +43,12 @@ router.post('/chat/completions', async (req, res) => {
   console.log(
     `turn ${getModel().turns} | ` +
     decision.bids.map(b => `${b.panelist} ${b.score}`).join('  ') +
-    ` | floor -> ${winner.name}`,
+    ` | floor -> ${winner.name} (${winner.voice})`,
   );
 
   for (const claim of claims) broadcast({ type: 'claim', claim });
   broadcast({ type: 'scenario', scenario: getModel().scenario });
   broadcast({ type: 'bids', bids: decision.bids, winner: decision.winner });
-  broadcast({ type: 'speaking', panelist: decision.winner, text: decision.reply });
   broadcast({ type: 'state', model: getModel() });
 
   stream(res, winner, decision.reply, decision.interruptable);
@@ -60,17 +62,27 @@ function stream(res: Response, speaker: Panelist, reply: string, interruptable: 
     connection: 'keep-alive',
   });
 
+  // Every reply the panel speaks goes out through here, so the caption is
+  // broadcast here too — the "didn't catch that" path used to speak silently.
+  broadcast({ type: 'speaking', panelist: speaker.id, text: reply });
+
   const id = `kyro-${Date.now()}`;
   const send = (obj: unknown) => res.write(`data: ${JSON.stringify(obj)}\n\n`);
 
   // Agora reads only this chunk's metadata and ignores its choices.
+  // We send both voice_setting for MiniMax and voice_type for standard compatibility.
   send({
     id,
     object: 'chat.completion.custom_metadata',
     choices: [],
     metadata: {
       interruptable,
-      tts_params: { params: { voice_type: speaker.voice } },
+      tts_params: {
+        params: {
+          voice_setting: { voice_id: speaker.voice },
+          voice_type: speaker.voice,
+        },
+      },
     },
   });
 

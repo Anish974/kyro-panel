@@ -71,6 +71,7 @@ app.listen(PORT, () => {
   console.log(`  GET  /token?channel=&uid=   RTC token`);
   console.log(`  GET  /events                SSE -> room UI`);
   console.log(`  GET  /state                 shared candidate model`);
+  console.log(`  POST /candidate             name, role and resume from the login screen`);
   console.log(`  POST /chat/completions      <- Agora calls this (needs the secret)`);
   console.log(`  POST /reset                 clear the session (needs the secret)`);
   console.log('');

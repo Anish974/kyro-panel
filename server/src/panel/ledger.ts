@@ -36,7 +36,7 @@ const MAGNITUDE =
 // rather than whitelisting verbs. A whitelist misses every verb nobody thought
 // of ("throttled", "backpressured") and silently drops the claim.
 const NOT_A_CLAIM =
-  /^\s*(that'?s?|that is|yeah|yes|nope|sure|ok(ay)?|i think|i guess|maybe|fair enough|good point|right|exactly|agreed)\b/i;
+  /^\s*(that'?s?|that is|yeah|yes|nope|sure|ok(ay)?|i think|i guess|maybe|fair enough|good point|right|exactly|agreed|hello|hi|hey|can you hear|i can.*hear|i have heard|i'?ve been (there|doing|saying)|sounds? good)\b/i;
 
 /** Someone doing something — the subject of a checkable statement. */
 const SUBJECT = /\b(we|i|our|us|my|the team|it|they)\b/i;
@@ -44,6 +44,10 @@ const SUBJECT = /\b(we|i|our|us|my|the team|it|they)\b/i;
 function isClaim(sentence: string): boolean {
   if (sentence.trim().endsWith('?')) return false;
   if (NOT_A_CLAIM.test(sentence)) return false;
+  // Ignore conversational fragments under 25 chars unless they mention a concept or number
+  if (sentence.length < 25 && conceptOf(sentence) === null && !QUANTITY.test(sentence)) {
+    return false;
+  }
   // Checkable if someone acted, a tracked concept came up, or a number was given.
   return SUBJECT.test(sentence) || conceptOf(sentence) !== null || QUANTITY.test(sentence);
 }
@@ -92,6 +96,12 @@ export function ingest(answer: string): Claim[] {
 
   for (const sentence of sentences(answer)) {
     if (!isClaim(sentence)) continue;
+
+    // Deduplication: do not record identical claims if already ingested
+    const alreadyExists = model
+      .getModel()
+      .claims.some(c => c.text.toLowerCase().trim() === sentence.toLowerCase().trim());
+    if (alreadyExists) continue;
 
     const found = analyse(sentence);
     let status: ClaimStatus = 'open';

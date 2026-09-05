@@ -25,31 +25,54 @@ export async function joinAsCandidate(
   channel: string,
   onRemoteAudio?: (uid: string | number) => void,
 ): Promise<JoinResult> {
+  console.log(`[agora] Fetching token for channel "${channel}" and uid ${CANDIDATE_UID}...`);
   const { appId, token } = await fetchToken(channel, CANDIDATE_UID);
 
   const client = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
 
   client.on('user-published', async (user, mediaType) => {
+    console.log(`[agora] Remote user published: UID ${user.uid}, mediaType: ${mediaType}`);
     await client.subscribe(user, mediaType);
     if (mediaType === 'audio') {
+      console.log(`[agora] Playing remote audio track from UID ${user.uid}`);
       user.audioTrack?.play();
       onRemoteAudio?.(user.uid);
     }
   });
 
-  await client.join(appId, channel, token, CANDIDATE_UID);
+  client.on('user-joined', user => {
+    console.log(`[agora] Remote user joined channel: UID ${user.uid}`);
+  });
 
-  const mic = await AgoraRTC.createMicrophoneAudioTrack();
-  // Camera is optional — the interview works without it, and a blocked camera
-  // permission must not stop the candidate from joining.
+  await client.join(appId, channel, token, CANDIDATE_UID);
+  console.log(`[agora] Joined channel successfully as candidate UID ${CANDIDATE_UID}`);
+
+  try {
+    const devices = await AgoraRTC.getMicrophones();
+    console.log('[agora] Available microphones:', devices.map(d => `${d.label || 'Unknown'} (${d.deviceId})`));
+  } catch (err) {
+    console.warn('[agora] Could not list audio devices:', err);
+  }
+
+  const mic = await AgoraRTC.createMicrophoneAudioTrack({
+    AEC: true,
+    ANS: true,
+    AGC: true,
+  });
+  console.log('[agora] Created microphone audio track on device:', mic.getTrackLabel());
+
   let camera: ICameraVideoTrack | null = null;
   try {
     camera = await AgoraRTC.createCameraVideoTrack();
-  } catch {
+    console.log('[agora] Created camera video track');
+  } catch (err) {
+    console.warn('[agora] Camera not available or denied, continuing audio-only:', err);
     camera = null;
   }
 
   await client.publish(camera ? [mic, camera] : [mic]);
+  console.log('[agora] Published candidate tracks to channel');
+
   return { client, mic, camera };
 }
 

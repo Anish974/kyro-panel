@@ -8,9 +8,9 @@ const KEY = process.env.LLM_API_KEY ?? '';
 /** False when no key is configured — the panel then falls back to keywords. */
 export const LLM_ENABLED = Boolean(BASE && MODEL && KEY);
 
-// A panelist who takes too long is worse than a panelist who is predictable:
-// the candidate is sitting in silence waiting for a voice.
-const TIMEOUT_MS = 4000;
+// Allow enough budget for multi-panelist JSON generation so the panel never
+// prematurely falls back to canned keyword templates.
+const TIMEOUT_MS = 8000;
 
 export async function ask(system: string, user: string, maxTokens = 220): Promise<string> {
   const res = await fetch(`${BASE}/chat/completions`, {

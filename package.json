@@ -14,7 +14,10 @@
     "dev:web": "npm run dev -w web",
     "check": "npm run check -w server",
     "build": "npm run build -w web",
-    "tunnel": "cloudflared tunnel --url http://localhost:8787"
+    "tunnel": "cloudflared tunnel --url http://localhost:8787",
+    "agent:start": "npm run agent:start -w server",
+    "agent:dry": "npm run agent:dry -w server",
+    "agent:stop": "npm run agent:stop -w server --"
   },
   "keywords": [
     "ai-interview",

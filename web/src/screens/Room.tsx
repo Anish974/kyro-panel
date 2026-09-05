@@ -9,6 +9,8 @@ const CHANNEL = 'demo-channel';
 
 interface Props {
   candidateName: string;
+  /** What the candidate is interviewing for, chosen on the login screen. */
+  role: string;
   onEnd: () => void;
 }
 
@@ -25,7 +27,7 @@ function formatTimer(seconds: number): string {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
-export default function Room({ candidateName, onEnd }: Props) {
+export default function Room({ candidateName, role, onEnd }: Props) {
   const { model, bids, speaking: serverSpeaking, caption, heard, connected } = useSession();
   const [session, setSession] = useState<JoinResult | null>(null);
 
@@ -51,33 +53,50 @@ export default function Room({ candidateName, onEnd }: Props) {
 
   const [joining, setJoining] = useState(false);
   const [joinError, setJoinError] = useState<string | null>(null);
+  const [micVolume, setMicVolume] = useState<number>(0);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const agoraVideoRef = useRef<HTMLDivElement>(null);
 
-  // Sync server speaking state, fallback to technical (Arjun Mehta) if null for initial view
-  const currentSpeaker: PanelistId = serverSpeaking || activeSpeakerId || 'technical';
-  const speakerInfo = panelistById(currentSpeaker);
+  // Monitor real-time mic volume from Agora track to detect if mic is silent/muted
+  useEffect(() => {
+    if (!session?.mic) {
+      setMicVolume(0);
+      return;
+    }
+    const interval = setInterval(() => {
+      const vol = session.mic.getVolumeLevel();
+      const pct = Math.round(vol * 100);
+      setMicVolume(pct);
+      if (pct > 5) {
+        console.log(`[mic] Level: ${pct}%`);
+      }
+    }, 250);
+    return () => clearInterval(interval);
+  }, [session]);
 
-  // Request browser camera and microphone permissions immediately on mount
+  // Sync server speaking state accurately: null when no one is speaking
+  const currentSpeaker: PanelistId | null = serverSpeaking;
+  const speakerInfo = currentSpeaker ? panelistById(currentSpeaker) : null;
+
+  // Request browser camera permissions for preview (video only, audio managed exclusively by Agora)
   async function requestCameraAccess() {
     setPermissionError(null);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
-        audio: true,
+        audio: false,
       });
       setLocalStream(stream);
       setCameraPermission('granted');
       setCameraOn(true);
-      setMicOn(true);
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
       }
     } catch (err) {
       console.warn('Camera access denied or unavailable:', err);
       setCameraPermission('denied');
-      setPermissionError('Camera or microphone permission was denied. Please allow access in browser settings.');
+      setPermissionError('Camera permission was denied. Please allow access in browser settings.');
     }
   }
 
@@ -87,7 +106,7 @@ export default function Room({ candidateName, onEnd }: Props) {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
-          audio: true,
+          audio: false,
         });
         if (!mounted) {
           stream.getTracks().forEach(t => t.stop());
@@ -101,7 +120,7 @@ export default function Room({ candidateName, onEnd }: Props) {
       } catch (err) {
         if (mounted) {
           setCameraPermission('denied');
-          setPermissionError('Please allow camera & microphone access to enable video preview.');
+          setPermissionError('Please allow camera access to enable video preview.');
         }
       }
     }
@@ -174,11 +193,10 @@ export default function Room({ candidateName, onEnd }: Props) {
     }
   }
 
-  // Active caption text prioritizing candidate's speech or active interviewer caption
-  const activeCaptionText =
-    heard ||
-    caption?.text ||
-    'For the system design, I would approach this in three layers...';
+  // Panel and candidate captions are two separate lines — the candidate's last
+  // answer must never hide whoever on the panel is speaking right now.
+  const panelSpeakerName =
+    PANEL.find(p => p.id === caption?.speaker)?.name ?? 'Panel';
 
   return (
     <div className="h-full flex flex-col bg-[#FAF9F6] text-gray-900 select-none overflow-hidden font-sans">
@@ -200,6 +218,15 @@ export default function Room({ candidateName, onEnd }: Props) {
           <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-[#EFF6FF] text-[#2563EB] border border-[#BFDBFE] shadow-2xs">
             AI Panel
           </span>
+
+          <span className="w-px h-6 bg-[#EBE6DF]" />
+
+          {/* Who is being interviewed, and for what — the room used to show
+              neither, so it never matched the scorecard it produces. */}
+          <div className="hidden lg:flex flex-col leading-tight">
+            <span className="text-sm font-bold text-gray-900">{candidateName}</span>
+            <span className="text-xs text-gray-500 font-medium">{role}</span>
+          </div>
         </div>
 
         {/* Center: Stage Dropdown & Progress Dots */}
@@ -306,8 +333,14 @@ export default function Room({ candidateName, onEnd }: Props) {
               </svg>
             </div>
             <span>Active Speaker:</span>
-            <span className="font-extrabold text-gray-950 text-base">{speakerInfo.name}</span>
-            <span className="text-gray-500 font-medium">({speakerInfo.role})</span>
+            {speakerInfo ? (
+              <>
+                <span className="font-extrabold text-gray-950 text-base">{speakerInfo.name}</span>
+                <span className="text-gray-500 font-medium">({speakerInfo.role})</span>
+              </>
+            ) : (
+              <span className="font-medium text-gray-500 text-sm">None (Panel listening to candidate)</span>
+            )}
           </div>
 
           {/* Large Candidate Video Container */}
@@ -401,39 +434,77 @@ export default function Room({ candidateName, onEnd }: Props) {
 
             {/* Bottom Floating Elements: Mic Status & Closed Captions */}
             <div className="relative z-10 flex items-end justify-between gap-5 mt-auto">
-              {/* Bottom Left: Mic On / Sound Wave Card */}
+              {/* Bottom Left: Mic On / Live Sound Wave Card */}
               <div className="bg-white/95 backdrop-blur-md rounded-2xl p-3.5 shadow-lg border border-white/50 flex items-center gap-3">
-                <div className="flex flex-col gap-1.5">
-                  <div className="flex items-center gap-2">
-                    <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                    </svg>
-                    <span className="text-sm font-extrabold text-gray-900">{micOn ? 'Mic On' : 'Mic Muted'}</span>
+                <div className="flex flex-col gap-1.5 min-w-[130px]">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5">
+                      <svg className={`w-4 h-4 ${micOn ? 'text-emerald-600' : 'text-red-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                      </svg>
+                      <span className="text-xs font-extrabold text-gray-900">
+                        {micOn ? (session ? `Mic (${micVolume}%)` : 'Mic Ready') : 'Mic Muted'}
+                      </span>
+                    </div>
+                    {session && micOn && micVolume > 0 && (
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                    )}
                   </div>
-                  {/* Blue waveform equalizer */}
+
+                  {/* Dynamic audio equalizer reflecting actual input volume */}
                   <div className="flex items-center gap-[3px] h-4 px-0.5">
-                    <span className="w-[3px] h-2 bg-[#2563EB] rounded-full animate-wave-1" />
-                    <span className="w-[3px] h-3.5 bg-[#2563EB] rounded-full animate-wave-2" />
-                    <span className="w-[3px] h-4.5 bg-[#2563EB] rounded-full animate-wave-3" />
-                    <span className="w-[3px] h-2 bg-[#2563EB] rounded-full animate-wave-4" />
-                    <span className="w-[3px] h-4 bg-[#2563EB] rounded-full animate-wave-5" />
-                    <span className="w-[3px] h-2.5 bg-[#2563EB] rounded-full animate-wave-6" />
-                    <span className="w-[3px] h-4 bg-[#2563EB] rounded-full animate-wave-2" />
-                    <span className="w-[3px] h-2.5 bg-[#2563EB] rounded-full animate-wave-4" />
-                    <span className="w-[3px] h-3 bg-[#2563EB] rounded-full animate-wave-1" />
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(i => {
+                      const baseHeight = 3;
+                      const factor = 1 + ((i * 3) % 5) * 0.25;
+                      const activeHeight = micOn && micVolume > 0
+                        ? Math.min(16, Math.max(3, Math.round((micVolume / 100) * 16 * factor)))
+                        : baseHeight;
+                      return (
+                        <span
+                          key={i}
+                          className={`w-[3px] rounded-full transition-all duration-100 ${
+                            micVolume > 0 && micOn ? 'bg-[#2563EB]' : 'bg-gray-300'
+                          }`}
+                          style={{ height: `${activeHeight}px` }}
+                        />
+                      );
+                    })}
                   </div>
+
+                  {/* Warning if mic is on but volume is 0 */}
+                  {session && micOn && micVolume === 0 && (
+                    <span className="text-[10px] text-amber-600 font-bold leading-tight">
+                      ⚠️ Low volume. Speak louder or check Windows mic volume.
+                    </span>
+                  )}
                 </div>
               </div>
 
               {/* Bottom Center: Subtitles / Captions Box */}
               {captionsOn && (
-                <div className="flex-1 max-w-2xl mx-auto bg-black/85 backdrop-blur-md text-white rounded-2xl px-6 py-3.5 border border-white/15 shadow-xl flex items-center gap-3.5">
-                  <div className="w-7 h-6 rounded-md bg-white/20 text-white font-extrabold text-xs grid place-items-center shrink-0">
+                <div className="flex-1 max-w-2xl mx-auto bg-black/85 backdrop-blur-md text-white rounded-2xl px-6 py-3.5 border border-white/15 shadow-xl flex items-start gap-3.5">
+                  <div className="w-7 h-6 rounded-md bg-white/20 text-white font-extrabold text-xs grid place-items-center shrink-0 mt-0.5">
                     cc
                   </div>
-                  <p className="text-sm md:text-base font-medium leading-snug text-white/95 line-clamp-2">
-                    {activeCaptionText}
-                  </p>
+                  <div className="flex flex-col gap-1.5 min-w-0 flex-1">
+                    {caption && (
+                      <p className="text-sm md:text-base font-medium leading-snug text-white/95 line-clamp-2">
+                        <span className="font-bold text-[#93C5FD]">{panelSpeakerName}: </span>
+                        {caption.text}
+                      </p>
+                    )}
+                    {heard && (
+                      <p className="text-sm md:text-base font-medium leading-snug text-white/80 line-clamp-2">
+                        <span className="font-bold text-emerald-300">You: </span>
+                        {heard}
+                      </p>
+                    )}
+                    {!caption && !heard && (
+                      <p className="text-sm md:text-base font-medium leading-snug text-white/45 italic">
+                        Captions will appear here once the panel starts speaking.
+                      </p>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -483,12 +554,14 @@ export default function Room({ candidateName, onEnd }: Props) {
               </button>
             </div>
 
-            {/* Bottom Status: Arjun Mehta is speaking */}
-            <div className="bg-[#EFF6FF] border border-[#BFDBFE] text-gray-800 text-sm font-bold px-4 py-2.5 rounded-2xl flex items-center gap-2.5 shadow-2xs">
-              <svg className="w-5 h-5 text-[#2563EB]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            {/* Bottom Status: Arjun Mehta is speaking or Panel Listening */}
+            <div className={`border text-sm font-bold px-4 py-2.5 rounded-2xl flex items-center gap-2.5 shadow-2xs transition-colors ${
+              speakerInfo ? 'bg-[#EFF6FF] border-[#BFDBFE] text-gray-800' : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+            }`}>
+              <svg className={`w-5 h-5 ${speakerInfo ? 'text-[#2563EB]' : 'text-emerald-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M8.111 16.404a5.5 5.5 0 010-7.778M12 12h.01m3.878-4.404a5.5 5.5 0 010 7.778M5.636 18.364a9 9 0 010-12.728m12.728 0a9 9 0 010 12.728" />
               </svg>
-              <span>{speakerInfo.name} is speaking</span>
+              <span>{speakerInfo ? `${speakerInfo.name} is speaking` : 'Panel listening for candidate answer...'}</span>
             </div>
           </div>
         </aside>

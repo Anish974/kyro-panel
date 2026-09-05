@@ -12,6 +12,7 @@
     "@kyro/shared": "*",
     "agora-rtc-sdk-ng": "^4.24.7",
     "agora-rtm": "^2.3.0",
+    "pdfjs-dist": "^6.3.289",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },

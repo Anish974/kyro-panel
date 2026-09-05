@@ -12,6 +12,7 @@ export default defineConfig({
       '/token': 'http://localhost:8787',
       '/events': 'http://localhost:8787',
       '/state': 'http://localhost:8787',
+      '/candidate': 'http://localhost:8787',
       '/scorecard': 'http://localhost:8787',
       '/reset': 'http://localhost:8787',
     },

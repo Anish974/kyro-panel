@@ -6,6 +6,8 @@
 //
 // https://docs.agora.io/en/conversational-ai/rest-api/agent/join
 
+import type { CandidateProfile } from '@kyro/shared';
+
 const BASE = 'https://api.agora.io/api/conversational-ai-agent/v2/projects';
 
 const APP_ID = process.env.AGORA_APP_ID;
@@ -27,6 +29,42 @@ function need(pairs: [string, string | undefined][]): void {
     console.error('Customer ID / Secret: Agora console -> RESTful API.');
     process.exit(1);
   }
+}
+
+/**
+ * Who logged in on the web app, if anyone has yet. The panel's greeting is
+ * baked into the join request, so this has to be read here rather than at the
+ * first turn — start the agent AFTER the candidate signs in and the panel opens
+ * by name. Nobody signed in yet just means a generic greeting, never a failure.
+ */
+async function getProfile(): Promise<CandidateProfile | null> {
+  try {
+    const r = await fetch(`${SERVER}/state`);
+    if (!r.ok) return null;
+    return ((await r.json()) as { profile: CandidateProfile | null }).profile;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The first thing the candidate hears. It introduces all three panelists by
+ * name and hands the floor straight to the candidate — an interview opens with
+ * "tell me about yourself", not with "shall we start?".
+ */
+function greeting(p: CandidateProfile | null): string {
+  const intro =
+    "I'm Arjun Mehta, technical architect. With me are Ananya Shah from product " +
+    'and Rohan Iyer from the hiring team.';
+  const ask =
+    'Start by introducing yourself — who you are, and the piece of work you are ' +
+    'proudest of. We will go from there.';
+
+  if (!p) return `Hi, and welcome. ${intro} ${ask}`;
+
+  const firstName = p.name.split(' ')[0];
+  const resume = p.resumeText ? ' We have read your resume.' : '';
+  return `Hi ${firstName}, thanks for making the time. ${intro} We are here for the ${p.role} role.${resume} ${ask}`;
 }
 
 async function getToken(uid: number): Promise<string> {
@@ -61,6 +99,15 @@ async function start(dry: boolean): Promise<void> {
     process.exit(1);
   }
 
+  const candidate = await getProfile();
+  if (candidate) {
+    console.log(`candidate  ${candidate.name} — ${candidate.role}`);
+    console.log(`resume     ${candidate.resumeText ? `${candidate.resumeText.length} chars` : 'not attached'}`);
+  } else {
+    console.log('candidate  nobody has signed in yet — generic greeting');
+    console.log('           sign in on the web app first and the panel opens by name');
+  }
+
   const body = {
     name: `kyro-panel-${Date.now()}`,
     properties: {
@@ -85,8 +132,7 @@ async function start(dry: boolean): Promise<void> {
         system_messages: [
           { role: 'system', content: 'A three-person interview panel. The orchestrator decides who speaks.' },
         ],
-        greeting_message:
-          "Hi, I'm Arjun. Joining me are Ananya from product and Rohan from the hiring team. Shall we start?",
+        greeting_message: greeting(candidate),
         failure_message: 'Give me a second.',
         max_history: 20,
         params: { model: 'kyro-panel' },

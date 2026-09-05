@@ -1,6 +1,6 @@
 import { Router, type Response } from 'express';
 import type { SessionEvent } from '@kyro/shared';
-import { getModel, reset } from '../panel/model.js';
+import { getModel, profile, reset, setProfile } from '../panel/model.js';
 import { buildScorecard } from '../panel/scorecard.js';
 
 // One-way push to the room UI: bids, captions, claims, state.
@@ -50,17 +50,46 @@ router.get('/events', (req, res) => {
 
 router.get('/state', (_req, res) => res.json(getModel()));
 
-// Wipes the session so the next demo run starts from an empty model.
-router.post('/reset', (_req, res) => {
-  reset();
+// Who is being interviewed, posted by the login screen before they join the
+// room. The panel reads it to open by name and to probe the candidate's own
+// background instead of a generic warm-up.
+//
+// Open on purpose: the browser has no shared secret, and this writes nothing
+// the panel scores on. setProfile() is the trust boundary — it caps every field
+// and strips control characters before any of it reaches an LLM prompt.
+//
+// ponytail: last write wins, one candidate at a time. Key it by session when
+// the server stops holding a single interview.
+router.post('/candidate', (req, res) => {
+  const saved = setProfile(req.body);
+  if (!saved) {
+    return res.status(400).json({ error: 'name and role are required' });
+  }
+  console.log(
+    `[candidate] ${saved.name} — ${saved.role}` +
+    (saved.resumeText ? ` | resume ${saved.resumeText.length} chars` : ' | no resume'),
+  );
+  broadcast({ type: 'state', model: getModel() });
+  res.json(saved);
+});
+
+// Wipes the session so the next demo run starts from an empty model. The
+// profile survives unless ?forget=1 — the same candidate is still in the room.
+router.post('/reset', (req, res) => {
+  reset(req.query.forget === '1');
   broadcast({ type: 'state', model: getModel() });
   res.json({ ok: true });
 });
 
 // Ends the interview as far as the hiring team is concerned: build the three
 // verdicts from the model as it stands and push them to anyone watching.
+// The stored profile wins over the query string — it is what the panel heard.
 router.get('/scorecard', (req, res) => {
-  const scorecard = buildScorecard(String(req.query.name ?? 'Candidate'));
+  const saved = profile();
+  const scorecard = buildScorecard(
+    saved?.name ?? String(req.query.name ?? 'Candidate'),
+    saved?.role ?? String(req.query.role || 'Senior Backend Engineer'),
+  );
   broadcast({ type: 'scorecard', scorecard });
   res.json(scorecard);
 });

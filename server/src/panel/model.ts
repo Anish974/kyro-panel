@@ -1,6 +1,8 @@
 import {
+  PROFILE_LIMITS,
   emptyModel,
   type CandidateModel,
+  type CandidateProfile,
   type Claim,
   type CompetencyId,
   type PanelistId,
@@ -25,10 +27,54 @@ export const getModel = (): CandidateModel => ({
   elapsed: Math.floor((Date.now() - startedAt) / 1000),
 });
 
-export function reset(): void {
-  model = emptyModel(`s-${Date.now()}`);
+/**
+ * Wipes the interview. The profile survives by default — it is who is sitting
+ * in the room, not something they said, and a re-run of the same demo should
+ * not make the panel forget the candidate's name. Pass true to clear it too.
+ */
+export function reset(forgetProfile = false): void {
+  model = emptyModel(`s-${Date.now()}`, forgetProfile ? null : model.profile);
   startedAt = Date.now();
 }
+
+/**
+ * Trust boundary: everything here is typed by whoever posted to /candidate.
+ * Coerce to string, strip control characters (they break the SSE framing and
+ * the prompt alike) and cap every field before it reaches an LLM prompt.
+ */
+export function setProfile(raw: unknown): CandidateProfile | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const input = raw as Record<string, unknown>;
+
+  // Keep tab and newline, drop every other control character: they break the
+  // SSE framing on the way back out to the room UI. Written as a filter rather
+  // than a regex so no raw control byte ends up in this source file.
+  const printable = (ch: string): boolean => ch >= ' ' || ch === '\n' || ch === '\t';
+  const clean = (value: unknown, max: number): string =>
+    typeof value === 'string'
+      ? Array.from(value).filter(printable).join('').slice(0, max).trim()
+      : '';
+  /** Collapsed to one line — these fields get spoken aloud and printed in the UI. */
+  const line = (value: unknown, max: number): string =>
+    clean(value, max).replace(/\s+/g, ' ').trim();
+
+  const name = line(input.name, PROFILE_LIMITS.name);
+  const role = line(input.role, PROFILE_LIMITS.role);
+  if (!name || !role) return null;
+
+  const email = line(input.email, PROFILE_LIMITS.email);
+  const resumeText = clean(input.resumeText, PROFILE_LIMITS.resumeText).replace(/\n{3,}/g, '\n\n');
+
+  model.profile = {
+    name,
+    role,
+    ...(email ? { email } : {}),
+    ...(resumeText ? { resumeText } : {}),
+  };
+  return model.profile;
+}
+
+export const profile = (): CandidateProfile | null => model.profile;
 
 export function addTurn(turn: Omit<TranscriptTurn, 't'>): void {
   model.transcript.push({ ...turn, t: getModel().elapsed });

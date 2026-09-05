@@ -18,9 +18,9 @@ export interface Panelist {
 
 /** The panel. Names come from the submitted deck — do not rename casually. */
 export const PANEL: readonly Panelist[] = [
-  { id: 'technical', name: 'Arjun Mehta', role: 'Technical Architect', voice: 'male_1',   color: '#6a8bff' },
-  { id: 'product',   name: 'Ananya Shah', role: 'Product Manager',     voice: 'female_1', color: '#c98bff' },
-  { id: 'hr',        name: 'Rohan Iyer',  role: 'Behavioural / HR',    voice: 'male_2',   color: '#46c9b0' },
+  { id: 'technical', name: 'Arjun Mehta', role: 'Technical Architect', voice: 'English_Trustworth_Man',      color: '#6a8bff' },
+  { id: 'product',   name: 'Ananya Shah', role: 'Product Manager',     voice: 'English_captivating_female1', color: '#c98bff' },
+  { id: 'hr',        name: 'Rohan Iyer',  role: 'Behavioural / HR',    voice: 'English_expressive_narrator', color: '#46c9b0' },
 ] as const;
 
 export const panelistById = (id: PanelistId): Panelist =>
@@ -87,11 +87,40 @@ export interface Scenario {
   turns: number;
 }
 
+// ------------------------------------------------------------------ profile
+
+/**
+ * Who is in the room, captured on the login screen before the panel joins.
+ * The panel reads this so it can open by name and probe the candidate's own
+ * background instead of asking generic warm-ups.
+ *
+ * `resumeText` is candidate-supplied text that ends up inside an LLM prompt —
+ * it is DATA, never instructions. bidding.ts fences it, and the server caps its
+ * length on the way in.
+ */
+export interface CandidateProfile {
+  name: string;
+  role: string;
+  email?: string;
+  /** Plain text extracted from the uploaded resume. Absent when none was given. */
+  resumeText?: string;
+}
+
+/** Hard caps applied server-side. Shared so the form can refuse before posting. */
+export const PROFILE_LIMITS = {
+  name: 80,
+  role: 80,
+  email: 160,
+  resumeText: 20_000,
+} as const;
+
 // ----------------------------------------------------------------- the model
 
 /** Every panelist reads and writes this. Nobody keeps a private memory. */
 export interface CandidateModel {
   sessionId: string;
+  /** Set at login. Null until the candidate has entered who they are. */
+  profile: CandidateProfile | null;
   /** 0..1 per competency. */
   skills: Record<CompetencyId, number>;
   /** 1..5, moves with performance. */
@@ -169,9 +198,10 @@ export type SessionEvent =
 
 // ------------------------------------------------------------------ helpers
 
-export function emptyModel(sessionId: string): CandidateModel {
+export function emptyModel(sessionId: string, profile: CandidateProfile | null = null): CandidateModel {
   return {
     sessionId,
+    profile,
     skills: {
       systemDesign: 0.5,
       tradeoffReasoning: 0.5,

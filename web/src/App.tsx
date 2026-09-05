@@ -2,14 +2,18 @@ import { useState } from 'react';
 import type { Scorecard as ScorecardData } from '@kyro/shared';
 import Room from './screens/Room.js';
 import Scorecard from './screens/Scorecard.js';
-import Login from './screens/Login.js';
+import Login, { type Candidate } from './screens/Login.js';
 
-const CANDIDATE_NAME = 'Anish Patankar';
+const DEMO_CANDIDATE: Candidate = {
+  name: 'Anish Patankar',
+  role: 'Senior Backend Engineer',
+  email: 'candidate@gmail.com',
+};
 
 const DEFAULT_SCORECARD: ScorecardData = {
   sessionId: 'demo-session',
-  role: 'Senior Backend Engineer',
-  candidateName: CANDIDATE_NAME,
+  role: DEMO_CANDIDATE.role,
+  candidateName: DEMO_CANDIDATE.name,
   durationSec: 1477,
   verdicts: [
     {
@@ -70,31 +74,38 @@ const DEFAULT_SCORECARD: ScorecardData = {
 };
 
 export default function App() {
-  const [userEmail, setUserEmail] = useState<string | null>(null);
+  // Null until they sign in. The login screen is where the panel learns the
+  // candidate's name, role and resume, so the room must not open ahead of it.
+  const [candidate, setCandidate] = useState<Candidate | null>(null);
   const [scorecard, setScorecard] = useState<ScorecardData | null>(null);
 
   async function endInterview() {
+    if (!candidate) return;
+    const query = `name=${encodeURIComponent(candidate.name)}&role=${encodeURIComponent(candidate.role)}`;
     try {
-      const res = await fetch(`/scorecard?name=${encodeURIComponent(CANDIDATE_NAME)}`);
+      const res = await fetch(`/scorecard?${query}`);
       if (res.ok) {
-        const data = await res.json();
-        setScorecard(data);
-        return;
+        const data: ScorecardData = await res.json();
+        // A server that is up but has never seen a turn answers 200 with an
+        // empty model, which renders as a blank scorecard. Treat that as "no
+        // interview happened" and show the demo card instead.
+        if (data.claims.length > 0 || data.verdicts.some(v => v.evidence.length > 0)) {
+          setScorecard(data);
+          return;
+        }
       }
     } catch {
       // Backend not reached, fall back to realistic demo scorecard
     }
-    setScorecard(DEFAULT_SCORECARD);
+    setScorecard({ ...DEFAULT_SCORECARD, candidateName: candidate.name, role: candidate.role });
   }
 
-  if (!userEmail) {
-    return <Login onLogin={(email) => setUserEmail(email)} />;
-  }
+  if (!candidate) return <Login onLogin={setCandidate} />;
 
   return scorecard ? (
     <Scorecard scorecard={scorecard} onBack={() => setScorecard(null)} />
   ) : (
-    <Room candidateName={CANDIDATE_NAME} onEnd={endInterview} />
+    <Room candidateName={candidate.name} role={candidate.role} onEnd={endInterview} />
   );
 }
 

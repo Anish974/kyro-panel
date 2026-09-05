@@ -63,6 +63,41 @@ export default function BidRail({ model, bids, isOpen, onClose }: Props) {
 
         {/* Content Area */}
         <div className="flex-1 overflow-y-auto p-8 flex flex-col gap-7">
+          {/* Who the panel thinks it is interviewing. Shown first because it is
+              the one part of the shared model that arrives before a word is
+              spoken — and the one the candidate can check is right. */}
+          {model.profile && (
+            <section className="bg-white border border-[#EBE6DF] rounded-3xl p-5 flex flex-col gap-3">
+              <span className="text-xs font-extrabold uppercase tracking-wider text-gray-800">
+                Candidate
+              </span>
+              <div>
+                <p className="text-base font-extrabold text-gray-900 leading-tight">{model.profile.name}</p>
+                <p className="text-xs text-gray-500 font-medium mt-0.5">
+                  Interviewing for {model.profile.role}
+                </p>
+              </div>
+              <div className="flex items-center gap-2 text-xs font-semibold">
+                {model.profile.resumeText ? (
+                  <>
+                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                    <span className="text-emerald-700">
+                      Resume shared with all three panelists
+                    </span>
+                    <span className="text-gray-400 font-medium">
+                      ({model.profile.resumeText.length.toLocaleString()} chars)
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="w-2 h-2 rounded-full bg-gray-300" />
+                    <span className="text-gray-500">No resume — the panel builds only on what you say</span>
+                  </>
+                )}
+              </div>
+            </section>
+          )}
+
           {/* Turn Bids Section */}
           <section className="bg-[#FAF9F6] border border-[#EBE6DF] rounded-3xl p-5 flex flex-col gap-4">
             <div className="flex items-center justify-between">
