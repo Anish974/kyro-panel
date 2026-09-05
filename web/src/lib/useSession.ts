@@ -10,6 +10,11 @@ export function useSession() {
   /** The last thing the candidate said, kept separately so both stay on screen. */
   const [heard, setHeard] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
+  /**
+   * Set once the panel has spoken its closing line. Carries how long that line
+   * takes to say, so the room can let it finish before ending the call.
+   */
+  const [concluded, setConcluded] = useState<{ reason: string; speakMs: number } | null>(null);
 
   useEffect(() => {
     const es = new EventSource('/events');
@@ -31,10 +36,11 @@ export function useSession() {
         // The scenario also arrives on 'state', but that lands after the reply
         // is already streaming — this one shows up with the question itself.
         case 'scenario': setModel(m => ({ ...m, scenario: ev.scenario })); break;
+        case 'concluded': setConcluded({ reason: ev.reason, speakMs: ev.speakMs }); break;
       }
     };
     return () => es.close();
   }, []);
 
-  return { model, bids, speaking, caption, heard, connected };
+  return { model, bids, speaking, caption, heard, connected, concluded };
 }

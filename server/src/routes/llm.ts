@@ -1,6 +1,6 @@
 import { Router, type Response } from 'express';
 import { panelistById, type Panelist } from '@kyro/shared';
-import { runPanel } from '../panel/bidding.js';
+import { CONCLUDE_AT_TURN, runPanel } from '../panel/bidding.js';
 import { ingest } from '../panel/ledger.js';
 import { getModel } from '../panel/model.js';
 import { classify, replyTo } from '../panel/utterance.js';
@@ -69,7 +69,27 @@ router.post('/chat/completions', async (req, res) => {
   broadcast({ type: 'state', model: getModel() });
 
   stream(res, winner, decision.reply, decision.interruptable);
+
+  // bidding.ts switches to its closing instructions at this turn, so the reply
+  // just streamed IS the goodbye. Nothing used to happen next: the panel said
+  // "we're concluding to finalise your scorecard" and then sat there until the
+  // idle timeout, and the candidate had to work out that it was over.
+  //
+  // Told after the reply is on the wire, with an estimate of how long it takes
+  // to say, so the room can let the closing finish before it ends the call.
+  if (getModel().turns >= CONCLUDE_AT_TURN) {
+    console.log(`[llm] turn ${getModel().turns} — panel has closed the interview`);
+    broadcast({
+      type: 'concluded',
+      reason: 'The panel has finished the interview.',
+      speakMs: speakingTime(decision.reply),
+    });
+  }
 });
+
+/** Rough speaking time. ~150 words a minute, plus a beat of silence after. */
+const speakingTime = (text: string): number =>
+  Math.min(20_000, Math.round((text.split(/\s+/).length / 150) * 60_000) + 2_500);
 
 /** The SSE shape Agora expects, with the speaking panelist's voice attached. */
 function stream(res: Response, speaker: Panelist, reply: string, interruptable: boolean): void {

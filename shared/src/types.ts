@@ -28,17 +28,37 @@ export const panelistById = (id: PanelistId): Panelist =>
 
 // ---------------------------------------------------------------- competency
 
+/**
+ * The five axes every verdict is written against.
+ *
+ * Aligned with how structured interviews are actually scored — Google's
+ * role-related knowledge / cognitive ability / leadership signals, and the
+ * communication + problem-solving + technical-competency dimensions common to
+ * published FAANG rubrics. Coding-specific axes like "testing" and "code
+ * quality" are deliberately absent: this is a spoken interview about work
+ * already done, and nothing here can be graded from a transcript unless the
+ * candidate can say it out loud.
+ *
+ * Five, not more. Ten questions split across three interviewers is already thin
+ * evidence per axis; another axis buys a column and dilutes every one of them.
+ */
 export type CompetencyId =
-  | 'systemDesign'
-  | 'tradeoffReasoning'
-  | 'customerImpact'
+  | 'technicalDepth'
+  | 'problemSolving'
+  | 'impact'
   | 'communication'
   | 'ownership';
 
 export const COMPETENCIES: Record<CompetencyId, string> = {
-  systemDesign: 'System design',
-  tradeoffReasoning: 'Trade-off reasoning',
-  customerImpact: 'Customer impact',
+  // Was 'System design', which only fit a backend candidate. The panel now
+  // interviews for data, frontend, platform and anything typed into "Other",
+  // and a data engineer was being marked against an axis nobody asked them about.
+  technicalDepth: 'Technical depth',
+  problemSolving: 'Problem solving & trade-offs',
+  // Was 'Customer impact'. For an infrastructure or data role the honest
+  // question is not who the customer was, it is which number moved and whether
+  // they know it.
+  impact: 'Impact & outcomes',
   communication: 'Communication',
   ownership: 'Ownership & scope',
 };
@@ -212,7 +232,15 @@ export type SessionEvent =
   | { type: 'caption'; speaker: 'candidate' | PanelistId; text: string; final: boolean }
   | { type: 'claim'; claim: Claim }
   | { type: 'scenario'; scenario: Scenario | null }
-  | { type: 'scorecard'; scorecard: Scorecard };
+  | { type: 'scorecard'; scorecard: Scorecard }
+  /**
+   * The panel has just spoken its closing line and the interview is over.
+   *
+   * `speakMs` is roughly how long that line takes to say — the room waits it
+   * out before ending, so the candidate hears the goodbye instead of the call
+   * dropping mid-sentence.
+   */
+  | { type: 'concluded'; reason: string; speakMs: number };
 
 // ------------------------------------------------------------------ helpers
 
@@ -221,9 +249,9 @@ export function emptyModel(sessionId: string, profile: CandidateProfile | null =
     sessionId,
     profile,
     skills: {
-      systemDesign: 0.5,
-      tradeoffReasoning: 0.5,
-      customerImpact: 0.5,
+      technicalDepth: 0.5,
+      problemSolving: 0.5,
+      impact: 0.5,
       communication: 0.5,
       ownership: 0.5,
     },

@@ -48,7 +48,7 @@ const DEFAULT_COMPANY_HISTORY: Scorecard[] = [
           { quote: 'We designed an event-driven SSE and WebSocket bridge with in-memory state models to keep turn round-trip latency under 1200ms.', t: 215 },
           { quote: 'To prevent cascade failures during concurrent bidding, we isolated agent turns into a single round-trip evaluation cycle.', t: 460 },
         ],
-        ratings: { systemDesign: 4.6, tradeoffReasoning: 4.4, communication: 4.5 },
+        ratings: { technicalDepth: 4.6, problemSolving: 4.4, communication: 4.5 },
       },
       {
         panelist: 'product',
@@ -59,7 +59,7 @@ const DEFAULT_COMPANY_HISTORY: Scorecard[] = [
         evidence: [
           { quote: 'We added synchronized presence and active speaker detection so candidates never felt they were talking over the panel.', t: 340 },
         ],
-        ratings: { customerImpact: 4.3, tradeoffReasoning: 4.1, communication: 4.2 },
+        ratings: { impact: 4.3, problemSolving: 4.1, communication: 4.2 },
       },
       {
         panelist: 'hr',
@@ -70,7 +70,7 @@ const DEFAULT_COMPANY_HISTORY: Scorecard[] = [
         evidence: [
           { quote: 'I led the end-to-end multi-agent protocol design and coordinated testing between backend services and client state.', t: 520 },
         ],
-        ratings: { ownership: 4.6, communication: 4.4, tradeoffReasoning: 4.2 },
+        ratings: { ownership: 4.6, communication: 4.4, problemSolving: 4.2 },
       },
     ],
     claims: [
@@ -98,7 +98,7 @@ const DEFAULT_COMPANY_HISTORY: Scorecard[] = [
           { quote: 'We connected the Web Audio API AnalyserNode directly to the canvas visualizer for real-time decibel level feedback.', t: 195 },
           { quote: 'Optimized rendering cycles to ensure camera preview and live closed captions stream without UI blocking.', t: 380 },
         ],
-        ratings: { systemDesign: 4.1, tradeoffReasoning: 4.2, communication: 4.3 },
+        ratings: { technicalDepth: 4.1, problemSolving: 4.2, communication: 4.3 },
       },
       {
         panelist: 'product',
@@ -109,7 +109,7 @@ const DEFAULT_COMPANY_HISTORY: Scorecard[] = [
         evidence: [
           { quote: 'Candidate confidence increases significantly when they can verify audio and video inputs in a dedicated pre-join greenroom.', t: 310 },
         ],
-        ratings: { customerImpact: 4.6, tradeoffReasoning: 4.3, communication: 4.3 },
+        ratings: { impact: 4.6, problemSolving: 4.3, communication: 4.3 },
       },
       {
         panelist: 'hr',
@@ -120,7 +120,7 @@ const DEFAULT_COMPANY_HISTORY: Scorecard[] = [
         evidence: [
           { quote: 'Took direct responsibility for candidate onboarding experience and streamlined the assessment report layout.', t: 470 },
         ],
-        ratings: { ownership: 4.4, communication: 4.4, tradeoffReasoning: 4.1 },
+        ratings: { ownership: 4.4, communication: 4.4, problemSolving: 4.1 },
       },
     ],
     claims: [

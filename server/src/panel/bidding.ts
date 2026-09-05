@@ -3,7 +3,7 @@ import { SIGNALS, SYSTEM_PROMPTS, getSystemPrompt } from './personas.js';
 import { LLM_ENABLED, ask, parseJson } from './llm.js';
 import * as model from './model.js';
 
-export const CUSTOMER_GAP = 'customer impact not addressed';
+export const CUSTOMER_GAP = 'impact never quantified — no number, no user named';
 
 // All three panelists bid on the same answer AND draft their reply in the same
 // pass, so a turn costs one round trip rather than two — see docs/workflow.md
@@ -44,6 +44,18 @@ interface Draft {
   /** Set only when this panelist wants to open a role-play. */
   scenario?: string;
 }
+
+/**
+ * The turn at which the panel stops asking and starts closing.
+ *
+ * routes/llm.ts imports this to know when the reply it just streamed was the
+ * goodbye, and tells the room to end the call. A literal in both places drifts,
+ * and the room would either cut the closing off or never end at all.
+ */
+export const CONCLUDE_AT_TURN = 10;
+
+/** One turn earlier the panel starts steering toward the close. */
+const LATE_STAGE_TURN = CONCLUDE_AT_TURN - 2;
 
 /** A role-play runs for this many candidate answers, then the panel moves on. */
 const SCENARIO_LENGTH = 3;
@@ -148,13 +160,13 @@ export function context(answer: string): string {
           'Whoever the introduction speaks to most should score highest — the other two score',
           'lower but still write the question they would have asked.',
         ].join('\n')
-      : m.turns >= 10
+      : m.turns >= CONCLUDE_AT_TURN
         ? [
             'FINAL TURN / CONCLUSION: The interview has reached its target duration of 10-12 minutes (10 turns).',
             'Rohan or the highest bidder should politely wrap up the interview, thank the candidate by name for their time, and state that the panel is concluding to finalize their 360° scorecard.',
             'Do NOT ask another open-ended technical challenge. Keep it a warm, professional closing sentence.',
           ].join('\n')
-        : m.turns >= 8
+        : m.turns >= LATE_STAGE_TURN
           ? [
               'LATE STAGE: Approaching the 10-12 minute mark (Question 8-9 of 10).',
               'Focus on closing any remaining unanswered gaps or asking a final key trade-off question before wrapping up.',
@@ -167,7 +179,7 @@ export function context(answer: string): string {
           'Stay inside it. Press on what they would actually do, step by step.',
           'Do not start another one.',
         ].join('\n')
-      : canOpen && m.turns < 8
+      : canOpen && m.turns < LATE_STAGE_TURN
         ? [
             'No role-play is running, and you may start one. Put the candidate inside a',
             'concrete situation built from something they have ALREADY claimed — their own',
@@ -300,7 +312,7 @@ function draftWithKeywords(id: PanelistId, answer: string, gapIsNew: boolean): D
   // wins every remaining turn and the panel stops feeling like a panel.
   if (id === 'product' && gapIsNew) {
     score = 0.95;
-    reason = 'infrastructure described, customer impact never mentioned';
+    reason = 'work described, but nothing about what it changed';
   }
 
   const intent: Bid['intent'] = score >= 0.9 ? 'challenge' : id === 'hr' ? 'followup' : 'probe';
@@ -355,12 +367,12 @@ export async function runPanel(answer: string): Promise<TurnDecision> {
   const winner = bids[0].panelist;
 
   if (technical) {
-    model.nudgeSkill('systemDesign', 0.8);
+    model.nudgeSkill('technicalDepth', 0.8);
     if (!mentionsCustomer) {
-      model.nudgeSkill('customerImpact', 0.2);
+      model.nudgeSkill('impact', 0.2);
       model.addGap(CUSTOMER_GAP);
     } else {
-      model.nudgeSkill('customerImpact', 0.75);
+      model.nudgeSkill('impact', 0.75);
     }
   }
 

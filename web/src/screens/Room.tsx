@@ -23,6 +23,29 @@ const AVATARS: Record<PanelistId, string> = {
 };
 
 /**
+ * Where the interview actually is, derived from the turn count the server
+ * publishes over SSE.
+ *
+ * This used to be a dropdown the candidate could pick from, which meant the
+ * header claimed a stage nobody was in — and let the person being interviewed
+ * choose what they were being interviewed on. The panel decides the arc
+ * (bidding.ts changes its instructions at turns 1, 8 and 10); the room reports
+ * it. The boundaries below are those same numbers.
+ */
+const STAGES = [
+  { until: 1, label: 'Introduction' },
+  { until: 4, label: 'Core Experience' },
+  { until: 8, label: 'Depth & Trade-offs' },
+  { until: 10, label: 'Ownership & Alignment' },
+  { until: Infinity, label: 'Wrapping Up' },
+] as const;
+
+const stageFor = (turns: number): { index: number; label: string } => {
+  const index = STAGES.findIndex(s => turns <= s.until);
+  return { index, label: STAGES[index].label };
+};
+
+/**
  * What the engine reports it is doing, in the room's own words. Null means say
  * nothing — idle and silent are not worth a line.
  *
@@ -45,7 +68,7 @@ function formatTimer(seconds: number): string {
 }
 
 export default function Room({ candidateName, role, level, onEnd }: Props) {
-  const { model, bids, speaking: serverSpeaking, caption, heard, connected } = useSession();
+  const { model, bids, speaking: serverSpeaking, caption, heard, connected, concluded } = useSession();
   const [session, setSession] = useState<JoinResult | null>(null);
   const [elapsedSec, setElapsedSec] = useState<number>(0);
 
@@ -77,8 +100,6 @@ export default function Room({ candidateName, role, level, onEnd }: Props) {
   const [showContextDrawer, setShowContextDrawer] = useState(false);
   const [showGuideModal, setShowGuideModal] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
-  const [showStageMenu, setShowStageMenu] = useState(false);
-  const [currentStage, setCurrentStage] = useState('System Design');
   const [activeSpeakerId, setActiveSpeakerId] = useState<PanelistId>('technical');
 
   const [joining, setJoining] = useState(false);
@@ -364,6 +385,20 @@ export default function Room({ candidateName, role, level, onEnd }: Props) {
     onEnd(actualDuration);
   }
 
+  // The panel has said goodbye. Let the closing line finish playing, then end
+  // the call the same way the button does — the candidate should not have to
+  // work out that it is over, or sit in a room nobody is going to speak in
+  // again while the idle timeout burns Conversational AI minutes.
+  //
+  // handleLeave is deliberately not a dependency: it is redefined every render,
+  // and depending on it would restart this timer on every caption that arrives.
+  useEffect(() => {
+    if (!concluded || !session) return;
+    const id = setTimeout(() => void handleLeave(), concluded.speakMs);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [concluded, session]);
+
   // Leaving by any route other than the button — closing the tab, refreshing,
   // navigating away — used to leave the agent sitting in the channel until
   // Agora's idle timeout collected it. Conversational AI bills by the minute,
@@ -436,6 +471,7 @@ export default function Room({ candidateName, role, level, onEnd }: Props) {
   const panelLine = livePanel ?? caption?.text ?? null;
   const candidateLine = liveCandidate ?? heard ?? null;
   const agentStateLabel = AGENT_STATE_LABEL[agentState];
+  const stage = stageFor(model.turns);
 
   return (
     <div className="h-full flex flex-col bg-[#FAF9F6] text-gray-900 select-none overflow-hidden font-sans relative">
@@ -713,55 +749,35 @@ export default function Room({ candidateName, role, level, onEnd }: Props) {
           </div>
         </div>
 
-        {/* Center: Target Role Track & Stage Stepper */}
+        {/* Center: Target Role Track & Stage Stepper.
+            Read-only. The stage is where the panel has taken the interview, not
+            a setting — see stageFor(). */}
         <div className="flex flex-col items-center justify-center gap-1.5">
-          <div className="relative">
-            <button
-              onClick={() => setShowStageMenu(!showStageMenu)}
-              className="flex items-center gap-2 text-sm sm:text-base font-bold text-gray-800 hover:text-gray-950 px-3 py-1 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer"
-            >
-              <span className="text-[#2563EB]">{role}:</span>
-              <span>{currentStage}</span>
-              <svg className="w-4 h-4 text-gray-500 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-
-            {showStageMenu && (
-              <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 w-64 bg-white border border-[#EBE6DF] rounded-2xl shadow-xl py-2 z-30 animate-in fade-in zoom-in-95 duration-150">
-                <div className="px-4 py-1.5 border-b border-gray-100 text-[11px] font-mono uppercase text-gray-400 font-bold">
-                  {role} Evaluation Track
-                </div>
-                {['System Design', 'Architecture Deep Dive', 'Trade-off Analysis', 'HR & Alignment'].map(stage => (
-                  <button
-                    key={stage}
-                    onClick={() => {
-                      setCurrentStage(stage);
-                      setShowStageMenu(false);
-                    }}
-                    className={`w-full text-left px-4 py-2.5 text-xs font-semibold flex items-center justify-between hover:bg-gray-50 transition-colors cursor-pointer ${
-                      currentStage === stage ? 'text-[#2563EB] bg-blue-50/70 font-bold' : 'text-gray-700'
-                    }`}
-                  >
-                    <span>{stage}</span>
-                    {currentStage === stage && <span className="w-2 h-2 rounded-full bg-[#2563EB]" />}
-                  </button>
-                ))}
-              </div>
-            )}
+          <div className="flex items-center gap-2 text-sm sm:text-base font-bold text-gray-800 px-3 py-1">
+            <span className="text-[#2563EB]">{role}:</span>
+            <span>{stage.label}</span>
           </div>
 
           {/* 4-Step Stepper Line */}
-          <div className="flex items-center gap-2">
-            <div className="flex items-center">
-              <span className="w-3 h-3 rounded-full bg-[#2563EB] ring-4 ring-blue-100" />
-              <span className="w-12 h-0.5 bg-[#2563EB]" />
-              <span className="w-2.5 h-2.5 rounded-full bg-[#E6DAC8]" />
-              <span className="w-12 h-0.5 bg-[#E6DAC8]" />
-              <span className="w-2.5 h-2.5 rounded-full bg-[#E6DAC8]" />
-              <span className="w-12 h-0.5 bg-[#E6DAC8]" />
-              <span className="w-2.5 h-2.5 rounded-full bg-[#E6DAC8]" />
-            </div>
+          {/* The dots were painted at step one and stayed there for the whole
+              interview. They track the real stage now. */}
+          <div className="flex items-center">
+            {STAGES.map((s, i) => (
+              <div key={s.label} className="flex items-center" title={s.label}>
+                {i > 0 && (
+                  <span className={`w-10 h-0.5 ${i <= stage.index ? 'bg-[#2563EB]' : 'bg-[#E6DAC8]'}`} />
+                )}
+                <span
+                  className={
+                    i === stage.index
+                      ? 'w-3 h-3 rounded-full bg-[#2563EB] ring-4 ring-blue-100'
+                      : i < stage.index
+                        ? 'w-2.5 h-2.5 rounded-full bg-[#2563EB]'
+                        : 'w-2.5 h-2.5 rounded-full bg-[#E6DAC8]'
+                  }
+                />
+              </div>
+            ))}
           </div>
         </div>
 

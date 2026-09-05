@@ -21,9 +21,9 @@ import { writeVerdicts } from './verdicts.js';
 
 /** What each panelist grades on, and how much each part counts. Sums to 1. */
 const WEIGHTS: Record<PanelistId, Partial<Record<CompetencyId, number>>> = {
-  technical: { systemDesign: 0.5, tradeoffReasoning: 0.3, communication: 0.2 },
-  product: { customerImpact: 0.5, tradeoffReasoning: 0.3, communication: 0.2 },
-  hr: { ownership: 0.5, communication: 0.3, tradeoffReasoning: 0.2 },
+  technical: { technicalDepth: 0.5, problemSolving: 0.3, communication: 0.2 },
+  product: { impact: 0.5, problemSolving: 0.3, communication: 0.2 },
+  hr: { ownership: 0.5, communication: 0.3, problemSolving: 0.2 },
 };
 
 function verdictFor(score: number): Verdict {

@@ -4,7 +4,7 @@
 // bidding logic is wrong — not the test.
 
 import assert from 'node:assert';
-import { runPanel } from '../panel/bidding.js';
+import { CUSTOMER_GAP, runPanel } from '../panel/bidding.js';
 import * as model from '../panel/model.js';
 
 model.reset();
@@ -17,8 +17,10 @@ assert.equal(first.winner, 'product', `product should win, got ${first.winner}`)
 assert.equal(byId.product, 0.95, `product bid should be 0.95, got ${byId.product}`);
 assert.ok(byId.product > byId.technical, 'product must outbid technical here');
 assert.ok(
-  model.getModel().gaps.includes('customer impact not addressed'),
-  'the missing-customer-impact gap must be recorded on the shared model',
+  // Imported, not retyped: this assertion broke the day the gap was reworded,
+  // which is a test failing for the wrong reason.
+  model.getModel().gaps.includes(CUSTOMER_GAP),
+  'the unquantified-impact gap must be recorded on the shared model',
 );
 
 // 2. The floor moves — product does not speak twice in a row

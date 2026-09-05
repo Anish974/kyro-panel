@@ -47,7 +47,27 @@ for (const t of [
   assert.equal(classify(t), 'clarify', `"${t}" is a clarifying question`);
 }
 
-// 3. Real answers. Including ones that contain the same words — this is the
+// 3. Asking for a moment to think. A hard question deserves a pause, and
+//    graded as an answer "let me think" scores near zero on every axis and
+//    costs a question the candidate never got to use.
+for (const t of [
+  'let me think',
+  'give me a second',
+  'hold on',
+  'one moment',
+  'I need a minute',
+  'let me gather my thoughts',
+  'bear with me',
+]) {
+  assert.equal(classify(t), 'thinking', `"${t}" is a pause, not an answer`);
+}
+
+// "Take your time" and nothing else — the candidate asked for silence, so the
+// worst thing the panel can do is fill it with words.
+assert.match(replyTo('thinking', null), /take your time/i, 'a pause is granted, not questioned');
+assert.ok(replyTo('thinking', 'Some question?').length < 40, 'and granted briefly');
+
+// 4. Real answers. Including ones that contain the same words — this is the
 //    failure that would quietly throw away a candidate's best turn.
 for (const t of [
   'I have spent six years on payments infrastructure, mostly backend work on Postgres and Kafka.',

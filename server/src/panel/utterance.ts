@@ -11,7 +11,7 @@
 // straight into the resume. The candidate had not said a word about themselves
 // yet and was already being asked about data skew across Spark executors.
 
-export type UtteranceKind = 'audio-check' | 'clarify' | 'answer';
+export type UtteranceKind = 'audio-check' | 'clarify' | 'thinking' | 'answer';
 
 /**
  * Only a SHORT utterance can be an audio check.
@@ -27,6 +27,17 @@ const SHORT = 80;
 /** Pure logistics. The panel confirms and hands the floor straight back. */
 const AUDIO_CHECK =
   /\b(am i audible|can you (hear|listen to) me|do you (hear|read) me|are you (there|able to hear)|is (this|my mic|the mic|it) (on|working|audible)|mic check|sound check|am i (coming through|audible now)|hello,? ?(is )?(anyone|anybody) there)\b/i;
+
+/**
+ * They are asking for a moment to think.
+ *
+ * A hard system-design question deserves a pause, and saying so out loud is
+ * what a candidate actually does. Graded as an answer it is a terrible one —
+ * "let me think" scores near zero on every axis and burns a question. A human
+ * panel says "take your time" and waits.
+ */
+const THINKING =
+  /\b(let me think|give me a (second|moment|minute)|hold on|one (second|moment|minute)|i need a (second|moment|minute)|let me (gather|collect) my thoughts|thinking(\s+about (it|that))?|bear with me|just a (sec|second|moment))\b/i;
 
 /** They want something repeated or explained before they can answer. */
 const CLARIFY =
@@ -51,7 +62,10 @@ export function classify(text: string): UtteranceKind {
   if (t.length > SHORT) return 'answer';
 
   if (AUDIO_CHECK.test(t) || BARE_CHECK.test(t)) return 'audio-check';
+  // Clarify before thinking: "give me a second" is a pause, but "could you say
+  // that again, give me a second" is really a request to repeat.
   if (CLARIFY.test(t)) return 'clarify';
+  if (THINKING.test(t)) return 'thinking';
   return 'answer';
 }
 
@@ -61,10 +75,15 @@ export function classify(text: string): UtteranceKind {
  * Warm and short, because the point is to get out of the way: the candidate is
  * waiting to start, not looking for conversation.
  */
-export function replyTo(kind: 'audio-check' | 'clarify', lastQuestion: string | null): string {
+export function replyTo(kind: Exclude<UtteranceKind, 'answer'>, lastQuestion: string | null): string {
   if (kind === 'audio-check') {
-    return "Yes, we can hear you clearly. Whenever you are ready, go ahead and introduce yourself.";
+    return 'Yes, we can hear you clearly. Whenever you are ready, go ahead and introduce yourself.';
   }
+
+  // Short on purpose. They asked for silence to think in, so the worst thing
+  // the panel can do is fill it.
+  if (kind === 'thinking') return 'Take your time.';
+
   // Repeating the actual question beats "could you elaborate" — the candidate
   // asked because they lost it, so give it back to them verbatim.
   return lastQuestion

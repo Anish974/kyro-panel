@@ -143,9 +143,9 @@ function coerce(fallback: PanelistVerdict, raw: RawVerdict | undefined, lines: {
 
 const PROMPT = `You are writing up a completed three-person interview panel. The interview is over; the candidate has left. Each panelist now writes their own independent verdict.
 
-ARJUN MEHTA — technical architect. Grades systemDesign, tradeoffReasoning, communication.
-ANANYA SHAH — product manager. Grades customerImpact, tradeoffReasoning, communication.
-ROHAN IYER — hiring manager. Grades ownership, communication, tradeoffReasoning.
+ARJUN MEHTA — technical architect. Grades technicalDepth, problemSolving, communication.
+ANANYA SHAH — product manager. Grades impact, problemSolving, communication.
+ROHAN IYER — hiring manager. Grades ownership, communication, problemSolving.
 
 RULES:
 - Write as that person, in first person, about THIS candidate. Two to four sentences. Say what you actually saw — the specific system, decision or number they described. No generic HR language, no "demonstrated strong skills".
@@ -161,7 +161,7 @@ RULES:
 
 Answer with one JSON object, no prose around it. Use only the competency keys listed for that panelist:
 {"technical": {"verdict": "...", "score": 0.0, "confidence": 0.0, "rationale": "...",
-               "ratings": {"systemDesign": 0.0, "tradeoffReasoning": 0.0, "communication": 0.0},
+               "ratings": {"technicalDepth": 0.0, "problemSolving": 0.0, "communication": 0.0},
                "evidence": [{"quote": "..."}]},
  "product": {...}, "hr": {...}}`;
 

@@ -201,33 +201,26 @@ export default function Scorecard({ scorecard, onBack }: Props) {
                       {p.name.split(' ')[0]}
                     </th>
                   ))}
-                  <th className="px-8 py-3.5 text-xs font-bold tracking-widest text-gray-400 uppercase text-right">
-                    SPREAD
-                  </th>
                 </tr>
               </thead>
               <tbody>
-                {competencies.map(c => {
-                  const cells = scorecard.verdicts.map(v => v.ratings[c]);
-                  const given = cells.filter((n): n is number => n !== undefined);
-                  const spread = given.length > 1 ? Math.max(...given) - Math.min(...given) : 0;
-                  return (
-                    <tr key={c} className="border-b border-[#FAF9F6] last:border-0 hover:bg-gray-50/70 transition-colors">
-                      <td className="px-8 py-4 text-sm font-semibold text-gray-900">{COMPETENCIES[c]}</td>
-                      {cells.map((n, i) => (
-                        <td key={i} className="px-8 py-4 font-mono text-sm font-bold text-right text-gray-800">
-                          {n === undefined ? <span className="text-gray-300 font-normal">&mdash;</span> : n.toFixed(1)}
-                        </td>
-                      ))}
-                      <td
-                        className="px-8 py-4 font-mono text-sm font-bold text-right"
-                        style={{ color: spread >= 1 ? '#D97706' : '#6B7280' }}
-                      >
-                        {spread.toFixed(1)}
+                {/* No spread column. It was max-minus-min across the three
+                    marks — a number with no reading attached, since a wide
+                    spread can mean the panel genuinely disagreed or simply that
+                    one of them barely covered that axis. The rationales below
+                    say which, in words. */}
+                {competencies.map(c => (
+                  <tr key={c} className="border-b border-[#FAF9F6] last:border-0 hover:bg-gray-50/70 transition-colors">
+                    <td className="px-8 py-4 text-sm font-semibold text-gray-900">{COMPETENCIES[c]}</td>
+                    {scorecard.verdicts.map(v => (
+                      <td key={v.panelist} className="px-8 py-4 font-mono text-sm font-bold text-right text-gray-800">
+                        {v.ratings[c] === undefined
+                          ? <span className="text-gray-300 font-normal">&mdash;</span>
+                          : v.ratings[c]!.toFixed(1)}
                       </td>
-                    </tr>
-                  );
-                })}
+                    ))}
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>

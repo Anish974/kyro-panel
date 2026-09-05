@@ -62,7 +62,7 @@ export default function App() {
           confidence: 0.2,
           rationale: 'Interview concluded early before technical depth could be evaluated.',
           evidence: [],
-          ratings: { systemDesign: 2.5, tradeoffReasoning: 2.5, communication: 2.5 },
+          ratings: { technicalDepth: 2.5, problemSolving: 2.5, communication: 2.5 },
         },
         {
           panelist: 'product',
@@ -71,7 +71,7 @@ export default function App() {
           confidence: 0.2,
           rationale: 'Interview concluded early before product impact questions were answered.',
           evidence: [],
-          ratings: { customerImpact: 2.5, tradeoffReasoning: 2.5, communication: 2.5 },
+          ratings: { impact: 2.5, problemSolving: 2.5, communication: 2.5 },
         },
         {
           panelist: 'hr',
@@ -80,7 +80,7 @@ export default function App() {
           confidence: 0.2,
           rationale: 'Interview concluded early before behavioural alignment could be assessed.',
           evidence: [],
-          ratings: { ownership: 2.5, communication: 2.5, tradeoffReasoning: 2.5 },
+          ratings: { ownership: 2.5, communication: 2.5, problemSolving: 2.5 },
         },
       ],
       claims: [],
