@@ -116,7 +116,7 @@ export function buildJoinBody(opts: {
       channel,
       token,
       agent_rtc_uid: String(AGENT_UID),
-      remote_rtc_uids: [String(CANDIDATE_UID)],
+      remote_rtc_uids: ['*'],
       enable_string_uid: false,
       idle_timeout: IDLE_TIMEOUT,
 

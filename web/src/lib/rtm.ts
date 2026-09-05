@@ -52,61 +52,48 @@ export async function connectRtm(
     return null;
   }
 
-  // Imported here rather than at the top: the Signaling SDK is ~1.4 MB and
-  // nothing before the candidate presses Join needs it, so Vite keeps it out of
-  // the login screen's bundle entirely.
-  const { default: AgoraRTM } = await import('agora-rtm');
-
-  // The RTM user id must match the RTC uid, as a string. Agora addresses
-  // presence and messages by publisher id and the room matches on that.
-  // The token goes to login(), not the constructor — RTMConfig has no token.
-  const rtm = new AgoraRTM.RTM(appId, String(uid));
-
-  // Listeners go on before login: they are global, and events published between
-  // login and subscribe would otherwise be dropped.
-  rtm.addEventListener('message', (event: RTMEvents.MessageEvent) => {
-    const raw = decode(event.message);
-    if (!raw) return;
-    let parsed: Record<string, unknown>;
-    try {
-      parsed = JSON.parse(raw) as Record<string, unknown>;
-    } catch {
-      return;
-    }
-    const transcript = toTranscript(parsed);
-    if (transcript) handlers.onTranscript?.(transcript);
-  });
-
-  rtm.addEventListener('presence', (event: RTMEvents.PresenceEvent) => {
-    // stateChanged is a flat Record<string, string>. `state` is the one we
-    // want, and only the agent ever publishes it.
-    if (isAgentState(event.stateChanged?.state)) {
-      handlers.onAgentState?.(event.stateChanged.state);
-    }
-  });
-
   try {
+    // Imported dynamically so the Signaling SDK stays out of the initial bundle
+    const { default: AgoraRTM } = await import('agora-rtm');
+
+    // The RTM user id must match the RTC uid, as a string.
+    const rtm = new AgoraRTM.RTM(appId, String(uid));
+
+    // Listeners go on before login
+    rtm.addEventListener('message', (event: RTMEvents.MessageEvent) => {
+      const raw = decode(event.message);
+      if (!raw) return;
+      try {
+        const parsed = JSON.parse(raw) as Record<string, unknown>;
+        const transcript = toTranscript(parsed);
+        if (transcript) handlers.onTranscript?.(transcript);
+      } catch {
+        // ignore malformed message
+      }
+    });
+
+    rtm.addEventListener('presence', (event: RTMEvents.PresenceEvent) => {
+      if (isAgentState(event.stateChanged?.state)) {
+        handlers.onAgentState?.(event.stateChanged.state);
+      }
+    });
+
     await rtm.login({ token: rtmToken });
     await rtm.subscribe(channel, { withMessage: true, withPresence: true });
     console.log(`[rtm] subscribed to "${channel}" as ${uid} — live captions on`);
+
+    return {
+      close: async () => {
+        try {
+          await rtm.unsubscribe(channel);
+          await rtm.logout();
+        } catch (err) {
+          console.warn('[rtm] teardown failed:', err);
+        }
+      },
+    };
   } catch (err) {
-    console.warn('[rtm] could not subscribe, falling back to end-of-turn captions:', err);
-    try {
-      await rtm.logout();
-    } catch {
-      // Already down; nothing to clean up.
-    }
+    console.warn('[rtm] could not connect to Signaling side channel, continuing without live captions:', err);
     return null;
   }
-
-  return {
-    close: async () => {
-      try {
-        await rtm.unsubscribe(channel);
-        await rtm.logout();
-      } catch (err) {
-        console.warn('[rtm] teardown failed:', err);
-      }
-    },
-  };
 }
