@@ -74,6 +74,7 @@ export default function Room({ candidateName, role, onEnd }: Props) {
   // arrived. The join card is gone by then, so this needs its own place to show.
   const [panelError, setPanelError] = useState<string | null>(null);
   const [micVolume, setMicVolume] = useState<number>(0);
+  const [prejoinMicVolume, setPrejoinMicVolume] = useState<number>(0);
 
   // Live from Agora Signaling, not from our own SSE feed. SSE only carries a
   // caption once the whole turn is over, because that is the first moment the
@@ -83,7 +84,67 @@ export default function Room({ candidateName, role, onEnd }: Props) {
   const [agentState, setAgentState] = useState<AgentState>('idle');
 
   const videoRef = useRef<HTMLVideoElement>(null);
+  const prejoinVideoRef = useRef<HTMLVideoElement>(null);
   const agoraVideoRef = useRef<HTMLDivElement>(null);
+
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const animFrameRef = useRef<number | null>(null);
+
+  // Real-time audio analyser for pre-join mic check (Google Meet style)
+  useEffect(() => {
+    if (session || !localStream) {
+      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+      if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
+        void audioCtxRef.current.close().catch(() => {});
+      }
+      return;
+    }
+
+    const audioTrack = localStream.getAudioTracks()[0];
+    if (!audioTrack || !micOn) {
+      setPrejoinMicVolume(0);
+      return;
+    }
+
+    try {
+      const AudioCtxClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      const audioCtx = new AudioCtxClass();
+      audioCtxRef.current = audioCtx;
+      const analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 64;
+      analyser.smoothingTimeConstant = 0.5;
+
+      const sourceStream = new MediaStream([audioTrack]);
+      const source = audioCtx.createMediaStreamSource(sourceStream);
+      source.connect(analyser);
+
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+      const updateVolume = () => {
+        if (!audioCtx || audioCtx.state === 'closed') return;
+        analyser.getByteFrequencyData(dataArray);
+        let sum = 0;
+        for (let i = 0; i < dataArray.length; i++) {
+          sum += dataArray[i];
+        }
+        const avg = sum / dataArray.length;
+        const normalized = Math.min(100, Math.round((avg / 110) * 100));
+        setPrejoinMicVolume(normalized);
+        animFrameRef.current = requestAnimationFrame(updateVolume);
+      };
+
+      updateVolume();
+    } catch (err) {
+      console.warn('Pre-join audio analyser init failed:', err);
+    }
+
+    return () => {
+      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+      if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
+        void audioCtxRef.current.close().catch(() => {});
+      }
+    };
+  }, [localStream, micOn, session]);
 
   // Monitor real-time mic volume from Agora track to detect if mic is silent/muted
   useEffect(() => {
@@ -106,24 +167,27 @@ export default function Room({ candidateName, role, onEnd }: Props) {
   const currentSpeaker: PanelistId | null = serverSpeaking;
   const speakerInfo = currentSpeaker ? panelistById(currentSpeaker) : null;
 
-  // Request browser camera permissions for preview (video only, audio managed exclusively by Agora)
+  // Request browser camera & mic permissions for preview
   async function requestCameraAccess() {
     setPermissionError(null);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
-        audio: false,
+        audio: true,
       });
       setLocalStream(stream);
       setCameraPermission('granted');
       setCameraOn(true);
+      if (prejoinVideoRef.current) {
+        prejoinVideoRef.current.srcObject = stream;
+      }
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
       }
     } catch (err) {
-      console.warn('Camera access denied or unavailable:', err);
+      console.warn('Media access denied or unavailable:', err);
       setCameraPermission('denied');
-      setPermissionError('Camera permission was denied. Please allow access in browser settings.');
+      setPermissionError('Camera or Microphone permission was denied. Please allow access in browser settings.');
     }
   }
 
@@ -133,7 +197,7 @@ export default function Room({ candidateName, role, onEnd }: Props) {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
-          audio: false,
+          audio: true,
         });
         if (!mounted) {
           stream.getTracks().forEach(t => t.stop());
@@ -141,13 +205,16 @@ export default function Room({ candidateName, role, onEnd }: Props) {
         }
         setLocalStream(stream);
         setCameraPermission('granted');
+        if (prejoinVideoRef.current) {
+          prejoinVideoRef.current.srcObject = stream;
+        }
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
         }
       } catch (err) {
         if (mounted) {
           setCameraPermission('denied');
-          setPermissionError('Please allow camera access to enable video preview.');
+          setPermissionError('Please allow camera and microphone access to enable device preview.');
         }
       }
     }
@@ -168,8 +235,9 @@ export default function Room({ candidateName, role, onEnd }: Props) {
   useEffect(() => {
     if (session?.camera && agoraVideoRef.current) {
       session.camera.play(agoraVideoRef.current);
-    } else if (localStream && videoRef.current) {
-      videoRef.current.srcObject = localStream;
+    } else if (localStream) {
+      if (videoRef.current) videoRef.current.srcObject = localStream;
+      if (prejoinVideoRef.current) prejoinVideoRef.current.srcObject = localStream;
     }
   }, [session, localStream]);
 
@@ -179,21 +247,41 @@ export default function Room({ candidateName, role, onEnd }: Props) {
     setJoinError(null);
     setPanelError(null);
     setJoining(true);
+
+    // Stop pre-join audio analyser & local audio tracks to release microphone cleanly for Agora
+    if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+    if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
+      void audioCtxRef.current.close().catch(() => {});
+    }
+    localStream?.getAudioTracks().forEach(t => t.stop());
+
     try {
+      // Ensure candidate role & profile are synced with server
+      await fetch('/candidate', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ name: candidateName, role }),
+      }).catch(err => console.warn('Candidate sync warning:', err));
+
       const result = await joinAsCandidate(CHANNEL, undefined, {
         onTranscript: t => {
-          // Each update replaces the line rather than appending — Agora resends
-          // the whole sentence so far, so appending would stutter it.
           if (t.speaker === 'candidate') setLiveCandidate(t.text);
           else setLivePanel(t.text);
         },
         onAgentState: setAgentState,
       });
+
+      // Apply initial mic & camera states to Agora tracks
+      if (!micOn && result.mic) {
+        await result.mic.setEnabled(false);
+      }
+      if (!cameraOn && result.camera) {
+        await result.camera.setEnabled(false);
+      }
+
       setSession(result);
 
-      // The panel joins AFTER the candidate is in the room. Its greeting is
-      // spoken the moment it arrives, so starting it first would play the
-      // introduction to an empty channel.
+      // Start the panel agent
       const res = await fetch('/agent/start', { method: 'POST' });
       if (!res.ok) {
         const body = (await res.json().catch(() => null)) as { error?: string } | null;
@@ -206,43 +294,36 @@ export default function Room({ candidateName, role, onEnd }: Props) {
     }
   }
 
-  /**
-   * Takes the panel out of the channel on the way out. Best effort — a failed
-   * stop must not trap the candidate in the room, and Agora's idle_timeout
-   * collects the agent anyway.
-   */
   async function handleLeave() {
     try {
       await fetch('/agent/stop', { method: 'POST' });
     } catch {
-      // Nothing the candidate can do about it.
+      // Best effort
     }
     onEnd();
   }
 
   async function toggleMic() {
+    const next = !micOn;
     if (session?.mic) {
-      const next = !micOn;
       await session.mic.setEnabled(next);
       setMicOn(next);
     } else if (localStream) {
-      const next = !micOn;
       localStream.getAudioTracks().forEach(track => {
         track.enabled = next;
       });
       setMicOn(next);
     } else {
-      setMicOn(!micOn);
+      setMicOn(next);
     }
   }
 
   async function toggleCamera() {
+    const next = !cameraOn;
     if (session?.camera) {
-      const next = !cameraOn;
       await session.camera.setEnabled(next);
       setCameraOn(next);
     } else if (localStream) {
-      const next = !cameraOn;
       localStream.getVideoTracks().forEach(track => {
         track.enabled = next;
       });
@@ -252,23 +333,246 @@ export default function Room({ candidateName, role, onEnd }: Props) {
     }
   }
 
-  // Panel and candidate captions are two separate lines — the candidate's last
-  // answer must never hide whoever on the panel is speaking right now.
   const panelSpeakerName =
     PANEL.find(p => p.id === caption?.speaker)?.name ?? 'Panel';
 
-  // Signaling wins whenever it is up — same words, sooner, and updated while
-  // they are still being spoken. SSE remains the fallback for a room where
-  // Signaling never connected.
   const panelLine = livePanel ?? caption?.text ?? null;
   const candidateLine = liveCandidate ?? heard ?? null;
   const agentStateLabel = AGENT_STATE_LABEL[agentState];
 
   return (
-    <div className="h-full flex flex-col bg-[#FAF9F6] text-gray-900 select-none overflow-hidden font-sans">
+    <div className="h-full flex flex-col bg-[#FAF9F6] text-gray-900 select-none overflow-hidden font-sans relative">
+      {/* ---------------------------------------------------- GOOGLE MEET PRE-JOIN GREENROOM MODAL */}
+      {!session && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 md:p-10 bg-slate-950/75 backdrop-blur-2xl animate-in fade-in duration-300 overflow-y-auto">
+          <div className="w-full max-w-5xl bg-white rounded-3xl border border-[#EBE6DF] shadow-2xl overflow-hidden flex flex-col lg:flex-row my-auto">
+            {/* Left: Video Preview & Device Controls */}
+            <div className="flex-1 bg-[#11141C] p-6 sm:p-8 flex flex-col justify-between relative min-h-[340px] sm:min-h-[420px]">
+              {/* Video container */}
+              <div className="absolute inset-0 z-0 overflow-hidden">
+                {cameraOn && cameraPermission === 'granted' ? (
+                  <video
+                    ref={prejoinVideoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    className="w-full h-full object-cover transform -scale-x-100"
+                  />
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center gap-4 bg-gradient-to-b from-[#181D28] to-[#0D1017] text-white p-6">
+                    <div className="w-24 h-24 rounded-full bg-blue-600/20 border border-blue-500/30 flex items-center justify-center shadow-xl">
+                      <span className="font-display text-3xl font-extrabold text-blue-400">
+                        {candidateName.split(' ').map(n => n[0]).join('')}
+                      </span>
+                    </div>
+                    <div className="text-center">
+                      <h4 className="text-base font-bold text-white">
+                        {!cameraOn ? 'Camera is turned off' : 'Camera preview unavailable'}
+                      </h4>
+                      <p className="text-xs text-gray-400 mt-1 max-w-xs">
+                        {!cameraOn
+                          ? 'Click the camera button below to turn your video on.'
+                          : permissionError || 'Please allow camera and mic permissions in browser.'}
+                      </p>
+                    </div>
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/30 pointer-events-none" />
+              </div>
+
+              {/* Top overlay badge */}
+              <div className="relative z-10 flex items-center justify-between">
+                <div className="flex items-center gap-2 bg-black/60 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-white/20 text-white text-xs font-semibold">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>Device Check</span>
+                </div>
+                <div className="bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/20 text-gray-300 text-xs font-mono">
+                  Kyro Greenroom
+                </div>
+              </div>
+
+              {/* Bottom overlay: Live Mic Equalizer & Controls */}
+              <div className="relative z-10 flex flex-col gap-4 mt-auto">
+                {/* Floating Equalizer / Audio Waveform Meter */}
+                <div className="self-center bg-black/65 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/20 flex items-center gap-3 shadow-lg">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-white">
+                    <svg className={`w-4 h-4 ${micOn && prejoinMicVolume > 0 ? 'text-emerald-400' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                    </svg>
+                    <span>{micOn ? (prejoinMicVolume > 0 ? 'Speaking...' : 'Microphone Ready') : 'Mic Muted'}</span>
+                  </div>
+
+                  {/* 7-bar dynamic audio visualizer */}
+                  <div className="flex items-center gap-[3px] h-4">
+                    {[1, 2, 3, 4, 5, 6, 7].map(i => {
+                      const factor = 1 + ((i * 2) % 4) * 0.3;
+                      const barHeight = micOn && prejoinMicVolume > 0
+                        ? Math.min(16, Math.max(3, Math.round((prejoinMicVolume / 100) * 16 * factor)))
+                        : 3;
+                      return (
+                        <span
+                          key={i}
+                          className={`w-[3px] rounded-full transition-all duration-75 ${
+                            micOn && prejoinMicVolume > 0 ? 'bg-emerald-400' : 'bg-gray-500'
+                          }`}
+                          style={{ height: `${barHeight}px` }}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Google Meet style round control toggles */}
+                <div className="flex items-center justify-center gap-4">
+                  {/* Mic Toggle Button */}
+                  <button
+                    onClick={toggleMic}
+                    title={micOn ? 'Turn off microphone' : 'Turn on microphone'}
+                    className={`w-13 h-13 rounded-full flex items-center justify-center transition-all shadow-xl active:scale-95 cursor-pointer ${
+                      micOn
+                        ? 'bg-white/95 hover:bg-white text-gray-900 ring-2 ring-white/40'
+                        : 'bg-red-500 hover:bg-red-600 text-white ring-2 ring-red-400/50'
+                    }`}
+                  >
+                    {micOn ? (
+                      <svg className="w-6 h-6 text-[#2563EB]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                      </svg>
+                    ) : (
+                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                        <line x1="1" y1="1" x2="23" y2="23" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                      </svg>
+                    )}
+                  </button>
+
+                  {/* Camera Toggle Button */}
+                  <button
+                    onClick={toggleCamera}
+                    title={cameraOn ? 'Turn off camera' : 'Turn on camera'}
+                    className={`w-13 h-13 rounded-full flex items-center justify-center transition-all shadow-xl active:scale-95 cursor-pointer ${
+                      cameraOn
+                        ? 'bg-white/95 hover:bg-white text-gray-900 ring-2 ring-white/40'
+                        : 'bg-red-500 hover:bg-red-600 text-white ring-2 ring-red-400/50'
+                    }`}
+                  >
+                    {cameraOn ? (
+                      <svg className="w-6 h-6 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                    ) : (
+                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        <line x1="2" y1="2" x2="22" y2="22" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Right: Join Info Card */}
+            <div className="w-full lg:w-[420px] p-8 sm:p-10 flex flex-col justify-between bg-white">
+              <div className="flex flex-col gap-6">
+                {/* Brand Tag */}
+                <div className="flex items-center justify-between">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-200/80 text-xs font-bold text-[#2563EB]">
+                    <span className="w-2 h-2 rounded-full bg-[#2563EB] animate-pulse" />
+                    EchoSphere AI Panel
+                  </div>
+                  <span className="text-xs font-semibold text-gray-500">Live Voice Session</span>
+                </div>
+
+                {/* Heading & Target Role */}
+                <div>
+                  <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-950 font-display tracking-tight">
+                    Ready to join?
+                  </h2>
+                  <p className="text-xs sm:text-sm text-gray-600 mt-1">
+                    Connect live to begin your interview evaluation.
+                  </p>
+
+                  {/* Highlighted Candidate & Target Role card */}
+                  <div className="mt-4 p-4 rounded-2xl bg-[#FAF9F6] border border-[#EBE6DF] flex flex-col gap-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-mono uppercase text-gray-500 font-bold">Candidate</span>
+                      <span className="text-sm font-bold text-gray-900">{candidateName}</span>
+                    </div>
+                    <div className="flex items-center justify-between pt-2 border-t border-[#EBE6DF]">
+                      <span className="text-xs font-mono uppercase text-gray-500 font-bold">Target Role</span>
+                      <span className="text-xs font-bold text-[#2563EB] bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-lg">
+                        {role}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Interviewers in the room */}
+                <div className="flex flex-col gap-2.5">
+                  <span className="text-xs font-bold uppercase tracking-wider text-gray-500 font-mono">
+                    3 AI Interviewers in Room
+                  </span>
+                  <div className="flex flex-col gap-2">
+                    {PANEL.map(p => (
+                      <div key={p.id} className="flex items-center gap-3 p-2 rounded-xl bg-gray-50 border border-gray-100">
+                        <img src={AVATARS[p.id]} alt={p.name} className="w-8 h-8 rounded-full object-cover border border-gray-200" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-bold text-gray-900 truncate">{p.name}</p>
+                          <p className="text-[11px] text-gray-500 truncate">{p.role}</p>
+                        </div>
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Button & Errors */}
+              <div className="mt-8 flex flex-col gap-3">
+                {joinError && (
+                  <div className="p-3 text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2">
+                    <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <span>{joinError}</span>
+                  </div>
+                )}
+
+                <button
+                  onClick={handleJoin}
+                  disabled={joining}
+                  className="w-full py-4 px-6 rounded-2xl bg-[#2563EB] hover:bg-blue-700 text-white font-bold text-sm sm:text-base shadow-xl hover:shadow-blue-500/25 transition-all flex items-center justify-center gap-3 cursor-pointer active:scale-98 disabled:opacity-50 disabled:cursor-wait"
+                >
+                  {joining ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      <span>Connecting to Panel...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Join AI Panel</span>
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                      </svg>
+                    </>
+                  )}
+                </button>
+
+                <p className="text-[11px] text-center text-gray-500">
+                  Microphone will connect live upon joining. Speak naturally.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ---------------------------------------------------- TOP HEADER BAR */}
       <header className="h-[72px] shrink-0 bg-white border-b border-[#EBE6DF] px-8 flex items-center justify-between z-20 shadow-xs">
-        {/* Left: Brand & AI Panel Badge */}
+        {/* Left: Brand, AI Panel Badge, Candidate Name & Target Role */}
         <div className="flex items-center gap-3.5">
           <div className="flex items-center gap-2.5 text-[#2563EB]">
             <div className="w-10 h-10 rounded-2xl bg-blue-50 border border-blue-200 flex items-center justify-center shadow-2xs">
@@ -287,21 +591,24 @@ export default function Room({ candidateName, role, onEnd }: Props) {
 
           <span className="w-px h-6 bg-[#EBE6DF]" />
 
-          {/* Who is being interviewed, and for what — the room used to show
-              neither, so it never matched the scorecard it produces. */}
-          <div className="hidden lg:flex flex-col leading-tight">
+          {/* Candidate Name & Role (Always visible) */}
+          <div className="flex flex-col leading-tight">
             <span className="text-sm font-bold text-gray-900">{candidateName}</span>
-            <span className="text-xs text-gray-500 font-medium">{role}</span>
+            <span className="text-xs font-semibold text-[#2563EB] bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200/60 inline-flex items-center gap-1 w-fit mt-0.5">
+              <span>🎯</span>
+              <span>{role}</span>
+            </span>
           </div>
         </div>
 
-        {/* Center: Stage Dropdown & Progress Dots */}
+        {/* Center: Target Role Track & Stage Stepper */}
         <div className="flex flex-col items-center justify-center gap-1.5">
           <div className="relative">
             <button
               onClick={() => setShowStageMenu(!showStageMenu)}
-              className="flex items-center gap-2 text-base font-bold text-gray-800 hover:text-gray-950 px-3 py-1 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer"
+              className="flex items-center gap-2 text-sm sm:text-base font-bold text-gray-800 hover:text-gray-950 px-3 py-1 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer"
             >
+              <span className="text-[#2563EB]">{role}:</span>
               <span>{currentStage}</span>
               <svg className="w-4 h-4 text-gray-500 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
@@ -309,7 +616,10 @@ export default function Room({ candidateName, role, onEnd }: Props) {
             </button>
 
             {showStageMenu && (
-              <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 w-56 bg-white border border-[#EBE6DF] rounded-2xl shadow-xl py-2 z-30 animate-in fade-in zoom-in-95 duration-150">
+              <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 w-64 bg-white border border-[#EBE6DF] rounded-2xl shadow-xl py-2 z-30 animate-in fade-in zoom-in-95 duration-150">
+                <div className="px-4 py-1.5 border-b border-gray-100 text-[11px] font-mono uppercase text-gray-400 font-bold">
+                  {role} Evaluation Track
+                </div>
                 {['System Design', 'Architecture Deep Dive', 'Trade-off Analysis', 'HR & Alignment'].map(stage => (
                   <button
                     key={stage}
@@ -448,7 +758,7 @@ export default function Room({ candidateName, role, onEnd }: Props) {
               className="absolute inset-0 z-0 [&>video]:w-full [&>video]:h-full [&>video]:object-cover"
             />
 
-            {/* Camera Permission / Camera Off Fallback (No fake stock photo) */}
+            {/* Camera Permission / Camera Off Fallback */}
             {(!cameraOn || cameraPermission !== 'granted') && (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-gradient-to-b from-[#181D26] to-[#0F1218] text-white p-6 z-0">
                 <div className="w-24 h-24 rounded-3xl bg-white/10 border border-white/15 flex flex-col items-center justify-center shadow-xl backdrop-blur-md">
@@ -493,31 +803,6 @@ export default function Room({ candidateName, role, onEnd }: Props) {
               </div>
             </div>
 
-            {/* Join Interactive Session Prompt (Top right / center subtle prompt) */}
-            {!session && (
-              <div className="relative z-10 self-center justify-self-center my-auto bg-white/95 backdrop-blur-md rounded-3xl p-6 shadow-2xl border border-[#EBE6DF] flex flex-col items-center gap-3 text-center max-w-sm animate-in fade-in zoom-in-95 duration-200">
-                <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-200 text-[#2563EB] grid place-items-center font-bold text-lg shadow-2xs">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="text-base font-extrabold text-gray-900">Start Interview Session</h3>
-                  <p className="text-xs text-gray-600 mt-1 leading-relaxed">
-                    Connect live to speak with Arjun, Ananya, and Rohan.
-                  </p>
-                </div>
-                <button
-                  onClick={handleJoin}
-                  disabled={joining}
-                  className="w-full h-10 rounded-xl bg-[#2563EB] hover:bg-blue-700 text-white font-bold text-xs transition-all shadow-md active:scale-98 disabled:opacity-50 cursor-pointer"
-                >
-                  {joining ? 'Connecting to Room...' : 'Join AI Panel'}
-                </button>
-                {joinError && <span className="text-xs text-red-500 font-semibold">{joinError}</span>}
-              </div>
-            )}
-
             {/* Bottom Floating Elements: Mic Status & Closed Captions */}
             <div className="relative z-10 flex items-end justify-between gap-5 mt-auto">
               {/* Bottom Left: Mic On / Live Sound Wave Card */}
@@ -560,7 +845,7 @@ export default function Room({ candidateName, role, onEnd }: Props) {
                   {/* Warning if mic is on but volume is 0 */}
                   {session && micOn && micVolume === 0 && (
                     <span className="text-[10px] text-amber-600 font-bold leading-tight">
-                      ⚠️ Low volume. Speak louder or check Windows mic volume.
+                      ⚠️ Low volume. Speak louder or check mic settings.
                     </span>
                   )}
                 </div>
