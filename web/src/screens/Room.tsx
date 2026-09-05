@@ -737,14 +737,16 @@ export default function Room({ candidateName, role, onEnd }: Props) {
 
           {/* Interview Time Clock */}
           <div className="flex items-center gap-2.5 border-l border-[#EBE6DF] pl-5">
-            <svg className="w-5 h-5 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
+            <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-700 shrink-0">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
             <div className="flex flex-col">
-              <span className="font-mono font-bold text-sm md:text-base text-gray-900 tracking-tight leading-none">
+              <span className="font-mono font-black text-sm md:text-base text-[#111827] tracking-tight leading-none">
                 {formatTimer(session ? elapsedSec : (model.elapsed || 0))}
               </span>
-              <span className="text-[11px] text-gray-500 font-medium leading-none mt-1">
+              <span className="text-[11px] text-[#4B5565] font-semibold leading-none mt-1">
                 {model.turns > 0 ? `Turn ${model.turns} / ~10` : '10-12 min max'}
               </span>
             </div>
