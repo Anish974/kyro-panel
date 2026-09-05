@@ -86,8 +86,15 @@ function stream(res: Response, speaker: Panelist, reply: string, interruptable: 
   const id = `kyro-${Date.now()}`;
   const send = (obj: unknown) => res.write(`data: ${JSON.stringify(obj)}\n\n`);
 
-  // Agora reads only this chunk's metadata and ignores its choices.
-  // We send both voice_setting for MiniMax and voice_type for standard compatibility.
+  // Agora reads only this chunk's metadata and ignores its choices. This is
+  // what makes three interviewers share one voice pipeline: tts_params.params
+  // is merged into the configured vendor's params for this response only.
+  //
+  // MiniMax takes voice_setting.voice_id and nothing else. We used to send a
+  // voice_type alongside it, copied from the doc's example — but that example
+  // is a different vendor's field name, and mixing a foreign key into the
+  // params update is a good way to have the whole update ignored and the reply
+  // spoken in the agent's default voice instead. One vendor, one shape.
   send({
     id,
     object: 'chat.completion.custom_metadata',
@@ -97,7 +104,6 @@ function stream(res: Response, speaker: Panelist, reply: string, interruptable: 
       tts_params: {
         params: {
           voice_setting: { voice_id: speaker.voice },
-          voice_type: speaker.voice,
         },
       },
     },

@@ -9,6 +9,7 @@ import {
 } from '@kyro/shared';
 import { SIGNALS } from './personas.js';
 import { getModel } from './model.js';
+import { writeVerdicts } from './verdicts.js';
 
 // The artefact the hiring team actually reads. Three separate verdicts built
 // from the same shared model — never averaged, because the disagreement is the
@@ -90,18 +91,29 @@ function buildVerdict(id: PanelistId): PanelistVerdict {
 
 const HIRE_SIDE = (v: Verdict): boolean => v === 'hire' || v === 'lean_hire';
 
-export function buildScorecard(
+/**
+ * The finished scorecard.
+ *
+ * Async because the three write-ups are one LLM call reading the transcript —
+ * see verdicts.ts for why the templated version was not good enough. The call
+ * degrades to the tracked-score version rather than failing, so this always
+ * resolves to a usable card.
+ */
+export async function buildScorecard(
   candidateName = 'Candidate',
   role = 'Senior Backend Engineer',
   level?: string,
   customDuration?: number,
-): Scorecard {
+): Promise<Scorecard> {
   const model = getModel();
   const currentLevel = level || model.profile?.level || 'Intermediate (2-6 years)';
-  const verdicts = PANEL.map(p => buildVerdict(p.id));
   const durationSec = typeof customDuration === 'number' && customDuration >= 0
     ? customDuration
     : model.elapsed;
+
+  // Written after the duration is settled, so the panel's write-up and the
+  // number on the card agree about how long the interview actually ran.
+  const verdicts = await writeVerdicts(PANEL.map(p => buildVerdict(p.id)), durationSec);
 
   return {
     sessionId: model.sessionId,

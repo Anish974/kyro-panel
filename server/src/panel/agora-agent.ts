@@ -1,6 +1,12 @@
-import type { CandidateProfile } from '@kyro/shared';
+import { PANEL, panelistById, type CandidateProfile, type PanelistId } from '@kyro/shared';
 import { AGENT_UID, CANDIDATE_UID, credentials, mint } from './tokens.js';
 import { profile } from './model.js';
+
+/**
+ * Who speaks the greeting. Arjun opens the interview, so the agent must start
+ * in his voice — and routes/agent.ts captions the greeting under the same id.
+ */
+export const GREETER: PanelistId = 'technical';
 
 // Puts the AI panel into an Agora channel, or takes it out.
 //
@@ -12,8 +18,28 @@ import { profile } from './model.js';
 
 const BASE = 'https://api.agora.io/api/conversational-ai-agent/v2/projects';
 
-/** How long Agora waits in silence before the agent leaves on its own. */
-const IDLE_TIMEOUT = 120;
+/**
+ * How long Agora waits in silence before the agent leaves on its own.
+ *
+ * This is the backstop for a session nobody closed properly. It cannot go much
+ * lower: a candidate thinking hard about a system-design question goes quiet
+ * for thirty or forty seconds, and cutting the panel off mid-thought is worse
+ * than the minute it saves.
+ */
+const IDLE_TIMEOUT = 90;
+
+/**
+ * Nothing should hold an agent longer than this.
+ *
+ * The interview targets 10-12 minutes. Conversational AI bills by the minute
+ * and the free tier is 300 of them, so one agent left running by a crashed tab,
+ * a blocked beacon or a dropped network can quietly eat a real interview's
+ * worth of quota. The browser stops the agent on leave and on unload; this is
+ * what catches the times neither happens.
+ */
+const MAX_SESSION_MS = 15 * 60 * 1000;
+
+let reaper: ReturnType<typeof setTimeout> | null = null;
 
 export interface RunningAgent {
   agentId: string;
@@ -47,10 +73,23 @@ const auth = (id: string, secret: string): string =>
  * Baked into the join request, so whoever starts the agent must do it AFTER the
  * candidate has signed in or the panel opens without their name.
  */
+/**
+ * Roles are written for the eye — "Behavioural / HR" — and this line is read
+ * aloud, where a slash comes out as "slash". Case is left alone on purpose:
+ * lowercasing turns HR into "hr", which TTS says as a word rather than two
+ * letters.
+ */
+const spoken = (role: string): string => role.replace(/\s*\/\s*/g, ' and ');
+
 export function greeting(p: CandidateProfile | null): string {
+  // Names come from PANEL, not from a string written here. The voice that
+  // speaks this line already drifted from the name it claims once; a hardcoded
+  // roster is the same bug waiting to happen the next time someone is renamed.
+  const greeter = panelistById(GREETER);
+  const others = PANEL.filter(x => x.id !== GREETER);
   const intro =
-    "I'm Arjun Mehta, technical architect. With me are Ananya Shah from product " +
-    'and Rohan Iyer from the hiring team.';
+    `I'm ${greeter.name}, ${spoken(greeter.role)}. With me are ` +
+    `${others.map(x => `${x.name}, ${spoken(x.role)}`).join(', and ')}.`;
   const ask =
     'Start by introducing yourself — who you are, and the piece of work you are ' +
     'proudest of. We will go from there.';
@@ -59,8 +98,11 @@ export function greeting(p: CandidateProfile | null): string {
 
   const firstName = p.name.split(' ')[0];
   const resume = p.resumeText ? ' We have read your resume.' : '';
-  const levelNotice = p.level ? ` (${p.level})` : '';
-  return `Hi ${firstName}, thanks for making the time. ${intro} We are here for the ${p.role}${levelNotice} role.${resume} ${ask}`;
+  // The level is deliberately not spoken. It reads "Intermediate (2-6 years)",
+  // which TTS delivers as "open paren two to six years close paren", and the
+  // candidate already knows their own experience. The panel still gets it —
+  // bidding.ts puts it in every prompt, which is where it actually matters.
+  return `Hi ${firstName}, thanks for making the time. ${intro} We are here for the ${p.role} role.${resume} ${ask}`;
 }
 
 /** Thrown for every configuration problem so callers can report one shape. */
@@ -140,13 +182,21 @@ export function buildJoinBody(opts: {
         params: { model: 'kyro-panel' },
       },
 
+      // The voice the agent starts with, which is the voice the GREETING is
+      // spoken in — greeting_message never passes through /chat/completions, so
+      // no per-turn override has been sent when it plays.
+      //
+      // It used to be Ananya's, while the greeting says "I'm Arjun Mehta,
+      // technical architect". A female voice introduced itself as Arjun on
+      // every single interview. Derived from PANEL now so it cannot drift from
+      // whoever the greeting actually claims to be.
       tts: {
         credential_mode: 'managed',
         vendor: 'minimax',
         params: {
           url: 'wss://api.minimax.io/ws/v1/t2a_v2',
           model: 'speech-2.6-turbo',
-          voice_setting: { voice_id: 'English_captivating_female1' },
+          voice_setting: { voice_id: panelistById(GREETER).voice },
         },
       },
 
@@ -248,6 +298,15 @@ export async function startAgent(orchestratorUrl: string): Promise<RunningAgent>
   if (!data.agent_id) throw new Error(`Agora returned no agent_id: ${text.slice(0, 200)}`);
 
   current = { agentId: data.agent_id, channel, startedAt: Date.now() };
+
+  // Hard ceiling on a billable agent. unref() so a pending reaper never keeps
+  // the process alive on its own.
+  reaper = setTimeout(() => {
+    console.warn(`[agent] ${current?.agentId} hit the ${MAX_SESSION_MS / 60000}-minute cap — stopping it`);
+    void stopAgent();
+  }, MAX_SESSION_MS);
+  reaper.unref?.();
+
   return current;
 }
 
@@ -272,6 +331,10 @@ export async function stopAgent(agentId?: string): Promise<{ stopped: boolean; d
     const detail = res.ok ? `agent ${id} stopped` : `stop failed ${res.status}: ${(await res.text()).slice(0, 200)}`;
     return { stopped: res.ok, detail };
   } finally {
-    if (!agentId || agentId === current?.agentId) current = null;
+    if (!agentId || agentId === current?.agentId) {
+      current = null;
+      if (reaper) clearTimeout(reaper);
+      reaper = null;
+    }
   }
 }

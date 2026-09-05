@@ -16,7 +16,7 @@ await runPanel('We put a payment queue in front of Redis so writes never block.'
 await runPanel('We sharded by merchant id because hot merchants caused write locks.');
 await runPanel('Replica lag was the real constraint, so we indexed on the partition key.');
 
-const card = buildScorecard('Anish Patankar');
+const card = await buildScorecard('Anish Patankar');
 const by = Object.fromEntries(card.verdicts.map(v => [v.panelist, v]));
 
 assert.equal(card.verdicts.length, 3, 'all three panelists must return a verdict');
@@ -36,7 +36,7 @@ assert.ok(by.technical.evidence.length > 0, 'technical heard system-design signa
 
 // No quotes, no confidence.
 model.reset();
-const empty = buildScorecard('Nobody');
+const empty = await buildScorecard('Nobody');
 for (const v of empty.verdicts) {
   assert.equal(v.evidence.length, 0, `${v.panelist} cited evidence from an empty interview`);
   assert.ok(v.confidence <= 0.4, `${v.panelist} is too confident with no evidence: ${v.confidence}`);

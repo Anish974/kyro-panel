@@ -86,6 +86,12 @@ export default function Room({ candidateName, role, level, onEnd }: Props) {
   // Distinct from joinError: the candidate is in the room, but the panel never
   // arrived. The join card is gone by then, so this needs its own place to show.
   const [panelError, setPanelError] = useState<string | null>(null);
+
+  // Ending is one click away from the timer and one click away from the hangup
+  // button, and it cannot be undone: the agent leaves the channel, the session
+  // is written up, and restarting costs another slice of the Conversational AI
+  // minute budget. Worth one confirmation.
+  const [confirmEnd, setConfirmEnd] = useState(false);
   const [micVolume, setMicVolume] = useState<number>(0);
   const [prejoinMicVolume, setPrejoinMicVolume] = useState<number>(0);
 
@@ -357,6 +363,28 @@ export default function Room({ candidateName, role, level, onEnd }: Props) {
     }
     onEnd(actualDuration);
   }
+
+  // Leaving by any route other than the button — closing the tab, refreshing,
+  // navigating away — used to leave the agent sitting in the channel until
+  // Agora's idle timeout collected it. Conversational AI bills by the minute,
+  // so a few refreshes during testing quietly cost more than a real interview.
+  //
+  // sendBeacon is the only request that survives unload; a normal fetch is
+  // cancelled the moment the page goes away. /agent/stop takes no body and no
+  // auth header, which is exactly what beacon can send.
+  useEffect(() => {
+    const stopAgent = () => {
+      if (!session) return;
+      navigator.sendBeacon('/agent/stop');
+    };
+    // pagehide fires on mobile Safari's bfcache path where unload never does.
+    window.addEventListener('pagehide', stopAgent);
+    window.addEventListener('beforeunload', stopAgent);
+    return () => {
+      window.removeEventListener('pagehide', stopAgent);
+      window.removeEventListener('beforeunload', stopAgent);
+    };
+  }, [session]);
 
   async function toggleMic() {
     const next = !micOn;
@@ -770,7 +798,7 @@ export default function Room({ candidateName, role, level, onEnd }: Props) {
 
           {/* Leave Interview Button */}
           <button
-            onClick={() => void handleLeave()}
+            onClick={() => setConfirmEnd(true)}
             className="border border-[#EBE6DF] hover:border-gray-400 text-gray-800 hover:text-gray-950 bg-white hover:bg-gray-50 text-xs md:text-sm font-bold px-4 py-2 rounded-xl transition-colors shadow-2xs cursor-pointer"
           >
             Leave Interview
@@ -1138,7 +1166,7 @@ export default function Room({ candidateName, role, level, onEnd }: Props) {
         {/* Center Hangup Button */}
         <div className="flex items-center">
           <button
-            onClick={() => void handleLeave()}
+            onClick={() => setConfirmEnd(true)}
             title="End Interview"
             className="w-15 h-15 rounded-full bg-[#EF4444] hover:bg-red-600 text-white flex items-center justify-center shadow-xl hover:shadow-red-500/30 transition-all active:scale-95 cursor-pointer"
           >
@@ -1185,6 +1213,68 @@ export default function Room({ candidateName, role, level, onEnd }: Props) {
         isOpen={showContextDrawer}
         onClose={() => setShowContextDrawer(false)}
       />
+
+      {/* ---------------------------------------------------- END INTERVIEW CONFIRM */}
+      {confirmEnd && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+          <div className="w-full max-w-md bg-white rounded-3xl p-7 shadow-2xl border border-[#EBE6DF] flex flex-col gap-5">
+            <div className="flex items-start gap-3.5">
+              <div className="w-11 h-11 shrink-0 rounded-2xl bg-red-50 text-red-600 grid place-items-center">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-900 leading-tight">End the interview?</h3>
+                <p className="text-sm text-gray-600 mt-1.5 leading-relaxed">
+                  The panel leaves the room and writes up your scorecard. This cannot be undone —
+                  you would have to start a new interview.
+                </p>
+              </div>
+            </div>
+
+            {/* What they are ending, in the panel's own terms. Ten questions is
+                the target, so answering three and ending is worth seeing before
+                you commit to it. */}
+            <div className="flex items-center gap-4 px-4 py-3 rounded-2xl bg-[#FAF9F6] border border-[#EBE6DF] text-sm">
+              <div className="flex flex-col">
+                <span className="font-mono font-bold text-gray-900">{model.turns}<span className="text-gray-400"> / ~10</span></span>
+                <span className="text-[11px] text-gray-500 font-medium">questions answered</span>
+              </div>
+              <span className="w-px h-8 bg-[#EBE6DF]" />
+              <div className="flex flex-col">
+                <span className="font-mono font-bold text-gray-900">{formatTimer(elapsedSec)}</span>
+                <span className="text-[11px] text-gray-500 font-medium">elapsed</span>
+              </div>
+            </div>
+
+            {model.turns < 4 && (
+              <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3.5 py-2.5 leading-relaxed">
+                The panel has only heard {model.turns} {model.turns === 1 ? 'answer' : 'answers'}. Your scorecard will say
+                so, and all three verdicts will be low confidence.
+              </p>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmEnd(false)}
+                className="flex-1 h-11 rounded-xl border border-[#EBE6DF] bg-white hover:bg-gray-50 text-gray-800 font-bold text-sm transition-colors cursor-pointer"
+              >
+                Keep going
+              </button>
+              <button
+                onClick={() => {
+                  setConfirmEnd(false);
+                  void handleLeave();
+                }}
+                className="flex-1 h-11 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-sm transition-colors shadow-sm cursor-pointer"
+              >
+                End &amp; see scorecard
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ---------------------------------------------------- INTERVIEW GUIDE MODAL */}
       {showGuideModal && (

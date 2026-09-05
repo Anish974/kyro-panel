@@ -91,10 +91,10 @@ router.post('/reset', (req, res) => {
 // Ends the interview as far as the hiring team is concerned: build the three
 // verdicts from the model as it stands and push them to anyone watching.
 // The stored profile wins over the query string — it is what the panel heard.
-router.get('/scorecard', (req, res) => {
+router.get('/scorecard', async (req, res) => {
   const saved = profile();
   const customDuration = req.query.duration !== undefined ? Number(req.query.duration) : undefined;
-  const scorecard = buildScorecard(
+  const scorecard = await buildScorecard(
     saved?.name ?? String(req.query.name ?? 'Candidate'),
     saved?.role ?? String(req.query.role || 'Senior Backend Engineer'),
     saved?.level ?? (req.query.level ? String(req.query.level) : undefined),

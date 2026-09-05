@@ -1,5 +1,5 @@
 import { Router, type Request } from 'express';
-import { AgentConfigError, greeting, running, startAgent, stopAgent } from '../panel/agora-agent.js';
+import { AgentConfigError, GREETER, greeting, running, startAgent, stopAgent } from '../panel/agora-agent.js';
 import { profile, resetSessionTimer } from '../panel/model.js';
 import { broadcast } from './events.js';
 
@@ -73,7 +73,7 @@ router.post('/agent/start', async (req, res) => {
     //
     // Sent as a caption rather than a transcript turn: it is not scored, and
     // recording it would set lastSpeaker and quietly change who wins turn 1.
-    broadcast({ type: 'speaking', panelist: 'technical', text: greeting(candidate) });
+    broadcast({ type: 'speaking', panelist: GREETER, text: greeting(candidate) });
 
     console.log(`[agent] started ${agent.agentId} in ${agent.channel} for ${candidate.name} (clock reset to 0s)`);
     res.json({ running: true, ...agent });
