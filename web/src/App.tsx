@@ -7,7 +7,6 @@ import Login, { type Candidate } from './screens/Login.js';
 const DEMO_CANDIDATE: Candidate = {
   name: 'Anish Patankar',
   role: 'Senior Backend Engineer',
-  email: 'candidate@gmail.com',
 };
 
 const DEFAULT_SCORECARD: ScorecardData = {

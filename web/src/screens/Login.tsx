@@ -5,7 +5,6 @@ import { RESUME_ACCEPT, extractResumeText } from '../lib/resume.js';
 export interface Candidate {
   name: string;
   role: string;
-  email: string;
   /** Plain text pulled out of the uploaded resume, if one was attached. */
   resumeText?: string;
 }
@@ -32,13 +31,13 @@ const ROLES = [
 const OTHER_ROLE = 'Other — type it in';
 
 export default function Login({ onLogin }: Props) {
+  // Name, role and resume are the only things the panel can actually use.
+  // There was an email and a password here that accepted anything and went
+  // nowhere — pure typing on demo day.
   const [name, setName] = useState('');
   const [role, setRole] = useState<string>(ROLES[0]);
   const [customRole, setCustomRole] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
 
   // Resume is optional, so its failures are shown next to the field and never
   // block sign-in — a candidate whose PDF will not parse still gets interviewed.
@@ -111,19 +110,10 @@ export default function Login({ onLogin }: Props) {
       setError('Please type the role you are interviewing for');
       return;
     }
-    if (!email.trim()) {
-      setError('Please enter your email or Gmail address');
-      return;
-    }
-    if (!password) {
-      setError('Please enter your password');
-      return;
-    }
     setError('');
     void enterRoom({
       name: name.trim(),
       role: effectiveRole,
-      email: email.trim(),
       ...(resumeText ? { resumeText } : {}),
     });
   };
@@ -131,12 +121,9 @@ export default function Login({ onLogin }: Props) {
   const handleQuickDemo = () => {
     setName('Anish Patankar');
     setRole(ROLES[0]);
-    setEmail('candidate@gmail.com');
-    setPassword('demo12345');
     void enterRoom({
       name: 'Anish Patankar',
       role: ROLES[0],
-      email: 'candidate@gmail.com',
       ...(resumeText ? { resumeText } : {}),
     });
   };
@@ -301,65 +288,6 @@ export default function Login({ onLogin }: Props) {
             {resumeError && (
               <p className="mt-2 text-xs text-[#EF4444] font-medium">{resumeError}</p>
             )}
-          </div>
-
-          <div>
-            <label htmlFor="email" className="block text-xs font-semibold uppercase tracking-wider text-[#4B5565] mb-2 font-mono">
-              Gmail / Email Address
-            </label>
-            <div className="relative">
-              <input
-                id="email"
-                type="email"
-                required
-                maxLength={PROFILE_LIMITS.email}
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="yourname@gmail.com"
-                className="w-full px-4 py-3 rounded-xl bg-[#FAF9F6] border border-[#EBE6DF] text-[#181A20] placeholder-[#8C93A3] text-sm focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent transition-all"
-              />
-              <div className="absolute right-3.5 top-3.5 text-[#8C93A3] pointer-events-none">
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                </svg>
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label htmlFor="password" className="block text-xs font-semibold uppercase tracking-wider text-[#4B5565] font-mono">
-                Password
-              </label>
-            </div>
-            <div className="relative">
-              <input
-                id="password"
-                type={showPassword ? 'text' : 'password'}
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter any password"
-                className="w-full px-4 py-3 rounded-xl bg-[#FAF9F6] border border-[#EBE6DF] text-[#181A20] placeholder-[#8C93A3] text-sm focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent transition-all"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3.5 top-3.5 text-[#8C93A3] hover:text-[#181A20] transition-colors"
-                tabIndex={-1}
-              >
-                {showPassword ? (
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
-                  </svg>
-                ) : (
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                  </svg>
-                )}
-              </button>
-            </div>
           </div>
 
           <button
