@@ -147,6 +147,57 @@ async function start(dry: boolean): Promise<void> {
           voice_setting: { voice_id: 'English_captivating_female1' },
         },
       },
+
+      // The panel takes ~1350ms to decide who speaks and draft the reply
+      // (docs/decisions.md). That is a real silence the candidate sits in.
+      // Agora fills it from its own side, so the wait costs nothing extra and
+      // the room stops sounding like it hung.
+      //
+      // Fires at 900ms, comfortably before the reply lands, so the filler is
+      // already playing when it arrives rather than colliding with it.
+      //
+      // The filler is spoken in whatever TTS voice is currently set — the
+      // PREVIOUS turn's winner, because we only name the next voice in the
+      // metadata chunk we have not sent yet. In a three-person panel that reads
+      // correctly: one interviewer murmurs while another takes the floor. Keep
+      // the phrases neutral enough that any of the three could have said them.
+      filler_words: {
+        enable: true,
+        trigger: {
+          mode: 'fixed_time',
+          fixed_time_config: { response_wait_ms: 900 },
+        },
+        content: {
+          mode: 'static',
+          static_config: {
+            phrases: [
+              'Mm-hmm.',
+              'Right.',
+              'Hmm, okay.',
+              'Let me think about that for a second.',
+              'Interesting.',
+              'Give me a moment.',
+            ],
+            selection_rule: 'shuffle',
+          },
+        },
+      },
+    },
+
+    // Turns on the Signaling side channel. The engine then publishes live
+    // partial transcripts (both sides) as RTM channel messages, and its own
+    // state — idle / listening / thinking / speaking / silent — as RTM presence
+    // on the same channel. Both are things our SSE feed cannot know: it only
+    // hears from us, and only once a whole turn is already over.
+    //
+    // These two sit BESIDE properties, not inside it.
+    advanced_features: {
+      enable_rtm: true,
+    },
+    parameters: {
+      data_channel: 'rtm',
+      enable_metrics: true,
+      enable_error_message: true,
     },
   };
 

@@ -3,6 +3,7 @@ import AgoraRTC, {
   type IMicrophoneAudioTrack,
   type ICameraVideoTrack,
 } from 'agora-rtc-sdk-ng';
+import { connectRtm, type RtmHandlers, type RtmSession } from './rtm.js';
 
 // The candidate's side of the call. The AI panel is a separate participant
 // that Agora's Conversational AI Engine puts into the same channel.
@@ -13,20 +14,23 @@ export interface JoinResult {
   client: IAgoraRTCClient;
   mic: IMicrophoneAudioTrack;
   camera: ICameraVideoTrack | null;
+  /** Signaling side channel: live captions and agent state. Null if it failed. */
+  rtm: RtmSession | null;
 }
 
 async function fetchToken(channel: string, uid: number) {
   const res = await fetch(`/token?channel=${encodeURIComponent(channel)}&uid=${uid}`);
   if (!res.ok) throw new Error(`token request failed (${res.status}) — is the server running?`);
-  return res.json() as Promise<{ appId: string; token: string }>;
+  return res.json() as Promise<{ appId: string; token: string; rtmToken: string }>;
 }
 
 export async function joinAsCandidate(
   channel: string,
   onRemoteAudio?: (uid: string | number) => void,
+  rtmHandlers?: RtmHandlers,
 ): Promise<JoinResult> {
   console.log(`[agora] Fetching token for channel "${channel}" and uid ${CANDIDATE_UID}...`);
-  const { appId, token } = await fetchToken(channel, CANDIDATE_UID);
+  const { appId, token, rtmToken } = await fetchToken(channel, CANDIDATE_UID);
 
   const client = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
 
@@ -73,11 +77,18 @@ export async function joinAsCandidate(
   await client.publish(camera ? [mic, camera] : [mic]);
   console.log('[agora] Published candidate tracks to channel');
 
-  return { client, mic, camera };
+  // Signaling last: the call is already up, so a Signaling failure costs the
+  // live captions and nothing else. connectRtm never throws — it returns null.
+  const rtm = rtmHandlers
+    ? await connectRtm({ appId, channel, uid: CANDIDATE_UID, rtmToken }, rtmHandlers)
+    : null;
+
+  return { client, mic, camera, rtm };
 }
 
 export async function leave(session: JoinResult | null): Promise<void> {
   if (!session) return;
+  await session.rtm?.close();
   session.mic.stop();
   session.mic.close();
   session.camera?.stop();

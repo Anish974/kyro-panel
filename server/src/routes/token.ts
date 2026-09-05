@@ -1,10 +1,16 @@
 import { Router } from 'express';
 // agora-token ships CommonJS — a named ESM import fails at runtime.
 import agoraToken from 'agora-token';
-const { RtcTokenBuilder, RtcRole } = agoraToken;
+const { RtcTokenBuilder, RtcRole, RtmTokenBuilder } = agoraToken;
 
-// Mints Agora RTC tokens. The App Certificate lives here and only here —
+// Mints Agora RTC and RTM tokens. The App Certificate lives here and only here —
 // it must never reach the browser.
+//
+// Two tokens, one request. RTC carries the audio; RTM carries the live
+// transcripts and the agent's state (thinking / speaking / listening), which
+// the Conversational AI Engine publishes on the same channel name. An RTC token
+// does not authenticate RTM — they are separate token types, and reusing one
+// for the other fails at login with a misleading error.
 
 const TTL = 3600;
 const router = Router();
@@ -26,7 +32,12 @@ router.get('/token', (req, res) => {
     appId, cert, channel, Number(uidRaw), RtcRole.PUBLISHER, expire, expire,
   );
 
-  res.json({ appId, channel, uid: Number(uidRaw), token, expiresIn: TTL });
+  // The RTM user id must be the string form of the RTC uid — the engine
+  // addresses transcript and presence events by publisher id, and the room
+  // matches them against the uids it already knows.
+  const rtmToken = RtmTokenBuilder.buildToken(appId, cert, uidRaw, expire);
+
+  res.json({ appId, channel, uid: Number(uidRaw), token, rtmToken, expiresIn: TTL });
 });
 
 export default router;

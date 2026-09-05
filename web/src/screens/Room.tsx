@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { PANEL, panelistById, type PanelistId } from '@kyro/shared';
 import { useSession } from '../lib/useSession.js';
 import { joinAsCandidate, leave, type JoinResult } from '../lib/agora.js';
+import type { AgentState } from '../lib/rtm.js';
 import PanelistTile from '../components/PanelistTile.js';
 import BidRail from '../components/BidRail.js';
 
@@ -18,6 +19,22 @@ const AVATARS: Record<PanelistId, string> = {
   technical: '/assets/arjun_mehta.jpg',
   product: '/assets/ananya_shah.jpg',
   hr: '/assets/rohan_iyer.jpg',
+};
+
+/**
+ * What the engine reports it is doing, in the room's own words. Null means say
+ * nothing — idle and silent are not worth a line.
+ *
+ * `thinking` is the one that earns its place: the panel takes over a second to
+ * decide who speaks next, and without this the room looks frozen for that
+ * second. Agora's filler words cover it in audio; this covers it on screen.
+ */
+const AGENT_STATE_LABEL: Record<AgentState, string | null> = {
+  thinking: 'Panel is deciding who asks next…',
+  listening: 'Listening to you',
+  speaking: 'Panel is speaking',
+  idle: null,
+  silent: null,
 };
 
 function formatTimer(seconds: number): string {
@@ -54,6 +71,13 @@ export default function Room({ candidateName, role, onEnd }: Props) {
   const [joining, setJoining] = useState(false);
   const [joinError, setJoinError] = useState<string | null>(null);
   const [micVolume, setMicVolume] = useState<number>(0);
+
+  // Live from Agora Signaling, not from our own SSE feed. SSE only carries a
+  // caption once the whole turn is over, because that is the first moment the
+  // server knows anything. These update while the words are still being said.
+  const [livePanel, setLivePanel] = useState<string | null>(null);
+  const [liveCandidate, setLiveCandidate] = useState<string | null>(null);
+  const [agentState, setAgentState] = useState<AgentState>('idle');
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const agoraVideoRef = useRef<HTMLDivElement>(null);
@@ -152,7 +176,15 @@ export default function Room({ candidateName, role, onEnd }: Props) {
     setJoinError(null);
     setJoining(true);
     try {
-      const result = await joinAsCandidate(CHANNEL);
+      const result = await joinAsCandidate(CHANNEL, undefined, {
+        onTranscript: t => {
+          // Each update replaces the line rather than appending — Agora resends
+          // the whole sentence so far, so appending would stutter it.
+          if (t.speaker === 'candidate') setLiveCandidate(t.text);
+          else setLivePanel(t.text);
+        },
+        onAgentState: setAgentState,
+      });
       setSession(result);
     } catch (err) {
       setJoinError((err as Error).message);
@@ -197,6 +229,13 @@ export default function Room({ candidateName, role, onEnd }: Props) {
   // answer must never hide whoever on the panel is speaking right now.
   const panelSpeakerName =
     PANEL.find(p => p.id === caption?.speaker)?.name ?? 'Panel';
+
+  // Signaling wins whenever it is up — same words, sooner, and updated while
+  // they are still being spoken. SSE remains the fallback for a room where
+  // Signaling never connected.
+  const panelLine = livePanel ?? caption?.text ?? null;
+  const candidateLine = liveCandidate ?? heard ?? null;
+  const agentStateLabel = AGENT_STATE_LABEL[agentState];
 
   return (
     <div className="h-full flex flex-col bg-[#FAF9F6] text-gray-900 select-none overflow-hidden font-sans">
@@ -338,6 +377,19 @@ export default function Room({ candidateName, role, onEnd }: Props) {
                 <span className="font-extrabold text-gray-950 text-base">{speakerInfo.name}</span>
                 <span className="text-gray-500 font-medium">({speakerInfo.role})</span>
               </>
+            ) : agentStateLabel ? (
+              <span
+                className={`font-semibold text-sm flex items-center gap-1.5 ${
+                  agentState === 'thinking' ? 'text-amber-600' : 'text-emerald-600'
+                }`}
+              >
+                <span
+                  className={`w-2 h-2 rounded-full ${
+                    agentState === 'thinking' ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'
+                  }`}
+                />
+                {agentStateLabel}
+              </span>
             ) : (
               <span className="font-medium text-gray-500 text-sm">None (Panel listening to candidate)</span>
             )}
@@ -487,19 +539,19 @@ export default function Room({ candidateName, role, onEnd }: Props) {
                     cc
                   </div>
                   <div className="flex flex-col gap-1.5 min-w-0 flex-1">
-                    {caption && (
+                    {panelLine && (
                       <p className="text-sm md:text-base font-medium leading-snug text-white/95 line-clamp-2">
                         <span className="font-bold text-[#93C5FD]">{panelSpeakerName}: </span>
-                        {caption.text}
+                        {panelLine}
                       </p>
                     )}
-                    {heard && (
+                    {candidateLine && (
                       <p className="text-sm md:text-base font-medium leading-snug text-white/80 line-clamp-2">
                         <span className="font-bold text-emerald-300">You: </span>
-                        {heard}
+                        {candidateLine}
                       </p>
                     )}
-                    {!caption && !heard && (
+                    {!panelLine && !candidateLine && (
                       <p className="text-sm md:text-base font-medium leading-snug text-white/45 italic">
                         Captions will appear here once the panel starts speaking.
                       </p>
