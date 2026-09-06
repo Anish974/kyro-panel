@@ -4,6 +4,7 @@ import {
   AMBIENT_ID as AMBIENT,
   createSession,
   endSession,
+  finish,
   getModel,
   getScorecardsHistory,
   inSession,
@@ -176,6 +177,12 @@ router.get('/scorecard', async (req, res) => {
   // scorecard to the recruiter who scheduled it. A mock sends none.
   await saveScorecardToHistory(scorecard, req.query.code ? String(req.query.code) : null);
   broadcast({ type: 'scorecard', scorecard });
+
+  // The interview is done. Nothing deletes the session here — the room may ask
+  // for this same scorecard again — but this is what starts its short clock, so
+  // a server that runs for weeks is not holding every interview it ever ran.
+  finish();
+
   res.json(scorecard);
 });
 

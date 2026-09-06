@@ -200,6 +200,43 @@ assert.match(recovered.sessionId, /^[0-9a-f]{32}$/, 'a clean retry starts a real
 assert.notEqual(recovered.sessionId, ada.sessionId, 'and a new one, not the old id back again');
 assert.ok(!('error' in issueToken(recovered.channel, '10042')), 'which can mint its own token');
 
+// --------------------------------------------------- finished interviews
+
+// A server that never restarts — which is what an uptime pinger guarantees —
+// only reclaims memory through the sweep. Before the scorecard marked an
+// interview finished, every completed one sat in the map for the full two-hour
+// idle TTL, and fifty of those in one afternoon is MAX_SESSIONS reached by
+// interviews that all ended hours ago. The next candidate got a 503.
+{
+  const { findSession, sweep, liveSessions } = await import('../panel/model.js');
+
+  const done = await signIn('Katherine Johnson', 'Data Engineer');
+  const before = liveSessions();
+
+  // Handing over the scorecard is what ends it.
+  const card = await fetch(`${base}/scorecard?session=${done.sessionId}&duration=600`);
+  assert.equal(card.status, 200, 'the scorecard must still be served');
+  await card.json();
+
+  const finished = findSession(done.sessionId);
+  assert.ok(finished, 'the session survives the scorecard — the room may ask again');
+  assert.ok(finished.finishedAt !== null, 'and is marked finished');
+
+  // Still there a moment later: the room retries this GET, and a second call
+  // must not push the eviction further out either.
+  const stamp = finished.finishedAt;
+  await fetch(`${base}/scorecard?session=${done.sessionId}&duration=600`).then(r => r.json());
+  assert.equal(findSession(done.sessionId)!.finishedAt, stamp, 'a retry does not restart the clock');
+  assert.equal(liveSessions(), before, 'and does not drop it early');
+
+  // Wound past the grace window, the sweep reclaims it — while a live
+  // interview sitting right next to it is untouched.
+  finished.finishedAt = Date.now() - 11 * 60 * 1000;
+  sweep();
+  assert.equal(findSession(done.sessionId), null, 'a finished interview is reclaimed after its grace window');
+  assert.ok(findSession(grace.sessionId), 'a live interview is not');
+}
+
 adaFeed.stop();
 graceFeed.stop();
 server.close();
@@ -209,4 +246,5 @@ console.log('          an unknown id is refused, not quietly shared');
 console.log('          a channel mints only while its own interview is live');
 console.log("          Agora's /s/<id>/chat/completions reaches the right interview");
 console.log('          a forgotten id is refused, and signing in clean recovers');
+console.log('          a finished interview is reclaimed, a live one is not');
 console.log('\nself-check passed');

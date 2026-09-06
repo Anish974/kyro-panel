@@ -44,6 +44,8 @@ export interface Session {
   /** Last time anything touched this session, for the idle sweep. */
   touchedAt: number;
   agent: RunningAgent | null;
+  /** When the scorecard was handed over. Null while the interview is live. */
+  finishedAt: number | null;
   /**
    * How many times this session has been reset. It rides on the model's
    * sessionId, which is the primary key a scorecard is written under — without
@@ -69,6 +71,18 @@ const MAX_SESSIONS = 50;
  * transcript in memory for the rest of the process's life.
  */
 const SESSION_TTL_MS = 2 * 60 * 60 * 1000;
+
+/**
+ * And this long once the scorecard has been handed over.
+ *
+ * A finished interview is finished — the transcript it holds has already been
+ * turned into a scorecard and written to Postgres, and the only thing still
+ * wanting it is the room retrying the same GET. Two hours was the number for
+ * an interview that might yet continue, and holding every completed one for
+ * that long is how a server that never restarts runs into MAX_SESSIONS with
+ * fifty interviews in memory that all ended.
+ */
+const FINISHED_TTL_MS = 10 * 60 * 1000;
 
 const sessions = new Map<string, Session>();
 
@@ -110,6 +124,7 @@ function blank(id: string, profile: CandidateProfile | null = null): Session {
     startedAt: Date.now(),
     touchedAt: Date.now(),
     agent: null,
+    finishedAt: null,
     runs: 0,
   };
 }
@@ -195,12 +210,21 @@ export function endSession(id: string): void {
   onEvicted(s);
 }
 
-/** Drops sessions nobody has touched in a while. Cheap, so it runs on create. */
+/**
+ * Drops sessions nobody has touched in a while. Cheap, so it runs on create.
+ *
+ * A finished interview is measured from when it finished, not from when it was
+ * last touched — the room polls `/scorecard` and each poll would otherwise push
+ * a completed interview's eviction another ten minutes into the future.
+ */
 export function sweep(): number {
   const now = Date.now();
   let dropped = 0;
   for (const [id, s] of sessions) {
-    if (id === AMBIENT_ID || now - s.touchedAt < SESSION_TTL_MS) continue;
+    if (id === AMBIENT_ID) continue;
+    const ttl = s.finishedAt === null ? SESSION_TTL_MS : FINISHED_TTL_MS;
+    const idleSince = s.finishedAt ?? s.touchedAt;
+    if (now - idleSince < ttl) continue;
     sessions.delete(id);
     onEvicted(s);
     dropped++;
@@ -209,6 +233,19 @@ export function sweep(): number {
 }
 
 export const liveSessions = (): number => sessions.size - 1;
+
+/**
+ * The interview is over: its scorecard has been built and stored.
+ *
+ * This does not delete the session, because `/scorecard` is a GET the room may
+ * retry and the answer has to stay available for a little while. It starts the
+ * short clock in `sweep` instead. Called more than once, the first call wins —
+ * a retry must not keep pushing the eviction back.
+ */
+export function finish(): void {
+  const s = session();
+  if (s.id !== AMBIENT_ID && s.finishedAt === null) s.finishedAt = Date.now();
+}
 
 // Completed scorecards. Postgres when DATABASE_URL is set — this is the half of
 // the app that has to outlive the process, because a recruiter reads it days
