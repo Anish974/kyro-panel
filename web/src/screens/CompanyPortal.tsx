@@ -26,9 +26,10 @@ function formatDuration(sec?: number) {
   return `${m}m ${s.toString().padStart(2, '0')}s`;
 }
 
-function formatDate(isoString?: string) {
-  if (!isoString) return 'Recent';
-  const d = new Date(isoString);
+function formatDate(val?: number | string | Date) {
+  if (!val) return 'Recent';
+  const d = new Date(val);
+  if (isNaN(d.getTime())) return 'Recent';
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
