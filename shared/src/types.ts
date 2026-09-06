@@ -236,6 +236,24 @@ export interface PanelistVerdict {
   ratings: Partial<Record<CompetencyId, number>>;
 }
 
+/**
+ * A better-fitting role, drawn from what this company is actually hiring for.
+ *
+ * The point of an interview that ends in a no is usually a wasted candidate: the
+ * company already knows they can talk, and already has other roles open. This is
+ * the panel saying "not this one, but look at that one" — and, because it is a
+ * hiring recommendation about a real person, it has to point at something they
+ * actually said rather than at a hunch.
+ */
+export interface RoleSuggestion {
+  /** One of the roles the recruiter has scheduled. Never invented. */
+  role: string;
+  /** Why, in a sentence a hiring manager can act on. */
+  reason: string;
+  /** Verbatim from the transcript. Checked before it reaches the card. */
+  evidence: { quote: string; t: number };
+}
+
 export interface Scorecard {
   sessionId: string;
   role: string;
@@ -250,6 +268,12 @@ export interface Scorecard {
   turns?: number;
   /** From a mock interview the candidate ran on themselves. Not hiring data. */
   mock?: boolean;
+  /**
+   * Set only when the panel landed on no for THIS role and the company has
+   * another one open that fits better. Absent is the normal case — a hire needs
+   * no redirecting, and a company with one role open has nowhere to redirect to.
+   */
+  suggestedRole?: RoleSuggestion;
 }
 
 // -------------------------------------------- server -> browser (SSE /events)

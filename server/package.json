@@ -7,7 +7,7 @@
     "dev": "tsx watch --env-file=../.env src/index.ts",
     "start": "tsx src/index.ts",
     "db:setup": "tsx --env-file=../.env src/scripts/db-setup.ts",
-    "check": "tsx src/checks/bidding.check.ts && tsx src/checks/ledger.check.ts && tsx src/checks/continuation.check.ts && tsx src/checks/interviews.check.ts && tsx src/checks/scorecard.check.ts && tsx src/checks/scenario.check.ts && tsx src/checks/auth.check.ts && tsx src/checks/token.check.ts && tsx src/checks/profile.check.ts && tsx src/checks/transcript.check.ts && tsx src/checks/utterance.check.ts && tsx src/checks/voice.check.ts && tsx src/checks/stream.check.ts && tsx src/checks/sessions.check.ts",
+    "check": "tsx src/checks/bidding.check.ts && tsx src/checks/ledger.check.ts && tsx src/checks/continuation.check.ts && tsx src/checks/interviews.check.ts && tsx src/checks/scorecard.check.ts && tsx src/checks/scenario.check.ts && tsx src/checks/auth.check.ts && tsx src/checks/token.check.ts && tsx src/checks/profile.check.ts && tsx src/checks/transcript.check.ts && tsx src/checks/utterance.check.ts && tsx src/checks/voice.check.ts && tsx src/checks/stream.check.ts && tsx src/checks/sessions.check.ts && tsx src/checks/redirect.check.ts",
     "agent:start": "tsx --env-file=../.env src/scripts/agent.ts start",
     "agent:dry": "tsx --env-file=../.env src/scripts/agent.ts start --dry",
     "agent:stop": "tsx --env-file=../.env src/scripts/agent.ts stop"

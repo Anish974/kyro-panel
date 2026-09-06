@@ -166,16 +166,19 @@ router.post('/reset', (req, res) => {
 router.get('/scorecard', async (req, res) => {
   const saved = profile();
   const customDuration = req.query.duration !== undefined ? Number(req.query.duration) : undefined;
+  // The room passes the invite code it joined with, which is what ties this
+  // scorecard to the recruiter who scheduled it — and, through them, to the
+  // other roles they have open. A mock sends none.
+  const code = req.query.code ? String(req.query.code) : null;
   const scorecard = await buildScorecard(
     saved?.name ?? String(req.query.name ?? 'Candidate'),
     saved?.role ?? String(req.query.role || 'Senior Backend Engineer'),
     saved?.level ?? (req.query.level ? String(req.query.level) : undefined),
     customDuration,
     req.query.mock === '1',
+    code,
   );
-  // The room passes the invite code it joined with, which is what ties this
-  // scorecard to the recruiter who scheduled it. A mock sends none.
-  await saveScorecardToHistory(scorecard, req.query.code ? String(req.query.code) : null);
+  await saveScorecardToHistory(scorecard, code);
   broadcast({ type: 'scorecard', scorecard });
 
   // The interview is done. Nothing deletes the session here — the room may ask

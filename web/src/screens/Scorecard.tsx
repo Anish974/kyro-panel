@@ -120,6 +120,37 @@ export default function Scorecard({ scorecard, onBack }: Props) {
           </div>
         )}
 
+        {/* A no for this role is not always a no for this company. Placed above
+            the verdicts because it is the one line on the page a recruiter acts
+            on rather than reads — and it only appears when the panel already
+            said no, so it never softens a rejection into a maybe. */}
+        {scorecard.suggestedRole && (
+          <section className="rounded-2xl border border-emerald-200 dark:border-emerald-800/60 bg-emerald-50/80 dark:bg-emerald-950/40 px-6 py-5 flex flex-col gap-3 shadow-2xs">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="text-xs font-bold tracking-wider text-emerald-800 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/60 px-2.5 py-1 rounded-lg">
+                BETTER FIT
+              </span>
+              <span className="text-sm text-emerald-950 dark:text-emerald-100 font-semibold">
+                Not right for {scorecard.role} — but consider them for{' '}
+                <strong className="font-extrabold">{scorecard.suggestedRole.role}</strong>.
+              </span>
+            </div>
+
+            <p className="text-sm text-emerald-900/90 dark:text-emerald-200/90 font-medium">
+              {scorecard.suggestedRole.reason}
+            </p>
+
+            {/* The quote is the whole reason this is showable. A redirect with
+                no evidence behind it is a guess about someone's career. */}
+            <blockquote className="border-l-2 border-emerald-300 dark:border-emerald-700 pl-4 text-sm italic text-emerald-900/80 dark:text-emerald-200/70">
+              “{scorecard.suggestedRole.evidence.quote}”
+              <span className="not-italic font-mono text-xs text-emerald-700/70 dark:text-emerald-400/60">
+                {' '}— {mmss(scorecard.suggestedRole.evidence.t)}
+              </span>
+            </blockquote>
+          </section>
+        )}
+
         {/* 3 Verdict Cards */}
         <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {scorecard.verdicts.map(v => {
