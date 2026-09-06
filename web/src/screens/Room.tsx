@@ -715,11 +715,9 @@ export default function Room({ candidateName, role, level, onEnd }: Props) {
       <header className="h-[72px] shrink-0 bg-white border-b border-[#EBE6DF] px-8 flex items-center justify-between z-20 shadow-xs">
         {/* Left: Brand, AI Panel Badge, Candidate Name & Target Role */}
         <div className="flex items-center gap-3.5">
-          <div className="flex items-center gap-2.5 text-[#2563EB]">
-            <div className="w-10 h-10 rounded-2xl bg-blue-50 border border-blue-200 flex items-center justify-center shadow-2xs">
-              <svg className="w-6 h-6 text-[#2563EB]" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M4.5 6.375a4.125 4.125 0 118.25 0 4.125 4.125 0 01-8.25 0zM14.25 8.625a3.375 3.375 0 116.75 0 3.375 3.375 0 01-6.75 0zM1.5 19.125a7.125 7.125 0 0114.25 0v.003l-.001.122H1.5v-.125zM14.25 19.25a5.625 5.625 0 00-1.875-4.148 7.87 7.87 0 014.875-1.727 6.375 6.375 0 016.375 6.375v.125h-9.375v-.625z" />
-              </svg>
+          <div className="flex items-center gap-2.5">
+            <div className="w-10 h-10 rounded-2xl bg-white border border-[#EBE6DF] flex items-center justify-center shadow-2xs overflow-hidden p-1.5">
+              <img src="/favicon.png" alt="Kyro Panel Logo" className="w-full h-full object-contain" />
             </div>
             <span className="font-display font-extrabold text-lg md:text-xl tracking-tight text-gray-900">
               Kyro Panel

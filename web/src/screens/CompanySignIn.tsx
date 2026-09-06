@@ -35,7 +35,8 @@ export default function CompanySignIn({ onBack }: Props) {
 
   return (
     <div className="min-h-screen bg-[#FAF9F6] flex flex-col justify-center items-center px-4 py-12">
-      <div className="w-full max-w-md mb-8 text-center">
+      <div className="w-full max-w-md mb-8 text-center flex flex-col items-center">
+        <img src="/favicon.png" alt="Kyro Panel Logo" className="w-12 h-12 rounded-xl mb-3 object-contain shadow-2xs" />
         <h1 className="font-display text-4xl font-extrabold tracking-tight text-[#181A20]">Kyro Panel</h1>
         <p className="mt-2 text-base text-[#4B5565]">Sign in to schedule interviews and read scorecards</p>
       </div>

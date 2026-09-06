@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { PANEL } from '@kyro/shared';
 
 // The front door. Two audiences arrive here — someone hiring, and someone who
 // wants to practise — and they need different things, so the page says what
@@ -33,7 +32,10 @@ export default function Landing({ onCompany, onCandidate }: Props) {
   return (
     <div className="min-h-screen bg-[#FAF9F6] text-[#181A20]">
       <header className="max-w-[1080px] mx-auto px-6 pt-10 pb-6 flex items-center justify-between">
-        <span className="font-display font-extrabold text-xl">Kyro Panel</span>
+        <div className="flex items-center gap-2.5">
+          <img src="/favicon.png" alt="Kyro Panel Logo" className="w-7 h-7 rounded-lg object-contain" />
+          <span className="font-display font-extrabold text-xl">Kyro Panel</span>
+        </div>
         <button
           onClick={onCompany}
           className="text-sm font-bold text-[#4B5565] hover:text-[#181A20] transition-colors cursor-pointer"
@@ -91,22 +93,6 @@ export default function Landing({ onCompany, onCandidate }: Props) {
               </figcaption>
             </figure>
           ))}
-        </section>
-
-        <section className="pb-20">
-          <h2 className="font-display text-2xl font-extrabold text-center">Who is in the room</h2>
-          <div className="mt-8 grid gap-5 sm:grid-cols-3">
-            {PANEL.map(p => (
-              <div key={p.id} className="bg-white rounded-2xl border border-[#EBE6DF] p-6 text-center">
-                <span
-                  className="inline-block w-2.5 h-2.5 rounded-full"
-                  style={{ backgroundColor: p.color }}
-                />
-                <h3 className="mt-3 font-bold">{p.name}</h3>
-                <p className="text-sm text-[#4B5565]">{p.role}</p>
-              </div>
-            ))}
-          </div>
         </section>
       </main>
 

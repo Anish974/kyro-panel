@@ -192,10 +192,8 @@ export default function CompanyPortal({ onBack, onSelectScorecard, localHistory 
       {/* Top Header */}
       <header className="h-[72px] sticky top-0 z-20 border-b border-[#EBE6DF] bg-white px-8 flex items-center justify-between shadow-xs">
         <div className="flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-2xl bg-[#181A20] flex items-center justify-center text-white shadow-2xs">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-            </svg>
+          <div className="w-10 h-10 rounded-2xl bg-white border border-[#EBE6DF] flex items-center justify-center shadow-2xs overflow-hidden p-1.5">
+            <img src="/favicon.png" alt="Kyro Panel Logo" className="w-full h-full object-contain" />
           </div>
           <div>
             <div className="flex items-center gap-2">
