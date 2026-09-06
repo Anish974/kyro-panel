@@ -10,6 +10,7 @@ import {
   type Scorecard,
   type TranscriptTurn,
 } from '@kyro/shared';
+import { continues } from './continuation.js';
 
 // One session in memory. This is why the server must be long-running and must
 // not be deployed to a serverless platform — a cold start loses the interview.
@@ -204,6 +205,18 @@ export function setProfile(raw: unknown): CandidateProfile | null {
 export const profile = (): CandidateProfile | null => model.profile;
 
 export function addTurn(turn: Omit<TranscriptTurn, 't'>): void {
+  // ASR sends a long answer as several growing turns (see continuation.ts).
+  // Superseding the earlier one keeps the transcript reading as the single
+  // answer it was, and — because turns++ is skipped — stops one talkative
+  // candidate from spending half the interview repeating himself to us.
+  if (turn.speaker === 'candidate') {
+    const previous = [...model.transcript].reverse().find(t => t.speaker === 'candidate');
+    if (previous && continues(previous.text, turn.text)) {
+      previous.text = turn.text;
+      return;
+    }
+  }
+
   model.transcript.push({ ...turn, t: getModel().elapsed });
   if (turn.speaker === 'candidate') model.turns++;
   else model.lastSpeaker = turn.speaker;

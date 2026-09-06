@@ -1,5 +1,6 @@
 import type { Claim, ClaimStatus } from '@kyro/shared';
 import * as model from './model.js';
+import { continues } from './continuation.js';
 
 // Claims Ledger — catches vague and contradictory answers.
 //
@@ -97,11 +98,30 @@ export function ingest(answer: string): Claim[] {
   for (const sentence of sentences(answer)) {
     if (!isClaim(sentence)) continue;
 
-    // Deduplication: do not record identical claims if already ingested
-    const alreadyExists = model
-      .getModel()
-      .claims.some(c => c.text.toLowerCase().trim() === sentence.toLowerCase().trim());
-    if (alreadyExists) continue;
+    // Deduplication. Exact matches are the easy half; the half that mattered
+    // is the growing one. ASR sends a long answer as several turns that each
+    // repeat everything said so far (continuation.ts), and because it supplies
+    // no full stops, sentences() hands the whole utterance back as one
+    // "sentence" a few words longer every time — so an exact-match check never
+    // fires and one statement lands in the ledger four times.
+    const existing = model.getModel().claims;
+    if (existing.some(c => c.text.toLowerCase().trim() === sentence.toLowerCase().trim())) {
+      continue;
+    }
+
+    // Same statement, caught further along: replace it rather than add a second
+    // copy. The claim keeps its id, so the room updates the card it already
+    // drew instead of growing a duplicate beside it.
+    const grew = existing.find(c => continues(c.text, sentence));
+    if (grew) {
+      const updated = model.updateClaim(grew.id, { text: sentence });
+      if (updated) touched.push(updated);
+      continue;
+    }
+
+    // The reverse: the longer text is already on file, and this turn arrived
+    // truncated. Nothing to add.
+    if (existing.some(c => continues(sentence, c.text))) continue;
 
     const found = analyse(sentence);
     let status: ClaimStatus = 'open';
