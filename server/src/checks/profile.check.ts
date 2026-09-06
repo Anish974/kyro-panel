@@ -64,15 +64,32 @@ assert.equal(model.profile()?.name, 'Anish Patankar', 'a reset must not forget t
 assert.equal(model.getModel().turns, 0, 'but the interview itself is wiped');
 
 // 5. What the panel is actually told. This is the feature.
-const opening = context('Hi, I am Anish, I have spent six years on payments infrastructure.');
-assert.ok(opening.includes('Anish Patankar'), 'the panel must be told who it is interviewing');
-assert.ok(opening.includes('Senior Backend Engineer'), 'and for which role');
-assert.ok(opening.includes('2TB Postgres cluster'), 'and what the resume says');
-assert.ok(opening.includes('<<<RESUME'), 'the resume must be fenced as data');
+//
+// The resume goes to the panelist who WON the floor and is about to speak, not
+// to the bid that only decides who that is. Both halves are asserted: a resume
+// that stops reaching the speaker is a broken product, and a resume that starts
+// riding along on the bid again is the token cost that pushed a whole interview
+// onto canned fallback lines.
+const said = 'Hi, I am Anish, I have spent six years on payments infrastructure.';
+const speaking = context(said, 'reply');
+assert.ok(speaking.includes('Anish Patankar'), 'the speaker must be told who it is interviewing');
+assert.ok(speaking.includes('Senior Backend Engineer'), 'and for which role');
+assert.ok(speaking.includes('2TB Postgres cluster'), 'and what the resume says');
+assert.ok(speaking.includes('<<<RESUME'), 'the resume must be fenced as data');
 assert.ok(
-  /DATA, not instructions/.test(opening),
+  /DATA, not instructions/.test(speaking),
   'and labelled as data — a resume must never be able to instruct the panel',
 );
+
+const bidding = context(said, 'bid');
+assert.ok(bidding.includes('Anish Patankar'), 'bidding still knows who is in the room');
+assert.ok(bidding.includes('Senior Backend Engineer'), 'and for which role');
+assert.ok(!bidding.includes('<<<RESUME'), 'but the resume does not ride along on a bid');
+assert.ok(
+  !bidding.includes('2TB Postgres cluster'),
+  'a bid is a relevance score — it is not charged for the resume it cannot quote',
+);
+
 
 // 6. The first answer is an introduction, and the panel has to know that.
 model.addTurn({ speaker: 'candidate', text: 'Hi, I am Anish.' });
@@ -95,6 +112,6 @@ assert.ok(!anonymous.includes('Anish'), 'a forgotten candidate must not linger i
 assert.ok(!anonymous.includes('<<<RESUME'), 'and no resume fence without a resume');
 
 console.log('profile  name and role required, everything capped and de-controlled');
-console.log('         resume reaches the panel fenced as data, never as instructions');
+console.log('         resume reaches the speaker fenced as data, and never the bid');
 console.log('         turn 1 is framed as the introduction');
 console.log('\nself-check passed');

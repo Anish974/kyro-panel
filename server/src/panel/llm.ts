@@ -12,21 +12,43 @@ export const LLM_ENABLED = Boolean(BASE && MODEL && KEY);
 // prematurely falls back to canned keyword templates.
 const TIMEOUT_MS = 8000;
 
+/**
+ * How long to wait out a rate limit before trying once more.
+ *
+ * Free tiers throttle in bursts, and a throttled bid drops the whole panel onto
+ * canned keyword lines — which the candidate hears immediately, as three
+ * interviewers who suddenly went generic. Agora is already filling this pause
+ * with a murmur, so a second of patience is cheaper than the fallback.
+ */
+const RETRY_AFTER_MS = 1100;
+
 export async function ask(system: string, user: string, maxTokens = 220): Promise<string> {
-  const res = await fetch(`${BASE}/chat/completions`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', authorization: `Bearer ${KEY}` },
-    body: JSON.stringify({
-      model: MODEL,
-      messages: [
-        { role: 'system', content: system },
-        { role: 'user', content: user },
-      ],
-      max_tokens: maxTokens,
-      temperature: 0.7,
-    }),
-    signal: AbortSignal.timeout(TIMEOUT_MS),
-  });
+  const send = () =>
+    fetch(`${BASE}/chat/completions`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${KEY}` },
+      body: JSON.stringify({
+        model: MODEL,
+        messages: [
+          { role: 'system', content: system },
+          { role: 'user', content: user },
+        ],
+        max_tokens: maxTokens,
+        temperature: 0.7,
+      }),
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+
+  let res = await send();
+
+  // Once, and only for a rate limit. Anything else is a request that will fail
+  // again the same way, and a second attempt would only spend another second of
+  // the candidate's silence finding that out.
+  if (res.status === 429) {
+    console.warn('[llm] rate limited — one retry');
+    await new Promise(resolve => setTimeout(resolve, RETRY_AFTER_MS));
+    res = await send();
+  }
 
   if (!res.ok) throw new Error(`LLM ${res.status}: ${(await res.text()).slice(0, 200)}`);
   const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
