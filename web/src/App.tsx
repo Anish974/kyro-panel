@@ -14,10 +14,15 @@ import ShortcutsModal from './components/ShortcutsModal.js';
 import { currentSession, onAuthChange } from './lib/supabase.js';
 
 const inviteCode = new URLSearchParams(window.location.search).get('i')?.trim() ?? '';
+const hasAuthCallback = typeof window !== 'undefined' && (
+  window.location.hash.includes('access_token=') ||
+  window.location.hash.includes('error=') ||
+  window.location.search.includes('code=')
+);
 
 export default function App() {
   const [view, setView] = useState<'landing' | 'candidate' | 'login' | 'company' | 'room' | 'scorecard' | '404'>(
-    inviteCode ? 'login' : 'landing',
+    inviteCode ? 'login' : (hasAuthCallback ? 'company' : 'landing'),
   );
   const [invite, setInvite] = useState<Interview | null>(null);
   const [inviteError, setInviteError] = useState('');
