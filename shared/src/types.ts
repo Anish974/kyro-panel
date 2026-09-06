@@ -20,7 +20,7 @@ export interface Panelist {
 export const PANEL: readonly Panelist[] = [
   { id: 'technical', name: 'Arjun Mehta', role: 'Technical Architect', voice: 'English_Trustworth_Man',      color: '#6a8bff' },
   { id: 'product',   name: 'Ananya Shah', role: 'Product Manager',     voice: 'English_captivating_female1', color: '#c98bff' },
-  { id: 'hr',        name: 'Rohan Iyer',  role: 'Behavioural / HR',    voice: 'English_expressive_narrator', color: '#46c9b0' },
+  { id: 'hr',        name: 'Rohan Iyer',  role: 'Behavioural / HR',    voice: 'English_Gentle-voiced_man',    color: '#46c9b0' },
 ] as const;
 
 export const panelistById = (id: PanelistId): Panelist =>
