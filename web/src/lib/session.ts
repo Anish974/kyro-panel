@@ -63,11 +63,27 @@ export function scoped(path: string): string {
   return `${path}${path.includes('?') ? '&' : '?'}session=${encodeURIComponent(id)}`;
 }
 
+function forget(): void {
+  current = null;
+  try {
+    sessionStorage.removeItem(KEY);
+  } catch {
+    // Nothing to do — the id is gone from memory either way.
+  }
+}
+
 /**
  * Signs in, which is what starts an interview server-side.
  *
  * Returns the interview and remembers it. Posting with an id already in hand
  * re-enters that same interview, which is what a reload does.
+ *
+ * If the server no longer knows that id, this starts a fresh interview instead
+ * of failing. Interviews live in the server's memory, so every restart forgets
+ * all of them — and the host this runs on sleeps after fifteen quiet minutes,
+ * which makes a stale id the normal case rather than the exceptional one. A
+ * candidate who left the tab open over lunch did nothing wrong and should not
+ * be shown an error about a session they never knew they had.
  */
 export async function signIn(body: {
   name: string;
@@ -76,11 +92,21 @@ export async function signIn(body: {
   email?: string;
   resumeText?: string;
 }): Promise<Interview> {
-  const res = await fetch(scoped('/candidate'), {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(body),
-  });
+  const post = (path: string) =>
+    fetch(path, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+  let res = await post(scoped('/candidate'));
+
+  // Retried once, and only once, and only for the one status that means "that
+  // interview is gone" — with the id dropped so the retry cannot repeat it.
+  if (res.status === 404 && interview()) {
+    forget();
+    res = await post('/candidate');
+  }
 
   if (!res.ok) {
     const failure = (await res.json().catch(() => null)) as { error?: string } | null;

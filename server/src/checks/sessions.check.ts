@@ -176,6 +176,30 @@ assert.equal((await state(grace.sessionId)).turns, 0, 'and into nobody else’s'
 // talking into a shared transcript.
 assert.equal(await turn('deadbeefdeadbeefdeadbeefdeadbeef', 'hello'), 404, 'an expired agent is refused');
 
+// ------------------------------------------------ surviving a restart
+
+// The host this deploys to sleeps after fifteen quiet minutes, and every
+// interview lives in memory, so "the server has never heard of your session" is
+// a normal Tuesday rather than an edge case. The web app is expected to drop
+// the dead id and start a fresh interview; what the SERVER must do is say 404
+// so it can tell the difference — not quietly accept the request into the
+// ambient interview, which is how a stranger's answers got shared before.
+assert.equal(
+  (await fetch(`${base}/candidate?session=${'0'.repeat(32)}`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ name: 'Ada Lovelace', role: 'Backend Engineer' }),
+  })).status,
+  404,
+  'signing in with a forgotten id must be refused, so the client knows to retry clean',
+);
+
+// And the retry the client then makes — same body, no id — has to work.
+const recovered = await signIn('Ada Lovelace', 'Backend Engineer');
+assert.match(recovered.sessionId, /^[0-9a-f]{32}$/, 'a clean retry starts a real interview');
+assert.notEqual(recovered.sessionId, ada.sessionId, 'and a new one, not the old id back again');
+assert.ok(!('error' in issueToken(recovered.channel, '10042')), 'which can mint its own token');
+
 adaFeed.stop();
 graceFeed.stop();
 server.close();
@@ -184,4 +208,5 @@ console.log('sessions  two interviews, two channels, two event streams');
 console.log('          an unknown id is refused, not quietly shared');
 console.log('          a channel mints only while its own interview is live');
 console.log("          Agora's /s/<id>/chat/completions reaches the right interview");
+console.log('          a forgotten id is refused, and signing in clean recovers');
 console.log('\nself-check passed');
