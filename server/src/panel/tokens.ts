@@ -10,7 +10,7 @@ const { RtcTokenBuilder, RtcRole, RtmTokenBuilder } = agoraToken;
 // panel's own RTC session) come through here.
 
 /** One hour. Long enough for an interview, short enough to be worth expiring. */
-export const TOKEN_TTL = 3600;
+const TOKEN_TTL = 3600;
 
 /** The AI panel's uid in the channel. Agora publishes its audio under this. */
 export const AGENT_UID = 1001;

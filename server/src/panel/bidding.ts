@@ -1,5 +1,5 @@
 import { PANEL, type Bid, type PanelistId, type TurnDecision } from '@kyro/shared';
-import { SIGNALS, SYSTEM_PROMPTS, getSystemPrompt } from './personas.js';
+import { SIGNALS, getSystemPrompt } from './personas.js';
 import { LLM_ENABLED, ask, parseJson } from './llm.js';
 import * as model from './model.js';
 

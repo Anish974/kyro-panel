@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { PANEL, panelistById, type PanelistId } from '@kyro/shared';
 import { useSession } from '../lib/useSession.js';
 import { joinAsCandidate, leave, type JoinResult } from '../lib/agora.js';
+import { AVATARS } from '../lib/labels.js';
 import type { AgentState } from '../lib/rtm.js';
 import PanelistTile from '../components/PanelistTile.js';
 import BidRail from '../components/BidRail.js';
@@ -16,12 +17,6 @@ interface Props {
   level?: string;
   onEnd: (actualDurationSec?: number) => void;
 }
-
-const AVATARS: Record<PanelistId, string> = {
-  technical: '/assets/arjun_mehta.jpg',
-  product: '/assets/ananya_shah.jpg',
-  hr: '/assets/rohan_iyer.jpg',
-};
 
 /**
  * Where the interview actually is, derived from the turn count the server

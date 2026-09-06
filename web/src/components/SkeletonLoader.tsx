@@ -56,20 +56,3 @@ export function TableRowSkeleton({ rows = 4 }: { rows?: number }) {
   );
 }
 
-export function CardSkeleton({ count = 3 }: { count?: number }) {
-  return (
-    <div className="grid sm:grid-cols-3 gap-6">
-      {Array.from({ length: count }).map((_, idx) => (
-        <div
-          key={idx}
-          className="bg-white dark:bg-[#161920] rounded-2xl border border-[#EBE6DF] dark:border-[#222631] p-6 shadow-xs animate-pulse flex flex-col gap-3"
-        >
-          <div className="w-10 h-10 rounded-xl bg-[#EBE6DF] dark:bg-[#222631]" />
-          <div className="h-4 bg-[#EBE6DF] dark:bg-[#222631] rounded-md w-3/4 mt-2" />
-          <div className="h-3 bg-[#EBE6DF]/60 dark:bg-[#222631]/60 rounded-md w-full" />
-          <div className="h-3 bg-[#EBE6DF]/60 dark:bg-[#222631]/60 rounded-md w-5/6" />
-        </div>
-      ))}
-    </div>
-  );
-}
