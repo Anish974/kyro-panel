@@ -31,9 +31,9 @@ const CLAIM_LABEL: Record<string, { label: string; color: string; bg: string; bo
 };
 
 const AVATARS: Record<string, string> = {
-  technical: '/assets/arjun.png',
-  product: '/assets/ananya.png',
-  hr: '/assets/rohan.png',
+  technical: '/assets/arjun_mehta.jpg',
+  product: '/assets/ananya_shah.jpg',
+  hr: '/assets/rohan_iyer.jpg',
 };
 
 function mmss(sec?: number) {
