@@ -32,111 +32,9 @@ function formatDate(isoString?: string) {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-// Fallback mock history for company presentation
-const DEFAULT_COMPANY_HISTORY: Scorecard[] = [
-  {
-    sessionId: 'session-demo-01',
-    candidateName: 'Alex Rivera',
-    role: 'Senior Full Stack Engineer',
-    level: 'Expert (6-11+ years)',
-    timestamp: new Date(Date.now() - 3600000 * 4).toISOString(),
-    durationSec: 924,
-    turns: 18,
-    verdicts: [
-      {
-        panelist: 'technical',
-        verdict: 'hire',
-        score: 4.8,
-        confidence: 0.94,
-        rationale: 'Deep mastery of distributed messaging systems, sub-second latency optimizations, and high scalability.',
-        evidence: [
-          { quote: 'Architected Agora real-time stream synchronization with optimistic token bucket backoff.', t: 180 },
-          { quote: 'Demonstrated exceptional knowledge of WebRTC state machine failures and recovery strategies.', t: 340 },
-        ],
-        ratings: { architecture: 4.9, implementation: 4.7, problemSolving: 4.8 },
-      },
-      {
-        panelist: 'product',
-        verdict: 'hire',
-        score: 4.6,
-        confidence: 0.9,
-        rationale: 'Balanced technical rigor with clear product delivery goals and user experience focus.',
-        evidence: [
-          { quote: 'Prioritized candidate turn latency to prevent awkward conversational pauses over purely speculative edge features.', t: 420 },
-        ],
-        ratings: { userFocus: 4.6, tradeOffs: 4.7, productThinking: 4.5 },
-      },
-      {
-        panelist: 'hr',
-        verdict: 'lean_hire',
-        score: 4.2,
-        confidence: 0.88,
-        rationale: 'Excellent communication clarity and leadership potential.',
-        evidence: [
-          { quote: 'Led previous team through high stress zero-downtime database migration.', t: 560 },
-        ],
-        ratings: { ownership: 4.3, communication: 4.5, problemSolving: 3.8 },
-      },
-    ],
-    claims: [
-      { id: 'c1', text: 'Built distributed high-concurrency websocket cluster handling 100k peak CCU.', t: 210, status: 'verified' },
-      { id: 'c2', text: 'Engineered multi-agent LLM auction logic with dynamic priority scoring.', t: 450, status: 'verified' },
-    ],
-  },
-  {
-    sessionId: 'session-demo-02',
-    candidateName: 'Priya Sharma',
-    role: 'Frontend & WebRTC Specialist',
-    level: 'Intermediate (2-6 years)',
-    timestamp: new Date(Date.now() - 86400000 * 2).toISOString(),
-    durationSec: 810,
-    turns: 15,
-    verdicts: [
-      {
-        panelist: 'technical',
-        verdict: 'lean_hire',
-        score: 4.1,
-        confidence: 0.86,
-        rationale: 'Solid frontend fundamentals, React lifecycle knowledge, and Web Audio API familiarity.',
-        evidence: [
-          { quote: 'Constructed custom Web Audio visualizer and noise reduction filter pipeline.', t: 240 },
-        ],
-        ratings: { architecture: 3.9, implementation: 4.3, problemSolving: 4.1 },
-      },
-      {
-        panelist: 'product',
-        verdict: 'hire',
-        score: 4.5,
-        confidence: 0.91,
-        rationale: 'Extremely strong intuition for recruiter UX, interactive scorecards, and design tokens.',
-        evidence: [
-          { quote: 'Designed minimal cognitive load layout for real-time interview floor bidding rails.', t: 310 },
-        ],
-        ratings: { userFocus: 4.8, tradeOffs: 4.4, productThinking: 4.3 },
-      },
-      {
-        panelist: 'hr',
-        verdict: 'hire',
-        score: 4.3,
-        confidence: 0.87,
-        rationale: 'High proactive ownership, user empathy, clear communication under deadlines, and team collaboration.',
-        evidence: [
-          { quote: 'Took direct responsibility for candidate onboarding experience and streamlined the assessment report layout.', t: 470 },
-        ],
-        ratings: { ownership: 4.4, communication: 4.4, problemSolving: 4.1 },
-      },
-    ],
-    claims: [
-      { id: 'c1', text: 'Implemented pre-join device verification greenroom with real-time mic waveform analyzer.', t: 150, status: 'verified' },
-      { id: 'c2', text: 'Engineered candidate assessment matrix and interactive recruiter dashboard.', t: 390, status: 'verified' },
-    ],
-  },
-];
-
 export default function CompanyPortal({ onBack, onSelectScorecard, localHistory = [] }: Props) {
-  const initialData = localHistory.length > 0 ? localHistory : DEFAULT_COMPANY_HISTORY;
-  const [scorecards, setScorecards] = useState<Scorecard[]>(initialData);
-  const [loading, setLoading] = useState(false);
+  const [scorecards, setScorecards] = useState<Scorecard[]>(localHistory);
+  const [loading, setLoading] = useState(localHistory.length === 0);
   const [search, setSearch] = useState('');
   const [levelFilter, setLevelFilter] = useState<string>('all');
   const [verdictFilter, setVerdictFilter] = useState<string>('all');
@@ -149,12 +47,12 @@ export default function CompanyPortal({ onBack, onSelectScorecard, localHistory 
         const res = await authedFetch('/scorecards');
         if (res.ok) {
           const data: Scorecard[] = await res.json();
-          if (mounted && Array.isArray(data) && data.length > 0) {
+          if (mounted && Array.isArray(data)) {
             setScorecards(data);
           }
         }
       } catch (err) {
-        console.warn('Could not load scorecards from server, using initial data:', err);
+        console.warn('Could not load scorecards from server:', err);
       } finally {
         if (mounted) setLoading(false);
       }
@@ -185,8 +83,8 @@ export default function CompanyPortal({ onBack, onSelectScorecard, localHistory 
   const totalCount = scorecards.length;
   const hireCount = scorecards.filter(s => s.verdicts.some(v => v.verdict === 'hire')).length;
   const avgTechScore = totalCount > 0
-    ? (scorecards.reduce((acc, s) => acc + (s.verdicts.find(v => v.panelist === 'technical')?.score || 3.5), 0) / totalCount).toFixed(1)
-    : '4.2';
+    ? (scorecards.reduce((acc, s) => acc + (s.verdicts.find(v => v.panelist === 'technical')?.score || 0), 0) / totalCount).toFixed(1)
+    : '—';
 
   return (
     <div className="min-h-screen bg-[#FAF9F6] dark:bg-[#0F1115] text-[#181A20] dark:text-[#F9FAFB] font-sans flex flex-col select-none transition-colors duration-200">
@@ -340,14 +238,22 @@ export default function CompanyPortal({ onBack, onSelectScorecard, localHistory 
                     <td colSpan={8} className="px-6 py-4">
                       <EmptyState
                         icon="📋"
-                        title="No candidate assessments found"
-                        description="No assessment records match your search query or filter selection."
-                        actionLabel="Clear Filters"
-                        onAction={() => {
-                          setSearch('');
-                          setLevelFilter('all');
-                          setVerdictFilter('all');
-                        }}
+                        title={scorecards.length === 0 ? 'No candidate assessments yet' : 'No matching assessments found'}
+                        description={
+                          scorecards.length === 0
+                            ? 'Schedule an interview above and share the invite link with a candidate to start seeing live scorecards.'
+                            : 'No assessment records match your search query or filter selection.'
+                        }
+                        actionLabel={search || levelFilter !== 'all' || verdictFilter !== 'all' ? 'Clear Filters' : undefined}
+                        onAction={
+                          search || levelFilter !== 'all' || verdictFilter !== 'all'
+                            ? () => {
+                                setSearch('');
+                                setLevelFilter('all');
+                                setVerdictFilter('all');
+                              }
+                            : undefined
+                        }
                       />
                     </td>
                   </tr>

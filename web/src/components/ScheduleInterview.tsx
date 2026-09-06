@@ -27,6 +27,7 @@ export default function ScheduleInterview() {
   const [error, setError] = useState('');
   const [created, setCreated] = useState<Interview | null>(null);
   const [copied, setCopied] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
 
   const effectiveRole = role === OTHER_ROLE ? customRole.trim() : role;
   const link = created ? `${window.location.origin}/?i=${created.code}` : '';
@@ -66,32 +67,72 @@ export default function ScheduleInterview() {
     }
   }
 
+  async function copyCode() {
+    if (!created) return;
+    try {
+      await navigator.clipboard.writeText(created.code);
+      setCopiedCode(true);
+      setTimeout(() => setCopiedCode(false), 2000);
+    } catch {
+      setCopiedCode(false);
+    }
+  }
+
   if (created) {
     return (
       <section className="bg-white dark:bg-[#161920] rounded-3xl border border-[#EBE6DF] dark:border-[#222631] shadow-xs p-6 sm:p-8">
-        <h2 className="font-display text-lg font-extrabold text-[#181A20] dark:text-[#F9FAFB]">Interview scheduled</h2>
-        <p className="mt-1 text-sm text-[#4B5565] dark:text-[#94A3B8]">
-          Send this link to <strong className="text-[#181A20] dark:text-white">{created.candidateName}</strong>. It opens the room with{' '}
-          <strong className="text-[#181A20] dark:text-white">{created.role}</strong> at <strong className="text-[#181A20] dark:text-white">{created.level}</strong> already set.
-        </p>
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div>
+            <h2 className="font-display text-lg font-extrabold text-[#181A20] dark:text-[#F9FAFB] flex items-center gap-2">
+              <span>Interview scheduled</span>
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                Active
+              </span>
+            </h2>
+            <p className="mt-1 text-sm text-[#4B5565] dark:text-[#94A3B8]">
+              Send this link to <strong className="text-[#181A20] dark:text-white">{created.candidateName}</strong>. It opens the room with{' '}
+              <strong className="text-[#181A20] dark:text-white">{created.role}</strong> at <strong className="text-[#181A20] dark:text-white">{created.level}</strong> already set.
+            </p>
+          </div>
+        </div>
 
+        {/* Link Input Row */}
         <div className="mt-4 flex flex-col sm:flex-row gap-2">
           <input readOnly value={link} onFocus={e => e.currentTarget.select()} className={`${field} font-mono`} />
           <button
             type="button"
             onClick={copy}
-            className="h-[46px] px-5 rounded-xl bg-[#181A20] dark:bg-[#F9FAFB] text-white dark:text-[#0F1115] text-sm font-bold hover:bg-black dark:hover:bg-white transition-colors cursor-pointer whitespace-nowrap"
+            className="h-[46px] px-5 rounded-xl bg-[#181A20] dark:bg-[#F9FAFB] text-white dark:text-[#0F1115] text-sm font-bold hover:bg-black dark:hover:bg-white transition-colors cursor-pointer whitespace-nowrap shadow-xs active:scale-95"
           >
-            {copied ? 'Copied' : 'Copy link'}
+            {copied ? 'Copied link!' : 'Copy link'}
+          </button>
+        </div>
+
+        {/* Access Code Explanation Box */}
+        <div className="mt-3.5 p-3.5 rounded-2xl bg-[#F4F1EA]/70 dark:bg-[#1E232D]/80 border border-[#E6DAC8] dark:border-[#2D333F] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-start sm:items-center gap-2.5">
+            <div className="w-7 h-7 rounded-lg bg-blue-100 dark:bg-blue-950/80 text-[#2563EB] dark:text-blue-400 flex items-center justify-center font-bold text-xs shrink-0 mt-0.5 sm:mt-0">
+              🔑
+            </div>
+            <div className="text-xs text-[#5D5040] dark:text-[#CBB9A4] leading-relaxed">
+              <span className="font-bold text-gray-950 dark:text-white">Interview Access Code:</span> The code after <code className="px-1.5 py-0.5 rounded bg-white dark:bg-[#12141A] text-[#2563EB] dark:text-blue-400 font-mono font-bold border border-[#E6DAC8] dark:border-[#2D333F]">?i=</code> is <strong className="font-mono text-sm text-gray-950 dark:text-white font-black">{created.code}</strong>. This is the code to give the interview — the candidate can click the direct link or enter this code on the landing page.
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={copyCode}
+            className="px-3.5 py-1.5 rounded-xl bg-white dark:bg-[#161920] border border-[#E6DAC8] dark:border-[#2D333F] hover:bg-gray-50 dark:hover:bg-[#222631] text-xs font-bold text-gray-800 dark:text-gray-200 transition-colors cursor-pointer whitespace-nowrap shrink-0 self-start sm:self-auto shadow-2xs active:scale-95"
+          >
+            {copiedCode ? 'Copied code!' : `Copy Code (${created.code})`}
           </button>
         </div>
 
         <button
           type="button"
           onClick={() => setCreated(null)}
-          className="mt-4 text-sm font-semibold text-[#2563EB] dark:text-blue-400 hover:underline cursor-pointer"
+          className="mt-4 text-sm font-semibold text-[#2563EB] dark:text-blue-400 hover:underline cursor-pointer flex items-center gap-1.5"
         >
-          Schedule another
+          <span>+ Schedule another candidate</span>
         </button>
       </section>
     );

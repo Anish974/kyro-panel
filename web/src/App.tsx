@@ -282,7 +282,19 @@ export default function App() {
           </div>
         );
       }
-      return <Login invite={invite} onLogin={handleLogin} />;
+      return (
+        <Login
+          invite={invite}
+          onLogin={handleLogin}
+          onBack={() => {
+            if (window.location.search) {
+              window.history.replaceState({}, '', window.location.pathname);
+            }
+            setInvite(null);
+            setView('landing');
+          }}
+        />
+      );
     }
 
     // Fallback 404
