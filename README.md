@@ -120,22 +120,6 @@ npm run agent:stop -w server -- <agent_id>   # take it out
 
 ---
 
-## What it looks like
-
-**Company portal** — schedule an interview, then read the scorecards that come back.
-
-![Company portal](web/public/screenshots/company-portal.png)
-
-**The room** — three interviewers, live captions, and whoever currently holds the floor.
-
-![Interview room](web/public/screenshots/room.png)
-
-**Scorecard** — three separate verdicts, each quoting the candidate with a timestamp.
-
-![Scorecard](web/public/screenshots/scorecard.png)
-
----
-
 ## The three interviewers
 
 | Interviewer | Role | Cares about |
@@ -196,7 +180,7 @@ web/
   src/screens/   Landing, CandidateEntry, CompanyPortal, Login, Room,
                  Deliberating, Scorecard
   src/components/ScheduleInterview, PanelistTile, BidRail
-  public/screenshots/  the images this README and the landing page both use
+  public/screenshots/  landing-page screenshots, read at runtime if present
   src/lib/       agora.ts (join as candidate), useSession.ts (SSE feed)
 
 design/          UI mockups the screens were built from
