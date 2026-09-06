@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { EXPERIENCE_LEVELS, PROFILE_LIMITS, type Interview } from '@kyro/shared';
+import { query } from '../db/pool.js';
 
 // Who decides the bar.
 //
@@ -14,10 +15,10 @@ import { EXPERIENCE_LEVELS, PROFILE_LIMITS, type Interview } from '@kyro/shared'
 // they are. The code is also the first thing this app has that identifies one
 // interview from another — /token, /agent/start and /scorecard all currently
 // take anyone who asks, and this is what they will be gated on.
-
-// ponytail: in memory, like the session it belongs to. Codes die when the
-// process restarts, which on Render's free tier is every 15 idle minutes. Give
-// them a real store at the same time as the scorecard history, not before.
+//
+// Backed by Postgres when DATABASE_URL is set, and by the map below when it is
+// not. The fallback is not a nicety: the self-checks run with no network, and a
+// fresh checkout has to work before anyone has a database.
 const interviews = new Map<string, Interview>();
 
 /**
@@ -27,12 +28,28 @@ const interviews = new Map<string, Interview>();
  */
 const ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
 
-function newCode(): string {
-  for (;;) {
-    const code = [...randomBytes(6)].map(b => ALPHABET[b % ALPHABET.length]).join('');
-    if (!interviews.has(code)) return code;
-  }
+const randomCode = (): string =>
+  [...randomBytes(6)].map(b => ALPHABET[b % ALPHABET.length]).join('');
+
+interface Row {
+  code: string;
+  candidate_name: string;
+  role: string;
+  level: string;
+  mock: boolean;
+  created_at: Date;
+  started_at: Date | null;
 }
+
+const toInterview = (r: Row): Interview => ({
+  code: r.code,
+  candidateName: r.candidate_name,
+  role: r.role,
+  level: r.level,
+  mock: r.mock,
+  createdAt: r.created_at.getTime(),
+  startedAt: r.started_at ? r.started_at.getTime() : null,
+});
 
 export class InterviewError extends Error {}
 
@@ -46,15 +63,16 @@ const clean = (value: unknown, limit: number): string =>
  * difference is what it means afterwards — a mock result is not hiring data and
  * never reaches the company portal.
  */
-export function create(input: {
+export async function create(input: {
   candidateName: unknown;
   role: unknown;
   level: unknown;
   mock?: unknown;
-}): Interview {
+}): Promise<Interview> {
   const candidateName = clean(input.candidateName, PROFILE_LIMITS.name);
   const role = clean(input.role, PROFILE_LIMITS.role);
   const level = clean(input.level, PROFILE_LIMITS.level);
+  const mock = input.mock === true;
 
   if (!candidateName) throw new InterviewError('candidate name is required');
   if (!role) throw new InterviewError('role is required');
@@ -65,22 +83,45 @@ export function create(input: {
     throw new InterviewError('level must be one of the published experience levels');
   }
 
-  const interview: Interview = {
-    code: newCode(),
-    candidateName,
-    role,
-    level,
-    createdAt: Date.now(),
-    startedAt: null,
-    mock: input.mock === true,
-  };
-  interviews.set(interview.code, interview);
-  return interview;
+  // Retry on collision rather than checking first: with 1e9 codes a clash is
+  // rare, and a select-then-insert is a race the primary key would catch anyway.
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const code = randomCode();
+    const rows = await query<Row>(
+      `insert into interviews (code, candidate_name, role, level, mock)
+            values ($1, $2, $3, $4, $5)
+       on conflict (code) do nothing
+         returning *`,
+      [code, candidateName, role, level, mock],
+    );
+
+    if (rows === null) {
+      if (interviews.has(code)) continue;
+      const interview: Interview = {
+        code,
+        candidateName,
+        role,
+        level,
+        mock,
+        createdAt: Date.now(),
+        startedAt: null,
+      };
+      interviews.set(code, interview);
+      return interview;
+    }
+
+    if (rows.length) return toInterview(rows[0]);
+  }
+
+  throw new InterviewError('could not allocate an interview code');
 }
 
 /** Candidate side: what the invite link resolves to. Null when it does not. */
-export function find(code: string): Interview | null {
-  return interviews.get(clean(code, 16).toUpperCase()) ?? null;
+export async function find(code: string): Promise<Interview | null> {
+  const key = clean(code, 16).toUpperCase();
+  const rows = await query<Row>('select * from interviews where code = $1', [key]);
+  if (rows === null) return interviews.get(key) ?? null;
+  return rows.length ? toInterview(rows[0]) : null;
 }
 
 /**
@@ -91,19 +132,32 @@ export function find(code: string): Interview | null {
  * that promises newest first. Reversing before sorting settles the tie the
  * only way a reader would expect.
  */
-export function list(): Interview[] {
-  return [...interviews.values()].reverse().sort((a, b) => b.createdAt - a.createdAt);
+export async function list(): Promise<Interview[]> {
+  const rows = await query<Row>('select * from interviews order by created_at desc, code desc limit 200');
+  if (rows === null) {
+    return [...interviews.values()].reverse().sort((a, b) => b.createdAt - a.createdAt);
+  }
+  return rows.map(toInterview);
 }
 
 /** Marks the moment the candidate actually joined, so the portal can show it. */
-export function markStarted(code: string): Interview | null {
-  const interview = find(code);
-  if (!interview) return null;
-  interview.startedAt ??= Date.now();
-  return interview;
+export async function markStarted(code: string): Promise<Interview | null> {
+  const key = clean(code, 16).toUpperCase();
+  // coalesce, not a plain set: a refresh must not restart the clock.
+  const rows = await query<Row>(
+    'update interviews set started_at = coalesce(started_at, now()) where code = $1 returning *',
+    [key],
+  );
+  if (rows === null) {
+    const interview = interviews.get(key);
+    if (!interview) return null;
+    interview.startedAt ??= Date.now();
+    return interview;
+  }
+  return rows.length ? toInterview(rows[0]) : null;
 }
 
-/** Test seam. The store is process-wide, so a check must be able to empty it. */
+/** Test seam. The in-memory store is process-wide, so a check must empty it. */
 export function reset(): void {
   interviews.clear();
 }

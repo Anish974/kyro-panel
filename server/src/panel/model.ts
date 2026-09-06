@@ -11,6 +11,7 @@ import {
   type TranscriptTurn,
 } from '@kyro/shared';
 import { continues } from './continuation.js';
+import { query } from '../db/pool.js';
 
 // One session in memory. This is why the server must be long-running and must
 // not be deployed to a serverless platform — a cold start loses the interview.
@@ -24,7 +25,13 @@ let model: CandidateModel = emptyModel(`s-${Date.now()}`);
 // /reset is measured from server start, and a fresh demo opens at 14 minutes.
 let startedAt = Date.now();
 
-// In-memory history of completed candidate scorecards for company / recruiter portal
+// Completed scorecards. Postgres when DATABASE_URL is set — this is the half of
+// the app that has to outlive the process, because a recruiter reads it days
+// after the interview and Render's free tier restarts long before that.
+//
+// The rows below are the fallback for a checkout with no database: something to
+// look at in the portal rather than an empty page. They are never written to
+// Postgres, so a real deployment shows real interviews only.
 let scorecardsHistory: Scorecard[] = [
   {
     sessionId: 'kyro-anish-01',
@@ -272,15 +279,77 @@ export function adjustDifficulty(delta: number): void {
 
 export const lastSpeaker = (): PanelistId | null => model.lastSpeaker;
 
-export function saveScorecardToHistory(scorecard: Scorecard): void {
-  const idx = scorecardsHistory.findIndex(s => s.sessionId === scorecard.sessionId);
-  if (idx >= 0) {
-    scorecardsHistory[idx] = scorecard;
-  } else {
-    scorecardsHistory.unshift(scorecard);
-  }
+interface ScorecardRow {
+  session_id: string;
+  candidate_name: string;
+  role: string;
+  level: string | null;
+  duration_sec: number;
+  turns: number;
+  dissent: boolean;
+  mock: boolean;
+  verdicts: Scorecard['verdicts'];
+  claims: Scorecard['claims'];
+  created_at: Date;
 }
 
-export function getScorecardsHistory(): Scorecard[] {
-  return scorecardsHistory;
+const toScorecard = (r: ScorecardRow): Scorecard => ({
+  sessionId: r.session_id,
+  candidateName: r.candidate_name,
+  role: r.role,
+  level: r.level ?? undefined,
+  durationSec: r.duration_sec,
+  turns: r.turns,
+  dissent: r.dissent,
+  mock: r.mock,
+  verdicts: r.verdicts,
+  claims: r.claims,
+  timestamp: r.created_at.getTime(),
+});
+
+/**
+ * Upsert, because /scorecard is a GET the room may retry — a second request for
+ * the same session must correct the row it wrote, not add a duplicate next to it.
+ */
+export async function saveScorecardToHistory(scorecard: Scorecard): Promise<void> {
+  const rows = await query(
+    `insert into scorecards
+       (session_id, candidate_name, role, level, duration_sec, turns, dissent, mock, verdicts, claims)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10::jsonb)
+     on conflict (session_id) do update set
+       candidate_name = excluded.candidate_name,
+       role           = excluded.role,
+       level          = excluded.level,
+       duration_sec   = excluded.duration_sec,
+       turns          = excluded.turns,
+       dissent        = excluded.dissent,
+       mock           = excluded.mock,
+       verdicts       = excluded.verdicts,
+       claims         = excluded.claims`,
+    [
+      scorecard.sessionId,
+      scorecard.candidateName,
+      scorecard.role,
+      scorecard.level ?? null,
+      Math.max(0, Math.round(scorecard.durationSec)),
+      Math.max(0, Math.round(scorecard.turns ?? 0)),
+      scorecard.dissent,
+      scorecard.mock === true,
+      JSON.stringify(scorecard.verdicts),
+      JSON.stringify(scorecard.claims),
+    ],
+  );
+  if (rows !== null) return;
+
+  const idx = scorecardsHistory.findIndex(s => s.sessionId === scorecard.sessionId);
+  if (idx >= 0) scorecardsHistory[idx] = scorecard;
+  else scorecardsHistory.unshift(scorecard);
+}
+
+/** Newest first. `mock` interviews are practice and the caller filters them. */
+export async function getScorecardsHistory(): Promise<Scorecard[]> {
+  const rows = await query<ScorecardRow>(
+    'select * from scorecards order by created_at desc limit 200',
+  );
+  return rows === null ? scorecardsHistory : rows.map(toScorecard);
 }

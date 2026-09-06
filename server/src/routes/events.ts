@@ -101,7 +101,7 @@ router.get('/scorecard', async (req, res) => {
     customDuration,
     req.query.mock === '1',
   );
-  saveScorecardToHistory(scorecard);
+  await saveScorecardToHistory(scorecard);
   broadcast({ type: 'scorecard', scorecard });
   res.json(scorecard);
 });
@@ -111,8 +111,8 @@ router.get('/scorecard', async (req, res) => {
 // Mock interviews are practice a candidate ran on themselves, choosing their own
 // level — real results, but not hiring data, and nothing a recruiter should be
 // reading as a signal. ?mock=1 asks for them anyway.
-router.get('/scorecards', (req, res) => {
-  const history = getScorecardsHistory();
+router.get('/scorecards', async (req, res) => {
+  const history = await getScorecardsHistory();
   res.json(req.query.mock === '1' ? history : history.filter(s => !s.mock));
 });
 

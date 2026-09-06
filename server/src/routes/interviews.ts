@@ -7,19 +7,19 @@ import { InterviewError, create, find, list, markStarted } from '../panel/interv
 
 const router = Router();
 
-router.get('/interviews', (_req, res) => res.json(list()));
+router.get('/interviews', async (_req, res) => res.json(await list()));
 
-router.post('/interviews', (req, res) => {
+router.post('/interviews', async (req, res) => {
   try {
-    res.status(201).json(create(req.body ?? {}));
+    res.status(201).json(await create(req.body ?? {}));
   } catch (err) {
     if (err instanceof InterviewError) return res.status(400).json({ error: err.message });
     throw err;
   }
 });
 
-router.get('/interviews/:code', (req, res) => {
-  const interview = find(req.params.code);
+router.get('/interviews/:code', async (req, res) => {
+  const interview = await find(req.params.code);
   // Say nothing about which part was wrong: a code is the only thing standing
   // between a stranger and a candidate's name.
   if (!interview) return res.status(404).json({ error: 'no interview for that code' });
@@ -27,8 +27,8 @@ router.get('/interviews/:code', (req, res) => {
 });
 
 /** The candidate opened the room. Idempotent — a refresh must not reset it. */
-router.post('/interviews/:code/start', (req, res) => {
-  const interview = markStarted(req.params.code);
+router.post('/interviews/:code/start', async (req, res) => {
+  const interview = await markStarted(req.params.code);
   if (!interview) return res.status(404).json({ error: 'no interview for that code' });
   res.json(interview);
 });

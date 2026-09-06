@@ -62,9 +62,14 @@ pick a role and difficulty, allow the mic and talk.
 Scorecards from finished interviews are listed back on the portal. Mock
 interviews are not — they are practice, not hiring data.
 
-> Free Render instance: it sleeps after 15 idle minutes and the first request
-> after that takes ~30 s to wake. The interview lives in memory, so a session
-> does not survive a sleep — warm it up before a demo.
+> **Cold starts.** A free Render instance sleeps after 15 idle minutes, and the
+> first request after that takes ~30 s while it boots. An UptimeRobot monitor
+> pings `/health` every 5 minutes, which keeps it awake and takes that 30 s off
+> the first visit — the reason `/health`, `/healthz` and `/ping` all exist.
+>
+> It does not make the app stateless. A redeploy or a crash still restarts the
+> process, and a live interview lives in memory while it runs. Interviews and
+> scorecards are in Postgres and survive; the interview in progress does not.
 
 ---
 
@@ -76,8 +81,13 @@ needs a public tunnel back to your machine.
 ```bash
 npm install
 cp .env.example .env        # fill it in — see the comments inside
+npm run db:setup -w server  # apply the schema (skip it to run without a database)
 npm run dev                 # server on :8787, web on :3000
 ```
+
+`DATABASE_URL` is optional. Without it the server keeps interviews and
+scorecards in memory and forgets them when it stops — fine for a quick look,
+useless for a recruiter reading a scorecard the next day.
 
 In a second terminal:
 
@@ -91,7 +101,7 @@ Open `http://localhost:3000` and take either path — mock interview, or schedul
 one and open the invite link. Same flow as the hosted app.
 
 ```bash
-npm run check -w server     # twelve self-checks, no network, no keys needed
+npm run check -w server     # twelve self-checks, no network, no keys, no database
 ```
 
 > `cloudflared` prints a **new** hostname every restart. A stale
@@ -174,6 +184,7 @@ shared/          the contract both sides import — types only, no logic
 
 server/
   src/index.ts   express app, route + auth wiring
+  src/db/        pool + schema.sql — the two tables that outlive the process
   src/panel/     the brain: bidding, ledger, model, scorecard, personas, llm,
                  interviews (who set the bar), continuation (ASR resends)
   src/routes/    token · interviews · events + state + reset + scorecard ·
@@ -211,6 +222,7 @@ That is the point — it is the only thing keeping two developers in sync.
 | Landing page, company / candidate split | done |
 | Company schedules the interview, candidate joins by invite link | done |
 | Mock interviews, kept out of the company portal | done |
+| Interviews and scorecards in Postgres, RLS closed to the anon key | done |
 | Shared secret on every write | done |
 | `/token` bound to the configured channel and non-reserved uids | done |
 | Invite code enforced on `/agent/start` and `/scorecard` | not yet |
@@ -230,7 +242,10 @@ Streaming with the winner named first would get it to about 1 s. Details in
 [`docs/decisions.md`](docs/decisions.md).
 
 **Never deploy this to a serverless platform.** The Shared Candidate Model lives
-in memory. A cold start loses the interview mid-sentence.
+in memory while an interview runs, and `/events` is a long-lived SSE stream. A
+platform that cold-starts between requests, or spreads them across instances,
+loses the interview mid-sentence. Postgres holds the schedule and the finished
+scorecards; it does not hold the conversation in flight.
 
 ---
 
