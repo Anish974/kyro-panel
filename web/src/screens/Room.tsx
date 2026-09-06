@@ -5,6 +5,7 @@ import { joinAsCandidate, leave, type JoinResult } from '../lib/agora.js';
 import type { AgentState } from '../lib/rtm.js';
 import PanelistTile from '../components/PanelistTile.js';
 import BidRail from '../components/BidRail.js';
+import ThemeToggle from '../components/ThemeToggle.js';
 
 const CHANNEL = 'demo-channel';
 
@@ -810,10 +811,13 @@ export default function Room({ candidateName, role, level, onEnd }: Props) {
             </div>
           </div>
 
+          {/* Theme Toggle */}
+          <ThemeToggle />
+
           {/* Leave Interview Button */}
           <button
             onClick={() => setConfirmEnd(true)}
-            className="border border-[#EBE6DF] hover:border-gray-400 text-gray-800 hover:text-gray-950 bg-white hover:bg-gray-50 text-xs md:text-sm font-bold px-4 py-2 rounded-xl transition-colors shadow-2xs cursor-pointer"
+            className="border border-[#EBE6DF] dark:border-[#222631] hover:border-gray-400 text-gray-800 dark:text-gray-200 hover:text-gray-950 dark:hover:text-white bg-white dark:bg-[#161920] hover:bg-gray-50 dark:hover:bg-[#1E232D] text-xs md:text-sm font-bold px-4 py-2 rounded-xl transition-colors shadow-2xs cursor-pointer"
           >
             Leave Interview
           </button>

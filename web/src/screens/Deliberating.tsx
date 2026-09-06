@@ -1,21 +1,11 @@
 import { useEffect, useState } from 'react';
 import { PANEL } from '@kyro/shared';
 
-// The gap between "end interview" and the scorecard used to be nothing: the
-// screen swapped and three finished verdicts were simply there, which read as
-// if they had been decided in advance.
-//
-// They are not. The three write-ups are produced here, from the transcript,
-// after the interview ends. This screen is the honest version of that wait —
-// it says what is happening while it happens, and it is the only moment in the
-// product where the panel is visibly doing the thing the pitch is about.
-
 interface Props {
   candidateName: string;
   role: string;
 }
 
-/** Roughly how long the write-up takes; the last line simply holds. */
 const STEP_MS = 1100;
 
 const STEPS = [
@@ -29,30 +19,27 @@ export default function Deliberating({ candidateName, role }: Props) {
   const [step, setStep] = useState(0);
 
   useEffect(() => {
-    // Stops at the last step rather than looping — a spinner that restarts
-    // suggests something went wrong.
     if (step >= STEPS.length - 1) return;
     const id = setTimeout(() => setStep(s => s + 1), STEP_MS);
     return () => clearTimeout(id);
   }, [step]);
 
   return (
-    <div className="min-h-screen w-full bg-[#FAF9F6] flex flex-col items-center justify-center px-4 py-12 select-none">
+    <div className="min-h-screen w-full bg-[#FAF9F6] dark:bg-[#0F1115] text-[#181A20] dark:text-[#F9FAFB] flex flex-col items-center justify-center px-4 py-12 select-none transition-colors duration-200">
       <div className="w-full max-w-lg flex flex-col items-center text-center gap-8">
         <div>
-          <p className="text-xs font-mono uppercase tracking-wider text-[#4B5565] mb-3">
+          <p className="text-xs font-mono uppercase tracking-wider text-[#4B5565] dark:text-[#94A3B8] mb-3">
             Interview complete
           </p>
-          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-[#181A20] font-display">
+          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-[#181A20] dark:text-[#F9FAFB] font-display">
             The panel is writing up
           </h1>
-          <p className="mt-3 text-base text-[#4B5565]">
+          <p className="mt-3 text-base text-[#4B5565] dark:text-[#94A3B8]">
             {candidateName} &middot; {role}
           </p>
         </div>
 
-        {/* The three of them, deliberating separately — which is the whole
-            point of the product, so it is worth showing rather than a spinner. */}
+        {/* The three of them, deliberating separately */}
         <div className="flex items-center justify-center gap-5">
           {PANEL.map((p, i) => (
             <div key={p.id} className="flex flex-col items-center gap-2.5">
@@ -65,15 +52,15 @@ export default function Deliberating({ candidateName, role }: Props) {
               >
                 {p.name.split(' ').map(n => n[0]).join('')}
               </div>
-              <span className="text-xs font-bold text-gray-800">{p.name.split(' ')[0]}</span>
-              <span className="text-[10px] text-gray-500 font-medium leading-tight max-w-[80px]">
+              <span className="text-xs font-bold text-gray-800 dark:text-gray-200">{p.name.split(' ')[0]}</span>
+              <span className="text-[10px] text-gray-500 dark:text-gray-400 font-medium leading-tight max-w-[80px]">
                 {p.role}
               </span>
             </div>
           ))}
         </div>
 
-        <div className="w-full bg-white rounded-2xl border border-[#EBE6DF] shadow-sm p-6 flex flex-col gap-3">
+        <div className="w-full bg-white dark:bg-[#161920] rounded-2xl border border-[#EBE6DF] dark:border-[#222631] shadow-sm p-6 flex flex-col gap-3">
           {STEPS.map((label, i) => (
             <div key={label} className="flex items-center gap-3 text-sm">
               {i < step ? (
@@ -85,16 +72,16 @@ export default function Deliberating({ candidateName, role }: Props) {
               ) : i === step ? (
                 <span className="w-5 h-5 shrink-0 rounded-full border-2 border-[#2563EB] border-t-transparent animate-spin" />
               ) : (
-                <span className="w-5 h-5 shrink-0 rounded-full border-2 border-[#EBE6DF]" />
+                <span className="w-5 h-5 shrink-0 rounded-full border-2 border-[#EBE6DF] dark:border-[#2D333F]" />
               )}
-              <span className={i <= step ? 'font-semibold text-gray-900' : 'text-gray-400'}>
+              <span className={i <= step ? 'font-semibold text-gray-900 dark:text-gray-100' : 'text-gray-400 dark:text-gray-600'}>
                 {label}
               </span>
             </div>
           ))}
         </div>
 
-        <p className="text-xs text-[#8C93A3] max-w-sm leading-relaxed">
+        <p className="text-xs text-[#8C93A3] dark:text-[#64748B] max-w-sm leading-relaxed">
           The three verdicts are never averaged. Where they disagree, you will see both sides
           and the answers each of them is standing on.
         </p>

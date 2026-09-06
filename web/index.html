@@ -2,14 +2,48 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Kyro Panel</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <title>Kyro Panel — Coordinated AI Voice Interview Panel</title>
+    <meta name="description" content="Three AI interviewers on one voice call: a Technical Architect, Product Manager, and Hiring Lead. They dynamically bid for the floor and deliver 3 independent, un-averaged verdicts with timestamped proof." />
+    <meta name="keywords" content="AI interview, AI panel interview, Agora voice AI, technical mock interview, recruiter screening tool, coordinated LLM agents" />
+    <meta name="author" content="Kyro Panel Team" />
+    <meta name="theme-color" content="#FAF9F6" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0F1115" media="(prefers-color-scheme: dark)" />
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://kyro-panel.onrender.com/" />
+    <meta property="og:title" content="Kyro Panel — Coordinated AI Voice Interview Panel" />
+    <meta property="og:description" content="Three AI interviewers on one synchronized voice call. Experience real floor deliberation and transparent, un-averaged multi-angle scorecards." />
+    <meta property="og:image" content="/favicon.png" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Kyro Panel — Coordinated AI Voice Interview Panel" />
+    <meta name="twitter:description" content="Three AI interviewers on one synchronized voice call. Experience real floor deliberation and transparent, un-averaged multi-angle scorecards." />
+    <meta name="twitter:image" content="/favicon.png" />
+
     <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+
+    <!-- Prevent FOUC for Dark Theme -->
+    <script>
+      (function() {
+        try {
+          const stored = localStorage.getItem('kyro_theme');
+          const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          if (stored === 'dark' || (!stored && prefersDark)) {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
-  <body>
+  <body class="bg-[#FAF9F6] dark:bg-[#0F1115] text-[#181A20] dark:text-[#F9FAFB] antialiased selection:bg-gray-200 dark:selection:bg-gray-800">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* Color Palette tokens from design & user specs */
 @theme {
   --color-desert-rock: #A48D78;
@@ -36,13 +38,28 @@
   --font-display: "Plus Jakarta Sans", "Space Grotesk", ui-sans-serif, sans-serif;
 }
 
-html, body, #root {
-  height: 100%;
+html {
+  overflow-x: hidden;
+}
+
+body {
   margin: 0;
+  overflow-x: hidden;
   background-color: #FAF9F6;
   color: #181A20;
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+html.dark body {
+  background-color: #0F1115;
+  color: #F9FAFB;
+}
+
+#root {
+  min-height: 100%;
+  overflow-x: hidden;
 }
 
 /* Custom Scrollbars */
@@ -59,6 +76,13 @@ html, body, #root {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #CBB9A4;
+}
+
+html.dark ::-webkit-scrollbar-thumb {
+  background: #2D333F;
+}
+html.dark ::-webkit-scrollbar-thumb:hover {
+  background: #404859;
 }
 
 /* Audio wave equalizer animation */
@@ -102,4 +126,26 @@ html, body, #root {
 
 .speaker-active-glow {
   animation: blue-pulse-border 2.5s ease-in-out infinite;
+}
+
+/* Shimmer animation for skeleton loaders */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-shimmer {
+  background: linear-gradient(90deg, rgba(235, 230, 223, 0.4) 0%, rgba(244, 241, 234, 0.8) 50%, rgba(235, 230, 223, 0.4) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+html.dark .animate-shimmer {
+  background: linear-gradient(90deg, rgba(34, 38, 49, 0.6) 0%, rgba(45, 51, 63, 0.9) 50%, rgba(34, 38, 49, 0.6) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
 }

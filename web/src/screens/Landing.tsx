@@ -1,11 +1,12 @@
 import { useState } from 'react';
+import ThemeToggle from '../components/ThemeToggle.js';
+import BackToTop from '../components/BackToTop.js';
 
 interface Props {
   onCompany: () => void;
   onCandidate: () => void;
 }
 
-// Served from web/public
 const SHOTS = [
   {
     src: '/screenshots/room.png',
@@ -19,38 +20,73 @@ const SHOTS = [
   },
 ] as const;
 
+interface FAQItem {
+  q: string;
+  a: string;
+}
+
+const FAQS: FAQItem[] = [
+  {
+    q: 'How does the 3-interviewer AI panel coordinate without interrupting each other?',
+    a: 'After each answer you give, our backend runs a real-time floor-bidding algorithm. Each panelist (Technical Architect, Product Manager, and Hiring Lead) evaluates your response and submits an urgency score. The highest bidder takes the floor via synchronized Agora audio streams, ensuring natural conversation without awkward collisions.',
+  },
+  {
+    q: 'What does "never averaged into a single score" mean?',
+    a: 'Traditional automated tools reduce complex interviews into an arbitrary number like 7.5/10. Kyro Panel generates three separate, unvarnished verdicts from each persona—with direct timestamped quotes from your transcript. When panelists disagree on your approach, that disagreement is clearly visible and valuable.',
+  },
+  {
+    q: 'Do I need to install software or enable my camera?',
+    a: 'No installation required! Kyro Panel runs directly in modern web browsers with ultra-low latency voice powered by Agora. The interview is voice-first, meaning you only need a functioning microphone.',
+  },
+  {
+    q: 'How do hiring teams customize the panel for specific jobs?',
+    a: 'Recruiters can generate tailored invite links in seconds by entering the job description, target seniority level (Intern to Expert), and optionally uploading the candidate\'s resume. The AI panel adapts its inquiry directly around those specific requirements.',
+  },
+  {
+    q: 'Can candidates practice without a company invitation?',
+    a: 'Yes. Candidates can start an instant Mock Interview anytime. You will get the full 3-person panel experience and receive a comprehensive un-averaged scorecard at the end.',
+  },
+];
+
 export default function Landing({ onCompany, onCandidate }: Props) {
   const [missing, setMissing] = useState<readonly string[]>([]);
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
+
   const shots = SHOTS.filter(s => !missing.includes(s.src));
 
+  function toggleFaq(index: number) {
+    setOpenFaq(prev => (prev === index ? null : index));
+  }
+
   return (
-    <div className="min-h-screen bg-[#FAF9F6] text-[#181A20] flex flex-col selection:bg-gray-200">
-      {/* Top Navigation Bar - Full Width with Left Aligned Brand */}
-      <header className="w-full px-6 sm:px-10 lg:px-16 py-4 flex items-center justify-between border-b border-[#EBE6DF]/80 bg-[#FAF9F6]/90 backdrop-blur-md sticky top-0 z-30">
-        <div 
+    <div className="min-h-screen bg-[#FAF9F6] dark:bg-[#0F1115] text-[#181A20] dark:text-[#F9FAFB] flex flex-col selection:bg-gray-200 dark:selection:bg-gray-800 transition-colors duration-200">
+      {/* Top Navigation Bar */}
+      <header className="w-full px-6 sm:px-10 lg:px-16 py-4 flex items-center justify-between border-b border-[#EBE6DF]/80 dark:border-[#222631]/80 bg-[#FAF9F6]/90 dark:bg-[#0F1115]/90 backdrop-blur-md sticky top-0 z-30">
+        <div
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          className="flex items-center gap-3 cursor-pointer select-none group"
+          className="flex items-center gap-3.5 cursor-pointer select-none group"
         >
           <img
             src="/favicon.png"
             alt="Kyro Panel Logo"
-            className="w-9 h-9 sm:w-10 sm:h-10 object-contain transition-transform group-hover:scale-105"
+            className="w-10 h-10 md:w-12 md:h-12 object-contain transition-transform group-hover:scale-105 drop-shadow-xs"
           />
-          <span className="font-display font-extrabold text-2xl tracking-tight text-[#181A20]">
+          <span className="font-display font-extrabold text-2xl sm:text-3xl tracking-tight text-[#181A20] dark:text-[#F9FAFB]">
             Kyro Panel
           </span>
         </div>
 
         <div className="flex items-center gap-3">
+          <ThemeToggle />
           <button
             onClick={onCandidate}
-            className="hidden sm:inline-flex text-xs font-bold text-[#4B5565] hover:text-[#181A20] px-3 py-2 transition-colors cursor-pointer"
+            className="hidden sm:inline-flex text-xs font-bold text-[#4B5565] dark:text-[#94A3B8] hover:text-[#181A20] dark:hover:text-white px-3 py-2 transition-colors cursor-pointer"
           >
             Candidate Practice
           </button>
           <button
             onClick={onCompany}
-            className="h-10 px-5 rounded-xl border border-[#EBE6DF] bg-white font-bold text-xs sm:text-sm text-[#181A20] hover:bg-gray-50 shadow-2xs transition-all cursor-pointer"
+            className="h-10 px-5 rounded-xl border border-[#EBE6DF] dark:border-[#222631] bg-white dark:bg-[#161920] font-bold text-xs sm:text-sm text-[#181A20] dark:text-[#F9FAFB] hover:bg-gray-50 dark:hover:bg-[#1E232D] shadow-2xs transition-all cursor-pointer"
           >
             For Hiring Teams
           </button>
@@ -61,41 +97,40 @@ export default function Landing({ onCompany, onCandidate }: Props) {
       <main className="flex-1 max-w-[1140px] w-full mx-auto px-6 py-12 flex flex-col gap-20">
         {/* Hero Section */}
         <section className="text-center pt-6 pb-4">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#F4F1EA] border border-[#E6DAC8] text-xs font-bold text-[#78644E] mb-6">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#F4F1EA] dark:bg-[#1E232D] border border-[#E6DAC8] dark:border-[#2D333F] text-xs font-bold text-[#78644E] dark:text-[#CBB9A4] mb-6">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             Coordinated AI Voice Panel
           </div>
 
-          <h1 className="font-display text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[1.08] text-[#181A20] max-w-4xl mx-auto">
+          <h1 className="font-display text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[1.08] text-[#181A20] dark:text-[#F9FAFB] max-w-4xl mx-auto">
             Three AI interviewers.
             <br />
-            <span className="bg-gradient-to-r from-[#181A20] via-[#3B4252] to-[#6366F1] bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-[#181A20] via-[#3B4252] to-[#6366F1] dark:from-white dark:via-gray-200 dark:to-indigo-400 bg-clip-text text-transparent">
               One voice call. Real deliberation.
             </span>
           </h1>
 
-          <p className="mt-6 text-base sm:text-xl text-[#4B5565] max-w-2xl mx-auto leading-relaxed">
+          <p className="mt-6 text-base sm:text-xl text-[#4B5565] dark:text-[#94A3B8] max-w-2xl mx-auto leading-relaxed">
             A <strong>Technical Architect</strong>, <strong>Product Manager</strong>, and <strong>Hiring Lead</strong> share 
-            one real-time memory of your interview. They dynamically bid for who speaks next and deliver three independent verdicts —{' '}
-            <strong className="text-[#181A20]">never averaged into a single opaque score.</strong>
+            one real-time memory of your interview, dynamically bidding for who speaks next and delivering three independent verdicts.
           </p>
 
           <div className="mt-9 flex flex-col sm:flex-row gap-3.5 justify-center items-center">
             <button
               onClick={onCandidate}
-              className="w-full sm:w-auto h-12 px-8 rounded-xl bg-[#181A20] text-white font-bold text-sm hover:bg-black transition-all cursor-pointer shadow-sm hover:shadow-md"
+              className="w-full sm:w-auto h-12 px-8 rounded-xl bg-[#181A20] dark:bg-[#F9FAFB] text-white dark:text-[#0F1115] font-bold text-sm hover:bg-black dark:hover:bg-white transition-all cursor-pointer shadow-sm hover:shadow-md"
             >
               Start as Candidate
             </button>
             <button
               onClick={onCompany}
-              className="w-full sm:w-auto h-12 px-8 rounded-xl bg-white border border-[#EBE6DF] font-bold text-sm text-[#181A20] hover:bg-gray-50 transition-all cursor-pointer shadow-2xs"
+              className="w-full sm:w-auto h-12 px-8 rounded-xl bg-white dark:bg-[#161920] border border-[#EBE6DF] dark:border-[#222631] font-bold text-sm text-[#181A20] dark:text-[#F9FAFB] hover:bg-gray-50 dark:hover:bg-[#1E232D] transition-all cursor-pointer shadow-2xs"
             >
-              Recruiter & Company Portal
+              Recruiter &amp; Company Portal
             </button>
           </div>
 
-          <p className="mt-4 text-xs text-[#8C93A3]">
+          <p className="mt-4 text-xs text-[#8C93A3] dark:text-[#64748B]">
             Have an invite link from an employer? Open that link directly to access your scheduled interview.
           </p>
         </section>
@@ -103,91 +138,91 @@ export default function Landing({ onCompany, onCandidate }: Props) {
         {/* Dual Audience Section: Built for Candidates & Hiring Teams */}
         <section className="flex flex-col gap-6">
           <div className="text-center max-w-xl mx-auto">
-            <h2 className="font-display text-2xl sm:text-3xl font-extrabold text-[#181A20]">
+            <h2 className="font-display text-2xl sm:text-3xl font-extrabold text-[#181A20] dark:text-[#F9FAFB]">
               Built for both sides of the hiring table
             </h2>
-            <p className="mt-2 text-sm text-[#4B5565]">
+            <p className="mt-2 text-sm text-[#4B5565] dark:text-[#94A3B8]">
               Whether you are evaluating top candidates or preparing for high-stakes interviews.
             </p>
           </div>
 
           <div className="grid md:grid-cols-2 gap-6 mt-4">
             {/* For Candidates Card */}
-            <div className="bg-white rounded-3xl border border-[#EBE6DF] p-8 sm:p-9 shadow-xs hover:shadow-md transition-shadow flex flex-col justify-between">
+            <div className="bg-white dark:bg-[#161920] rounded-3xl border border-[#EBE6DF] dark:border-[#222631] p-8 sm:p-9 shadow-xs hover:shadow-md transition-all flex flex-col justify-between">
               <div>
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold bg-blue-50 text-[#2563EB] border border-blue-200/60 mb-5">
-                  🎓 For Candidates & Job Seekers
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold bg-blue-50 dark:bg-blue-950/50 text-[#2563EB] dark:text-blue-400 border border-blue-200/60 dark:border-blue-800/60 mb-5">
+                  🎓 For Candidates &amp; Job Seekers
                 </div>
-                <h3 className="font-display text-2xl font-extrabold text-[#181A20] leading-snug">
+                <h3 className="font-display text-2xl font-extrabold text-[#181A20] dark:text-[#F9FAFB] leading-snug">
                   Practice high-pressure panel interviews with unvarnished feedback
                 </h3>
-                <p className="mt-3 text-sm text-[#4B5565] leading-relaxed">
+                <p className="mt-3 text-sm text-[#4B5565] dark:text-[#94A3B8] leading-relaxed">
                   No generic multiple-choice bots. Experience a dynamic multi-interviewer voice call that challenges both your technical architecture and product execution.
                 </p>
 
-                <ul className="mt-6 space-y-3.5 text-sm text-[#181A20]">
+                <ul className="mt-6 space-y-3.5 text-sm text-[#181A20] dark:text-gray-200">
                   <li className="flex items-start gap-3">
-                    <span className="text-emerald-600 font-bold text-base leading-none">✓</span>
+                    <span className="text-emerald-600 dark:text-emerald-400 font-bold text-base leading-none">✓</span>
                     <span><strong>Live Voice Deliberation:</strong> Answer interviewers who follow up on your logic and take turns speaking.</span>
                   </li>
                   <li className="flex items-start gap-3">
-                    <span className="text-emerald-600 font-bold text-base leading-none">✓</span>
+                    <span className="text-emerald-600 dark:text-emerald-400 font-bold text-base leading-none">✓</span>
                     <span><strong>Multi-Angle Scorecards:</strong> See exactly where Technical, Product, and HR perspectives aligned or diverged.</span>
                   </li>
                   <li className="flex items-start gap-3">
-                    <span className="text-emerald-600 font-bold text-base leading-none">✓</span>
+                    <span className="text-emerald-600 dark:text-emerald-400 font-bold text-base leading-none">✓</span>
                     <span><strong>Timestamped Evidence:</strong> Review direct quotes from your responses that influenced each verdict.</span>
                   </li>
                 </ul>
               </div>
 
-              <div className="mt-8 pt-6 border-t border-[#EBE6DF]">
+              <div className="mt-8 pt-6 border-t border-[#EBE6DF] dark:border-[#222631]">
                 <button
                   onClick={onCandidate}
-                  className="w-full h-11 rounded-xl bg-[#FAF9F6] border border-[#EBE6DF] hover:bg-gray-100 font-bold text-sm text-[#181A20] transition-colors cursor-pointer flex items-center justify-center gap-2"
+                  className="w-full h-11 rounded-xl bg-[#FAF9F6] dark:bg-[#1E232D] border border-[#EBE6DF] dark:border-[#2D333F] hover:bg-gray-100 dark:hover:bg-[#252B38] font-bold text-sm text-[#181A20] dark:text-[#F9FAFB] transition-colors cursor-pointer flex items-center justify-center gap-2"
                 >
                   <span>Practice Mock Interview</span>
-                  <span>→</span>
+                  <span>&rarr;</span>
                 </button>
               </div>
             </div>
 
             {/* For Hiring Teams Card */}
-            <div className="bg-white rounded-3xl border border-[#EBE6DF] p-8 sm:p-9 shadow-xs hover:shadow-md transition-shadow flex flex-col justify-between">
+            <div className="bg-white dark:bg-[#161920] rounded-3xl border border-[#EBE6DF] dark:border-[#222631] p-8 sm:p-9 shadow-xs hover:shadow-md transition-all flex flex-col justify-between">
               <div>
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold bg-purple-50 text-[#8B5CF6] border border-purple-200/60 mb-5">
-                  💼 For Hiring Teams & Recruiters
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold bg-purple-50 dark:bg-purple-950/50 text-[#8B5CF6] dark:text-purple-400 border border-purple-200/60 dark:border-purple-800/60 mb-5">
+                  💼 For Hiring Teams &amp; Recruiters
                 </div>
-                <h3 className="font-display text-2xl font-extrabold text-[#181A20] leading-snug">
+                <h3 className="font-display text-2xl font-extrabold text-[#181A20] dark:text-[#F9FAFB] leading-snug">
                   Comprehensive 3-way candidate evaluations in a single automated round
                 </h3>
-                <p className="mt-3 text-sm text-[#4B5565] leading-relaxed">
+                <p className="mt-3 text-sm text-[#4B5565] dark:text-[#94A3B8] leading-relaxed">
                   Screen candidates thoroughly on engineering depth, product acumen, and behavioral fit without tying up hours of senior staff time.
                 </p>
 
-                <ul className="mt-6 space-y-3.5 text-sm text-[#181A20]">
+                <ul className="mt-6 space-y-3.5 text-sm text-[#181A20] dark:text-gray-200">
                   <li className="flex items-start gap-3">
-                    <span className="text-emerald-600 font-bold text-base leading-none">✓</span>
+                    <span className="text-emerald-600 dark:text-emerald-400 font-bold text-base leading-none">✓</span>
                     <span><strong>Instant Invite Generation:</strong> Paste role descriptions and target levels to generate candidate invite links.</span>
                   </li>
                   <li className="flex items-start gap-3">
-                    <span className="text-emerald-600 font-bold text-base leading-none">✓</span>
+                    <span className="text-emerald-600 dark:text-emerald-400 font-bold text-base leading-none">✓</span>
                     <span><strong>Floor Bidding Coordination:</strong> Panelists coordinate seamlessly on voice, avoiding repetitive questions.</span>
                   </li>
                   <li className="flex items-start gap-3">
-                    <span className="text-emerald-600 font-bold text-base leading-none">✓</span>
+                    <span className="text-emerald-600 dark:text-emerald-400 font-bold text-base leading-none">✓</span>
                     <span><strong>Un-Averaged Panel Verdicts:</strong> Identify specific trade-offs and debate points with transparent scorecard reports.</span>
                   </li>
                 </ul>
               </div>
 
-              <div className="mt-8 pt-6 border-t border-[#EBE6DF]">
+              <div className="mt-8 pt-6 border-t border-[#EBE6DF] dark:border-[#222631]">
                 <button
                   onClick={onCompany}
-                  className="w-full h-11 rounded-xl bg-[#181A20] hover:bg-black font-bold text-sm text-white transition-colors cursor-pointer flex items-center justify-center gap-2 shadow-xs"
+                  className="w-full h-11 rounded-xl bg-[#181A20] dark:bg-[#F9FAFB] hover:bg-black dark:hover:bg-white font-bold text-sm text-white dark:text-[#0F1115] transition-colors cursor-pointer flex items-center justify-center gap-2 shadow-xs"
                 >
                   <span>Open Recruiter Portal</span>
-                  <span>→</span>
+                  <span>&rarr;</span>
                 </button>
               </div>
             </div>
@@ -195,52 +230,92 @@ export default function Landing({ onCompany, onCandidate }: Props) {
         </section>
 
         {/* How It Works Feature Cards */}
-        <section className="flex flex-col gap-8 pb-4">
+        <section className="flex flex-col gap-8">
           <div className="text-center max-w-xl mx-auto">
-            <h2 className="font-display text-2xl sm:text-3xl font-extrabold text-[#181A20]">
+            <h2 className="font-display text-2xl sm:text-3xl font-extrabold text-[#181A20] dark:text-[#F9FAFB]">
               How the Coordinated Panel works
             </h2>
-            <p className="mt-2 text-sm text-[#4B5565]">
+            <p className="mt-2 text-sm text-[#4B5565] dark:text-[#94A3B8]">
               Real-time voice intelligence powered by Agora and coordinated LLM agents.
             </p>
           </div>
 
           <div className="grid sm:grid-cols-3 gap-6">
-            <div className="bg-white rounded-2xl border border-[#EBE6DF] p-6 shadow-xs flex flex-col justify-between">
+            <div className="bg-white dark:bg-[#161920] rounded-2xl border border-[#EBE6DF] dark:border-[#222631] p-6 shadow-xs flex flex-col justify-between">
               <div>
-                <div className="w-10 h-10 rounded-xl bg-[#F4F1EA] border border-[#E6DAC8] flex items-center justify-center text-lg mb-4">
+                <div className="w-10 h-10 rounded-xl bg-[#F4F1EA] dark:bg-[#1E232D] border border-[#E6DAC8] dark:border-[#2D333F] flex items-center justify-center text-lg mb-4">
                   🎙️
                 </div>
-                <h4 className="font-bold text-base text-[#181A20]">Real-Time Floor Bidding</h4>
-                <p className="mt-2 text-xs sm:text-sm text-[#4B5565] leading-relaxed">
+                <h4 className="font-bold text-base text-[#181A20] dark:text-[#F9FAFB]">Real-Time Floor Bidding</h4>
+                <p className="mt-2 text-xs sm:text-sm text-[#4B5565] dark:text-[#94A3B8] leading-relaxed">
                   After every answer, panelists score their desire to speak based on what was said. The highest bidder takes the floor naturally.
                 </p>
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl border border-[#EBE6DF] p-6 shadow-xs flex flex-col justify-between">
+            <div className="bg-white dark:bg-[#161920] rounded-2xl border border-[#EBE6DF] dark:border-[#222631] p-6 shadow-xs flex flex-col justify-between">
               <div>
-                <div className="w-10 h-10 rounded-xl bg-[#F4F1EA] border border-[#E6DAC8] flex items-center justify-center text-lg mb-4">
+                <div className="w-10 h-10 rounded-xl bg-[#F4F1EA] dark:bg-[#1E232D] border border-[#E6DAC8] dark:border-[#2D333F] flex items-center justify-center text-lg mb-4">
                   🧠
                 </div>
-                <h4 className="font-bold text-base text-[#181A20]">Unified Shared Context</h4>
-                <p className="mt-2 text-xs sm:text-sm text-[#4B5565] leading-relaxed">
+                <h4 className="font-bold text-base text-[#181A20] dark:text-[#F9FAFB]">Unified Shared Context</h4>
+                <p className="mt-2 text-xs sm:text-sm text-[#4B5565] dark:text-[#94A3B8] leading-relaxed">
                   All interviewers share one continuous memory. If the Technical Architect uncovers a weak spot, the PM follows up directly without asking you to repeat yourself.
                 </p>
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl border border-[#EBE6DF] p-6 shadow-xs flex flex-col justify-between">
+            <div className="bg-white dark:bg-[#161920] rounded-2xl border border-[#EBE6DF] dark:border-[#222631] p-6 shadow-xs flex flex-col justify-between">
               <div>
-                <div className="w-10 h-10 rounded-xl bg-[#F4F1EA] border border-[#E6DAC8] flex items-center justify-center text-lg mb-4">
+                <div className="w-10 h-10 rounded-xl bg-[#F4F1EA] dark:bg-[#1E232D] border border-[#E6DAC8] dark:border-[#2D333F] flex items-center justify-center text-lg mb-4">
                   📊
                 </div>
-                <h4 className="font-bold text-base text-[#181A20]">3 Independent Verdicts</h4>
-                <p className="mt-2 text-xs sm:text-sm text-[#4B5565] leading-relaxed">
+                <h4 className="font-bold text-base text-[#181A20] dark:text-[#F9FAFB]">3 Independent Verdicts</h4>
+                <p className="mt-2 text-xs sm:text-sm text-[#4B5565] dark:text-[#94A3B8] leading-relaxed">
                   We never blend verdicts into a single misleading average. You get individual appraisals quoting exact transcript lines with timestamps.
                 </p>
               </div>
             </div>
+          </div>
+        </section>
+
+        {/* Expandable FAQs Section */}
+        <section className="flex flex-col gap-6 pt-4">
+          <div className="text-center max-w-xl mx-auto">
+            <h2 className="font-display text-2xl sm:text-3xl font-extrabold text-[#181A20] dark:text-[#F9FAFB]">
+              Frequently Asked Questions
+            </h2>
+            <p className="mt-2 text-sm text-[#4B5565] dark:text-[#94A3B8]">
+              Everything you need to know about the coordinated AI panel.
+            </p>
+          </div>
+
+          <div className="max-w-3xl w-full mx-auto space-y-3 mt-4">
+            {FAQS.map((faq, idx) => {
+              const isOpen = openFaq === idx;
+              return (
+                <div
+                  key={idx}
+                  className="bg-white dark:bg-[#161920] rounded-2xl border border-[#EBE6DF] dark:border-[#222631] overflow-hidden transition-all shadow-xs"
+                >
+                  <button
+                    type="button"
+                    onClick={() => toggleFaq(idx)}
+                    className="w-full px-6 py-4.5 text-left flex items-center justify-between gap-4 font-bold text-sm sm:text-base text-[#181A20] dark:text-[#F9FAFB] hover:bg-gray-50 dark:hover:bg-[#1E232D] transition-colors cursor-pointer"
+                  >
+                    <span>{faq.q}</span>
+                    <span className={`text-lg font-mono text-[#8C93A3] transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}>
+                      ▼
+                    </span>
+                  </button>
+                  {isOpen && (
+                    <div className="px-6 pb-5 pt-1 text-xs sm:text-sm text-[#4B5565] dark:text-[#94A3B8] leading-relaxed border-t border-[#EBE6DF]/60 dark:border-[#222631]/60 animate-in fade-in duration-200">
+                      {faq.a}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </section>
 
@@ -254,11 +329,11 @@ export default function Landing({ onCompany, onCandidate }: Props) {
                   alt={shot.title}
                   loading="lazy"
                   onError={() => setMissing(m => (m.includes(shot.src) ? m : [...m, shot.src]))}
-                  className="w-full rounded-2xl border border-[#EBE6DF] shadow-sm bg-white"
+                  className="w-full rounded-2xl border border-[#EBE6DF] dark:border-[#222631] shadow-sm bg-white dark:bg-[#161920]"
                 />
                 <figcaption className="mt-3">
-                  <span className="font-bold text-sm">{shot.title}</span>
-                  <span className="block text-sm text-[#4B5565]">{shot.caption}</span>
+                  <span className="font-bold text-sm text-[#181A20] dark:text-[#F9FAFB]">{shot.title}</span>
+                  <span className="block text-sm text-[#4B5565] dark:text-[#94A3B8]">{shot.caption}</span>
                 </figcaption>
               </figure>
             ))}
@@ -267,10 +342,15 @@ export default function Landing({ onCompany, onCandidate }: Props) {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-[#EBE6DF] py-8 text-center text-xs text-[#8C93A3] font-mono">
-        Kyro Panel &nbsp;•&nbsp; Coordinated AI Voice Interview Panel &nbsp;•&nbsp; Powered by Agora RTC & RTM
+      <footer className="border-t border-[#EBE6DF] dark:border-[#222631] py-8 px-6 text-center text-xs text-[#8C93A3] dark:text-[#64748B] font-mono">
+        <div className="max-w-[1140px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+          <span>Kyro Panel &bull; Coordinated AI Voice Interview Panel</span>
+          <span>Powered by Agora RTC &amp; RTM &bull; Press <kbd className="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 border text-[10px]">?</kbd> for shortcuts</span>
+        </div>
       </footer>
+
+      {/* Back to Top Floating Button */}
+      <BackToTop />
     </div>
   );
 }
-
