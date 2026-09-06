@@ -1,6 +1,6 @@
 import { Router, type Request } from 'express';
 import { AgentConfigError, GREETER, greeting, running, startAgent, stopAgent } from '../panel/agora-agent.js';
-import { profile, resetSessionTimer } from '../panel/model.js';
+import { liveSessions, profile, resetSessionTimer } from '../panel/model.js';
 import { broadcast } from './events.js';
 
 // Lets the room start and stop the AI panel itself, so an interview needs a
@@ -9,15 +9,17 @@ import { broadcast } from './events.js';
 //
 // SECURITY. This endpoint spends money — each call creates an Agora agent that
 // bills by the minute — and the browser has no shared secret to present, so it
-// cannot sit behind requireSecret. Two things bound it instead:
+// cannot sit behind requireSecret. Four things bound it:
 //
-//   1. A candidate must have signed in. No profile, no agent.
-//   2. One agent at a time, enforced in agora-agent.ts. A caller can start one,
-//      not a thousand, and the second call gets a 409 until the first stops.
-//
-// That is a bound on the damage, not authentication. A public deployment that
-// matters should put a real gate in front of this — a short-lived join code
-// issued at sign-in is the smallest thing that would do it.
+//   1. A session id, issued at sign-in and unguessable. This is the "short-lived
+//      join code" the older version of this comment asked for and did not have.
+//      Without one the request lands on the ambient session, which has no
+//      profile, and is refused by (2).
+//   2. A candidate must have signed in. No profile, no agent.
+//   3. One agent per session, enforced in agora-agent.ts. A second call gets a
+//      409 until the first stops.
+//   4. A cap on how many sessions exist at once, enforced in model.ts. That is
+//      what turns (3) into a real bound on spend rather than a per-caller one.
 
 const router = Router();
 
@@ -75,7 +77,10 @@ router.post('/agent/start', async (req, res) => {
     // recording it would set lastSpeaker and quietly change who wins turn 1.
     broadcast({ type: 'speaking', panelist: GREETER, text: greeting(candidate) });
 
-    console.log(`[agent] started ${agent.agentId} in ${agent.channel} for ${candidate.name} (clock reset to 0s)`);
+    console.log(
+      `[agent] started ${agent.agentId} in ${agent.channel} for ${candidate.name} ` +
+      `(clock reset to 0s, ${liveSessions()} interviews live)`,
+    );
     res.json({ running: true, ...agent });
   } catch (err) {
     // A misconfigured server is a 503: nothing the caller did is wrong, and

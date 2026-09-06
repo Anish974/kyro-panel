@@ -1,14 +1,22 @@
 import { Router } from 'express';
 import { AGENT_UID, credentials, mint } from '../panel/tokens.js';
+import { sessionForChannel } from '../panel/model.js';
 
 // Hands the browser what it needs to join the channel. Minting itself lives in
 // panel/tokens.ts, so the App Certificate is read in exactly one place.
 //
 // This endpoint has no secret to check — the candidate's browser has no
 // credentials before it joins. So it is bounded by what it will mint instead:
-// the one configured channel, and never the AI panel's uid. Without that, a
-// deployed URL hands anyone a publisher token for any channel in the Agora
-// project, and a token for uid 1001 lets them speak as the interviewer.
+// a channel with a live interview behind it, and never the AI panel's uid.
+// Without that, a deployed URL hands anyone a publisher token for any channel
+// in the Agora project, and a token for uid 1001 lets them speak as the
+// interviewer.
+//
+// The channel used to be a single configured one shared by everybody, so a
+// token minted for one candidate worked for every other candidate's room too.
+// Channels are per-interview now and a channel name is derived from the session
+// id, which is 128 bits of randomness — knowing one tells you nothing about any
+// other, and an interview that has ended stops minting entirely.
 
 const router = Router();
 
@@ -25,13 +33,12 @@ export function issueToken(channel: string, uidRaw: string): Minted | Refusal {
     return { code: 500, error: 'AGORA_APP_ID / AGORA_APP_CERTIFICATE missing from .env' };
   }
 
-  // No configured channel means a checkout that is not set up. Refuse rather
-  // than fall back to a default — a missing value must not read as "anything".
-  const allowed = process.env.AGORA_CHANNEL?.trim();
-  if (!allowed) return { code: 503, error: 'AGORA_CHANNEL is not set on the server' };
-
   if (!channel) return { code: 400, error: 'channel is required' };
-  if (channel !== allowed) return { code: 403, error: 'unknown channel' };
+
+  // A channel is only real if an interview is running in it. This is what stops
+  // the endpoint being a token vending machine for the whole Agora project, and
+  // it is why a channel name nobody has been given cannot be guessed into.
+  if (!sessionForChannel(channel)) return { code: 403, error: 'unknown channel' };
 
   if (!/^\d+$/.test(uidRaw)) return { code: 400, error: 'uid must be a number' };
   const uid = Number(uidRaw);

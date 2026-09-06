@@ -1,12 +1,19 @@
 import { Router, type Response } from 'express';
 import type { SessionEvent } from '@kyro/shared';
 import {
+  AMBIENT_ID as AMBIENT,
+  createSession,
+  endSession,
   getModel,
   getScorecardsHistory,
+  inSession,
+  liveSessions as live,
   profile,
   reset,
   saveScorecardToHistory,
+  session as current,
   setProfile,
+  type Session,
 } from '../panel/model.js';
 import { buildScorecard } from '../panel/scorecard.js';
 import { recruiterId, requireRecruiter } from './auth.js';
@@ -15,7 +22,16 @@ import { recruiterId, requireRecruiter } from './auth.js';
 // SSE, not WebSocket — the browser never sends anything back on this channel.
 
 const router = Router();
-const clients = new Set<Response>();
+
+/**
+ * Who is watching which interview.
+ *
+ * One set per session, not one set for the server. A single set meant every
+ * browser on the deployment saw every candidate's bids, captions and claims —
+ * which was invisible while only one interview could run at a time, and a
+ * privacy incident the moment two could.
+ */
+const rooms = new Map<string, Set<Response>>();
 
 /**
  * Proxies and tunnels close a connection that has been quiet too long, and the
@@ -24,24 +40,47 @@ const clients = new Set<Response>();
  */
 const KEEPALIVE_MS = 20_000;
 setInterval(() => {
-  for (const res of clients) write(res, ': keepalive\n\n');
+  for (const [id, clients] of rooms) for (const res of clients) write(id, res, ': keepalive\n\n');
 }, KEEPALIVE_MS).unref();
 
 /** A dead client throws on write; drop it rather than leaking the socket. */
-function write(res: Response, line: string): void {
+function write(sessionId: string, res: Response, line: string): void {
   try {
     res.write(line);
   } catch {
-    clients.delete(res);
+    watchers(sessionId).delete(res);
   }
 }
 
+const watchers = (sessionId: string): Set<Response> => {
+  let set = rooms.get(sessionId);
+  if (!set) rooms.set(sessionId, (set = new Set()));
+  return set;
+};
+
+/**
+ * Pushes an event to the room watching THIS interview.
+ *
+ * The session comes from the async context rather than an argument, which is
+ * what keeps every existing call site — bidding, the ledger, the routes —
+ * unchanged and unable to broadcast into the wrong room by forgetting to pass
+ * something.
+ */
 export function broadcast(event: SessionEvent): void {
+  const id = current().id;
+  // Read, never create. Going through watchers() here would leave an empty set
+  // behind for every interview nobody happened to be watching — and since only
+  // a closing client deletes one, they would accumulate for the life of the
+  // process. A room with nobody in it is not a room to allocate.
+  const clients = rooms.get(id);
+  if (!clients?.size) return;
+
   const line = `data: ${JSON.stringify(event)}\n\n`;
-  for (const res of clients) write(res, line);
+  for (const res of clients) write(id, res, line);
 }
 
 router.get('/events', (req, res) => {
+  const id = current().id;
   res.writeHead(200, {
     'content-type': 'text/event-stream',
     'cache-control': 'no-cache',
@@ -52,8 +91,12 @@ router.get('/events', (req, res) => {
   });
   res.write(`data: ${JSON.stringify({ type: 'state', model: getModel() } satisfies SessionEvent)}\n\n`);
 
+  const clients = watchers(id);
   clients.add(res);
-  req.on('close', () => { clients.delete(res); });
+  req.on('close', () => {
+    clients.delete(res);
+    if (clients.size === 0) rooms.delete(id);
+  });
 });
 
 router.get('/state', (_req, res) => res.json(getModel()));
@@ -62,23 +105,50 @@ router.get('/state', (_req, res) => res.json(getModel()));
 // room. The panel reads it to open by name and to probe the candidate's own
 // background instead of a generic warm-up.
 //
+// This is also where an interview BEGINS. Signing in mints a session, and the
+// id it returns is the only handle on that interview: the room passes it back
+// on every later request, Agora is given a callback URL built from it, and the
+// RTC channel is named after it. Nothing else identifies a candidate, so a
+// caller who does not hold one cannot reach, watch or start anybody's session.
+//
 // Open on purpose: the browser has no shared secret, and this writes nothing
 // the panel scores on. setProfile() is the trust boundary — it caps every field
 // and strips control characters before any of it reaches an LLM prompt.
 //
-// ponytail: last write wins, one candidate at a time. Key it by session when
-// the server stops holding a single interview.
+// Posting again WITH a session id re-signs into that same interview, which is
+// what a page reload does. Without one it always starts a new interview — a
+// second candidate must never land in the first one's transcript, which is
+// exactly what the shared model used to do.
 router.post('/candidate', (req, res) => {
-  const saved = setProfile(req.body);
+  const existing = current();
+  let started: Session;
+
+  try {
+    started = existing.id === AMBIENT ? createSession() : existing;
+  } catch (err) {
+    // The cap in model.ts. A 503 rather than a 500: nothing the caller sent is
+    // wrong, and it will work again once an interview finishes.
+    return res.status(503).json({ error: (err as Error).message });
+  }
+
+  const saved = inSession(started, () => setProfile(req.body));
   if (!saved) {
+    if (started !== existing) endSession(started.id);
     return res.status(400).json({ error: 'name and role are required' });
   }
-  console.log(
-    `[candidate] ${saved.name} — ${saved.role} (${saved.level || 'Intermediate'})` +
-    (saved.resumeText ? ` | resume ${saved.resumeText.length} chars` : ' | no resume'),
-  );
-  broadcast({ type: 'state', model: getModel() });
-  res.json(saved);
+
+  inSession(started, () => {
+    console.log(
+      `[candidate] ${saved.name} — ${saved.role} (${saved.level || 'Intermediate'})` +
+      (saved.resumeText ? ` | resume ${saved.resumeText.length} chars` : ' | no resume') +
+      ` | session ${started.id.slice(0, 8)}… in ${started.channel} (${live()} live)`,
+    );
+    broadcast({ type: 'state', model: getModel() });
+  });
+
+  // The channel travels with the id so the room never constructs it itself —
+  // one place decides what an interview's channel is called.
+  res.json({ ...saved, sessionId: started.id, channel: started.channel });
 });
 
 // Wipes the session so the next demo run starts from an empty model. The
