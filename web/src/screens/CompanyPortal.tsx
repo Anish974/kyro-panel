@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
+import ScheduleInterview from '../components/ScheduleInterview.js';
 import type { Scorecard, Verdict } from '@kyro/shared';
 
 interface Props {
-  onBack: () => void;
   onSelectScorecard: (scorecard: Scorecard) => void;
   localHistory?: Scorecard[];
 }
@@ -130,7 +130,7 @@ const DEFAULT_COMPANY_HISTORY: Scorecard[] = [
   },
 ];
 
-export default function CompanyPortal({ onBack, onSelectScorecard, localHistory = [] }: Props) {
+export default function CompanyPortal({ onSelectScorecard, localHistory = [] }: Props) {
   const initialData = localHistory.length > 0 ? localHistory : DEFAULT_COMPANY_HISTORY;
   const [scorecards, setScorecards] = useState<Scorecard[]>(initialData);
   const [loading, setLoading] = useState(false);
@@ -205,19 +205,11 @@ export default function CompanyPortal({ onBack, onSelectScorecard, localHistory 
           </div>
         </div>
 
-        <button
-          onClick={onBack}
-          className="h-10 px-5 rounded-xl border border-[#EBE6DF] bg-white hover:bg-gray-50 text-xs sm:text-sm font-bold text-gray-800 hover:text-gray-950 transition-colors shadow-2xs cursor-pointer flex items-center gap-2"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-          </svg>
-          <span>Candidate Sign In</span>
-        </button>
       </header>
 
       {/* Main Content Area */}
       <div className="max-w-[1240px] w-full mx-auto px-6 sm:px-8 py-8 flex flex-col gap-6">
+        <ScheduleInterview />
         {/* Top Header Banner & Stats */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white rounded-3xl p-6 sm:p-8 border border-[#EBE6DF] shadow-xs">
           <div className="flex flex-col gap-1.5">

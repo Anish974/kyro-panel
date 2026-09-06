@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { EXPERIENCE_LEVELS, PROFILE_LIMITS, type ExperienceLevel } from '@kyro/shared';
+import { PROFILE_LIMITS, type Interview } from '@kyro/shared';
 import { RESUME_ACCEPT, extractResumeText } from '../lib/resume.js';
 
 export interface Candidate {
@@ -11,32 +11,17 @@ export interface Candidate {
 }
 
 interface Props {
+  /** The interview the company scheduled. Its role and level are the bar. */
+  invite: Interview;
   onLogin: (candidate: Candidate) => void;
-  onOpenCompany: () => void;
 }
 
-/**
- * The panel grades system design, trade-offs, customer impact, communication
- * and ownership, so every role here is one those five actually apply to.
- * OTHER_ROLE is the escape hatch: the list is a shortcut, not a whitelist.
- */
-const ROLES = [
-  'Senior Backend Engineer',
-  'Backend Engineer',
-  'Full-Stack Engineer',
-  'Frontend Engineer',
-  'Platform / Infrastructure Engineer',
-  'Data Engineer',
-  'Engineering Manager',
-] as const;
-
-const OTHER_ROLE = 'Other — type it in';
-
-export default function Login({ onLogin, onOpenCompany }: Props) {
-  const [name, setName] = useState('');
-  const [role, setRole] = useState<string>(ROLES[0]);
-  const [level, setLevel] = useState<ExperienceLevel>('Intermediate (2-6 years)');
-  const [customRole, setCustomRole] = useState('');
+export default function Login({ invite, onLogin }: Props) {
+  // Prefilled, not locked: the company typed this name and may have spelled it
+  // wrong, and the panel says it out loud all interview. Role and level are a
+  // different matter — those are the bar, and they are not the candidate's to
+  // move. See server/src/panel/interviews.ts.
+  const [name, setName] = useState(invite.candidateName);
   const [error, setError] = useState('');
 
   // Resume is optional, so its failures are shown next to the field and never
@@ -48,8 +33,6 @@ export default function Login({ onLogin, onOpenCompany }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [submitting, setSubmitting] = useState(false);
-
-  const effectiveRole = role === OTHER_ROLE ? customRole.trim() : role;
 
   async function handleFile(file: File | undefined) {
     if (!file) return;
@@ -99,47 +82,24 @@ export default function Login({ onLogin, onOpenCompany }: Props) {
       setError('Please enter your full name — the panel addresses you by it');
       return;
     }
-    if (!effectiveRole) {
-      setError('Please type the role you are interviewing for');
-      return;
-    }
     setError('');
     void enterRoom({
       name: name.trim(),
-      role: effectiveRole,
-      level,
+      role: invite.role,
+      level: invite.level,
       ...(resumeText ? { resumeText } : {}),
     });
   };
 
   return (
     <div className="min-h-screen w-full bg-[#FAF9F6] flex flex-col justify-center items-center px-4 py-12 select-none relative">
-      {/* Top Right: Login as Company Portal */}
-      <div className="absolute top-6 right-6 sm:top-8 sm:right-8 z-10">
-        <button
-          type="button"
-          onClick={onOpenCompany}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white hover:bg-gray-50 text-gray-800 hover:text-gray-950 font-bold text-xs sm:text-sm border border-[#EBE6DF] shadow-xs hover:shadow-md transition-all cursor-pointer group"
-        >
-          <div className="w-6 h-6 rounded-lg bg-blue-50 text-[#2563EB] grid place-items-center group-hover:bg-[#2563EB] group-hover:text-white transition-colors">
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-            </svg>
-          </div>
-          <span>Login as Company</span>
-          <svg className="w-4 h-4 text-gray-400 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-          </svg>
-        </button>
-      </div>
-
       {/* Top Brand Tag / Logo */}
       <div className="w-full max-w-md mb-8 text-center">
         <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-[#181A20] font-display">
           Kyro Panel
         </h1>
         <p className="mt-2 text-base text-[#4B5565] font-sans">
-          Tell us who you are and select your experience level, then enter the room
+          Confirm your name and enter the room — the panel is waiting
         </p>
       </div>
 
@@ -179,70 +139,25 @@ export default function Login({ onLogin, onOpenCompany }: Props) {
             </div>
           </div>
 
-          <div>
-            <label htmlFor="role" className="block text-xs font-semibold uppercase tracking-wider text-[#4B5565] mb-2 font-mono">
-              Interviewing For
-            </label>
-            <div className="relative">
-              <select
-                id="role"
-                value={role}
-                onChange={(e) => setRole(e.target.value)}
-                className="w-full appearance-none px-4 py-3 pr-11 rounded-xl bg-[#FAF9F6] border border-[#EBE6DF] text-[#181A20] text-sm focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent transition-all cursor-pointer"
-              >
-                {ROLES.map((r) => (
-                  <option key={r} value={r}>{r}</option>
-                ))}
-                <option value={OTHER_ROLE}>{OTHER_ROLE}</option>
-              </select>
-              <div className="absolute right-3.5 top-3.5 text-[#8C93A3] pointer-events-none">
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 9l-7 7-7-7" />
-                </svg>
+          <div className="rounded-xl border border-[#EBE6DF] bg-[#FAF9F6] p-4">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-semibold uppercase tracking-wider text-[#4B5565] font-mono">
+                Scheduled For You
+              </span>
+              <span className="text-[11px] text-[#8C93A3] font-mono">{invite.code}</span>
+            </div>
+            <dl className="space-y-2 text-sm">
+              <div className="flex items-baseline justify-between gap-4">
+                <dt className="text-[#64748B]">Role</dt>
+                <dd className="font-semibold text-[#181A20] text-right">{invite.role}</dd>
               </div>
-            </div>
-
-            {role === OTHER_ROLE && (
-              <input
-                type="text"
-                required
-                autoFocus
-                maxLength={PROFILE_LIMITS.role}
-                value={customRole}
-                onChange={(e) => setCustomRole(e.target.value)}
-                placeholder="e.g. Site Reliability Engineer, ML Platform Lead"
-                className="mt-2 w-full px-4 py-3 rounded-xl bg-[#FAF9F6] border border-[#EBE6DF] text-[#181A20] placeholder-[#8C93A3] text-sm focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent transition-all"
-              />
-            )}
-          </div>
-
-          {/* Experience Level Selector */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label htmlFor="level" className="block text-xs font-semibold uppercase tracking-wider text-[#4B5565] font-mono">
-                Experience Level
-              </label>
-              <span className="text-[11px] text-[#2563EB] font-semibold">Calibrates AI Questions</span>
-            </div>
-            <div className="relative">
-              <select
-                id="level"
-                value={level}
-                onChange={(e) => setLevel(e.target.value as ExperienceLevel)}
-                className="w-full appearance-none px-4 py-3 pr-11 rounded-xl bg-[#FAF9F6] border border-[#EBE6DF] text-[#181A20] text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent transition-all cursor-pointer"
-              >
-                {EXPERIENCE_LEVELS.map((lvl) => (
-                  <option key={lvl} value={lvl}>{lvl}</option>
-                ))}
-              </select>
-              <div className="absolute right-3.5 top-3.5 text-[#8C93A3] pointer-events-none">
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 9l-7 7-7-7" />
-                </svg>
+              <div className="flex items-baseline justify-between gap-4">
+                <dt className="text-[#64748B]">Level</dt>
+                <dd className="font-semibold text-[#181A20] text-right">{invite.level}</dd>
               </div>
-            </div>
-            <p className="mt-1.5 text-[11px] text-[#64748B]">
-              The panel will strictly ask questions matched to the <strong>{level}</strong> tier.
+            </dl>
+            <p className="mt-3 text-[11px] text-[#64748B]">
+              Set by the hiring team. The panel calibrates its questions to this tier.
             </p>
           </div>
 

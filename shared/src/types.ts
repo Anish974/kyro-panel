@@ -141,6 +141,23 @@ export interface CandidateProfile {
 }
 
 /** Hard caps applied server-side. Shared so the form can refuse before posting. */
+/**
+ * One scheduled interview. Created by the company, opened by the candidate
+ * through /?i=<code> — which is why role and level live here and not on the
+ * login form: the company sets the bar, the candidate turns up to it.
+ */
+export interface Interview {
+  /** Short code the invite link is built on. Crockford base32, 6 chars. */
+  code: string;
+  candidateName: string;
+  role: string;
+  /** One of EXPERIENCE_LEVELS. Drives panel difficulty. */
+  level: string;
+  createdAt: number;
+  /** When the candidate first opened the room, or null if they have not. */
+  startedAt: number | null;
+}
+
 export const PROFILE_LIMITS = {
   name: 80,
   role: 80,

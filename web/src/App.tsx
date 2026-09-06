@@ -1,13 +1,28 @@
-import { useState } from 'react';
-import type { Scorecard as ScorecardData } from '@kyro/shared';
+import { useEffect, useState } from 'react';
+import type { Interview, Scorecard as ScorecardData } from '@kyro/shared';
 import Room from './screens/Room.js';
 import Scorecard from './screens/Scorecard.js';
 import Login, { type Candidate } from './screens/Login.js';
 import CompanyPortal from './screens/CompanyPortal.js';
 import Deliberating from './screens/Deliberating.js';
 
+/**
+ * Which interview this is, taken off the invite link the company sent.
+ *
+ * No router: one query parameter is the whole of this app's routing, and a
+ * dependency that owns the URL is a lot to take on for one read.
+ */
+const inviteCode = new URLSearchParams(window.location.search).get('i')?.trim() ?? '';
+
 export default function App() {
-  const [view, setView] = useState<'login' | 'company' | 'room' | 'scorecard'>('login');
+  // The company portal is the front door. A candidate reaches the login screen
+  // only through ?i=<code>, because without an invite there is no role, no
+  // level, and so no interview to walk into.
+  const [view, setView] = useState<'login' | 'company' | 'room' | 'scorecard'>(
+    inviteCode ? 'login' : 'company',
+  );
+  const [invite, setInvite] = useState<Interview | null>(null);
+  const [inviteError, setInviteError] = useState('');
   const [candidate, setCandidate] = useState<Candidate | null>(null);
   const [scorecard, setScorecard] = useState<ScorecardData | null>(null);
   const [returnToView, setReturnToView] = useState<'login' | 'company' | 'room'>('login');
@@ -92,13 +107,29 @@ export default function App() {
     setDeliberating(false);
   }
 
+  // Resolve the invite before anything is drawn: the login screen has nothing
+  // to show without it, and a dead link must say so rather than sit blank.
+  useEffect(() => {
+    if (!inviteCode) return;
+    let mounted = true;
+    void (async () => {
+      try {
+        const res = await fetch(`/interviews/${encodeURIComponent(inviteCode)}`);
+        if (!mounted) return;
+        if (res.ok) setInvite(await res.json());
+        else setInviteError('That invite link is not valid. Ask your recruiter for a new one.');
+      } catch {
+        if (mounted) setInviteError('Could not reach the server. Check your connection and reload.');
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
+
   function handleLogin(c: Candidate) {
     setCandidate(c);
+    // Idempotent, and the interview runs whether or not this lands.
+    void fetch(`/interviews/${encodeURIComponent(inviteCode)}/start`, { method: 'POST' }).catch(() => {});
     setView('room');
-  }
-
-  function handleOpenCompany() {
-    setView('company');
   }
 
   function handleSelectScorecard(sc: ScorecardData) {
@@ -125,10 +156,7 @@ export default function App() {
 
   if (view === 'company') {
     return (
-      <CompanyPortal
-        onBack={() => setView('login')}
-        onSelectScorecard={handleSelectScorecard}
-      />
+      <CompanyPortal onSelectScorecard={handleSelectScorecard} />
     );
   }
 
@@ -152,11 +180,25 @@ export default function App() {
     );
   }
 
-  return (
-    <Login
-      onLogin={handleLogin}
-      onOpenCompany={handleOpenCompany}
-    />
-  );
+  if (inviteError) {
+    return (
+      <div className="min-h-screen bg-[#FAF9F6] grid place-items-center px-4 text-center">
+        <div className="max-w-sm">
+          <h1 className="font-display text-2xl font-extrabold text-[#181A20]">Kyro Panel</h1>
+          <p className="mt-3 text-sm text-[#4B5565]">{inviteError}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!invite) {
+    return (
+      <div className="min-h-screen bg-[#FAF9F6] grid place-items-center px-4 text-center">
+        <p className="text-sm text-[#4B5565]">Opening your interview…</p>
+      </div>
+    );
+  }
+
+  return <Login invite={invite} onLogin={handleLogin} />;
 }
 
