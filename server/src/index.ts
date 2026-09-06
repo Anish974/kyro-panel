@@ -73,6 +73,14 @@ app.get('/health', handleHealthCheck);
 app.get('/healthz', handleHealthCheck);
 app.get('/ping', handleHealthCheck);
 
+// Runtime client config endpoint (enables Supabase runtime credentials on Render)
+app.get('/config', (_req, res) => {
+  res.status(200).json({
+    supabaseUrl: process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '',
+    supabaseAnonKey: process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || '',
+  });
+});
+
 // Everything that WRITES to the interview is behind the shared secret. Reads
 // (/events, /state, /scorecard) stay open so the room UI needs no credentials.
 app.use('/chat/completions', requireSecret);

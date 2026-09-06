@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { authConfigured, sendMagicLink } from '../lib/supabase.js';
+import { useState, useEffect } from 'react';
+import { authConfigured, checkAuthConfigured, sendMagicLink } from '../lib/supabase.js';
 import ThemeToggle from '../components/ThemeToggle.js';
 
 interface Props {
@@ -11,6 +11,13 @@ export default function CompanySignIn({ onBack }: Props) {
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [isConfigured, setIsConfigured] = useState(authConfigured);
+
+  useEffect(() => {
+    checkAuthConfigured().then(configured => {
+      setIsConfigured(configured);
+    });
+  }, []);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -41,10 +48,10 @@ export default function CompanySignIn({ onBack }: Props) {
       </div>
 
       <div className="w-full max-w-md bg-white dark:bg-[#161920] rounded-2xl border border-[#EBE6DF] dark:border-[#222631] shadow-sm p-8">
-        {!authConfigured && (
+        {!isConfigured && (
           <div className="mb-5 p-3 text-sm text-[#B45309] dark:text-amber-400 bg-[#FFFBEB] dark:bg-amber-950/40 border border-[#FDE68A] dark:border-amber-800/40 rounded-xl">
             Sign-in is not configured on this deployment. Set <code>VITE_SUPABASE_URL</code> and{' '}
-            <code>VITE_SUPABASE_ANON_KEY</code>.
+            <code>VITE_SUPABASE_ANON_KEY</code> (or <code>SUPABASE_URL</code> and <code>SUPABASE_ANON_KEY</code>).
           </div>
         )}
 
