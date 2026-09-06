@@ -440,7 +440,7 @@ export async function stopAgent(agentId?: string): Promise<{ stopped: boolean; d
  * The same, addressed by session id rather than by async context — for the
  * billing reaper, which fires long after the request that armed it is gone.
  */
-export async function stopAgentFor(sessionId: string): Promise<{ stopped: boolean; detail: string }> {
+async function stopAgentFor(sessionId: string): Promise<{ stopped: boolean; detail: string }> {
   const s = findSession(sessionId);
   if (!s?.agent) return { stopped: false, detail: 'no agent is running' };
   return inSession(s, () => stopAgent());

@@ -183,7 +183,7 @@ export function ingest(answer: string): Claim[] {
  * Mark a claim as verified — call this when a panelist probes a claim and the
  * candidate holds up. Phase 4 wires this to the panel's own judgement.
  */
-export function corroborate(claimId: string, note = 'held up under follow-up'): Claim | null {
+function corroborate(claimId: string, note = 'held up under follow-up'): Claim | null {
   return model.updateClaim(claimId, { status: 'verified', note });
 }
 

@@ -1,40 +1,11 @@
-import { PANEL, type CompetencyId, type Scorecard, panelistById } from '@kyro/shared';
+import { COMPETENCIES, PANEL, type CompetencyId, type Scorecard, panelistById } from '@kyro/shared';
+import { AVATARS, CLAIM, VERDICT } from '../lib/labels.js';
 import ThemeToggle from '../components/ThemeToggle.js';
 
 interface Props {
   scorecard: Scorecard;
   onBack: () => void;
 }
-
-const VERDICT: Record<string, { label: string; color: string; bg: string; border: string }> = {
-  hire: { label: 'HIRE', color: '#16A34A', bg: '#F0FDF4', border: '#BBF7D0' },
-  lean_hire: { label: 'LEAN HIRE', color: '#2563EB', bg: '#EFF6FF', border: '#BFDBFE' },
-  lean_no_hire: { label: 'LEAN NO HIRE', color: '#D97706', bg: '#FFFBEB', border: '#FDE68A' },
-  no_hire: { label: 'NO HIRE', color: '#DC2626', bg: '#FEF2F2', border: '#FECACA' },
-};
-
-const COMPETENCIES: Record<CompetencyId, string> = {
-  architecture: 'System Architecture',
-  implementation: 'Code & Implementation',
-  problemSolving: 'Problem Solving',
-  userFocus: 'User & Product Focus',
-  tradeOffs: 'Engineering Trade-offs',
-  productThinking: 'Product Strategy',
-  ownership: 'Execution & Ownership',
-  communication: 'Communication Clarity',
-};
-
-const CLAIM_LABEL: Record<string, { label: string; color: string; bg: string; border: string }> = {
-  verified: { label: 'CORROBORATED', color: '#16A34A', bg: '#F0FDF4', border: '#BBF7D0' },
-  unverified: { label: 'UNVERIFIED', color: '#D97706', bg: '#FFFBEB', border: '#FDE68A' },
-  contradicted: { label: 'CONTRADICTED', color: '#DC2626', bg: '#FEF2F2', border: '#FECACA' },
-};
-
-const AVATARS: Record<string, string> = {
-  technical: '/assets/arjun_mehta.jpg',
-  product: '/assets/ananya_shah.jpg',
-  hr: '/assets/rohan_iyer.jpg',
-};
 
 function mmss(sec?: number) {
   if (!sec) return '00:00';
@@ -273,7 +244,7 @@ export default function Scorecard({ scorecard, onBack }: Props) {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {scorecard.claims.map(claim => {
-                const s = CLAIM_LABEL[claim.status] || CLAIM_LABEL.unverified;
+                const s = CLAIM[claim.status] ?? CLAIM.open;
                 return (
                   <div
                     key={claim.id}
