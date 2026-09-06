@@ -38,7 +38,21 @@ export function issueToken(channel: string, uidRaw: string): Minted | Refusal {
   // A channel is only real if an interview is running in it. This is what stops
   // the endpoint being a token vending machine for the whole Agora project, and
   // it is why a channel name nobody has been given cannot be guessed into.
-  if (!sessionForChannel(channel)) return { code: 403, error: 'unknown channel' };
+  //
+  // The message names the likely cause rather than just the rule. The first
+  // thing this refused after per-interview channels shipped was a browser still
+  // running the previous build, which asks for the old shared `demo-channel` on
+  // every join — and "unknown channel" sent whoever hit it looking for a server
+  // fault that was not there.
+  if (!sessionForChannel(channel)) {
+    return {
+      code: 403,
+      error:
+        'no interview is running in that channel. If this page has been open ' +
+        'since before the last deploy, reload it — an out-of-date app asks for ' +
+        'a channel that no longer exists.',
+    };
+  }
 
   if (!/^\d+$/.test(uidRaw)) return { code: 400, error: 'uid must be a number' };
   const uid = Number(uidRaw);

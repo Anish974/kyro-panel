@@ -98,7 +98,14 @@ function blank(id: string, profile: CandidateProfile | null = null): Session {
     // One channel per interview. Everyone used to join a single `demo-channel`,
     // which meant anyone who opened the app walked into whichever interview was
     // live and could hear it.
-    channel: `kyro-${id}`,
+    //
+    // Its name is random on its own account rather than derived from the session
+    // id. A channel name is not a secret in practice — it shows up in the Agora
+    // console, in RTC diagnostics and in anything watching the network — and
+    // `kyro-${id}` would have made every one of those places a printout of the
+    // session id, which IS the capability for this interview's event stream and
+    // its agent. Knowing the channel now buys nothing but the channel.
+    channel: `kyro-${randomBytes(12).toString('hex')}`,
     model: emptyModel(id, profile),
     startedAt: Date.now(),
     touchedAt: Date.now(),
