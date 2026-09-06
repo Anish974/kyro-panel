@@ -18,11 +18,8 @@ services:
     # so this is the one setting that shows up as felt latency in the room.
     region: singapore
     # ponytail: free tier sleeps after 15 minutes idle, and a sleeping server
-    # has forgotten every interview it was holding. The web app copes — a
-    # session id the server no longer knows starts a fresh interview instead of
-    # failing (web/src/lib/session.ts) — so a candidate arriving cold is fine.
-    # What is NOT fine is sleeping mid-interview, which loses it outright. Move
-    # to starter before anyone real is in the room.
+    # has forgotten the interview. Fine for a demo you warm up first; move to
+    # starter the moment a real session must survive a quiet stretch.
     plan: free
 
     # Render sets NODE_ENV=production, which makes a plain `npm ci` skip
@@ -52,12 +49,11 @@ services:
       - key: AGORA_CUSTOMER_SECRET
         sync: false
 
-      # AGORA_CHANNEL is deliberately absent. There is no fixed room any more:
-      # every interview gets its own channel, named at sign-in, and /token mints
-      # only for a channel with a live interview behind it. Setting this again
-      # would buy nothing — the server refuses that channel like any other with
-      # nobody in it — and would only suggest a shared room still exists.
-      #
+      # Which channel the panel and the candidate meet in. One fixed room, so
+      # one interview at a time — the same limit the in-memory session already
+      # imposes.
+      - key: AGORA_CHANNEL
+        value: demo-channel
       # Agora sends this straight back as the Authorization header on every
       # turn. Without it every /chat/completions is a 401 and the panel is mute.
       - key: ORCHESTRATOR_API_KEY

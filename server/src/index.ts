@@ -8,7 +8,6 @@ import eventRoutes from './routes/events.js';
 import llmRoutes from './routes/llm.js';
 import agentRoutes from './routes/agent.js';
 import interviewRoutes from './routes/interviews.js';
-import { withSession } from './routes/session.js';
 
 // Auto-load .env from repository root or current directory
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -82,11 +81,6 @@ app.get('/config', (_req, res) => {
   });
 });
 
-// Which interview this request belongs to, resolved before anything else looks
-// at it. Also rewrites Agora's /s/<id>/... callback path down to the plain route
-// below, so the mounts that follow are matched against the path they name.
-app.use(withSession);
-
 // Everything that WRITES to the interview is behind the shared secret. Reads
 // (/events, /state, /scorecard) stay open so the room UI needs no credentials.
 app.use('/chat/completions', requireSecret);
@@ -111,11 +105,11 @@ if (servingWeb) app.use(express.static(webDist));
 app.listen(PORT, () => {
   console.log(`kyro server  http://localhost:${PORT}`);
   console.log(`  GET  /health (or /ping)     health check & keep-alive`);
-  console.log(`  GET  /token?channel=&uid=   RTC token (channel must have a live interview)`);
+  console.log(`  GET  /token?channel=&uid=   RTC token`);
   console.log(`  GET  /events                SSE -> room UI`);
   console.log(`  GET  /state                 shared candidate model`);
   console.log(`  POST /candidate             name, role and resume from the login screen`);
-  console.log(`  POST /s/:session/chat/completions  <- Agora calls this (needs the secret)`);
+  console.log(`  POST /chat/completions      <- Agora calls this (needs the secret)`);
   console.log(`  POST /reset                 clear the session (needs the secret)`);
   console.log(`  POST /agent/start|stop      put the AI panel in the channel, or take it out`);
   console.log(`  GET  /interviews            scheduled interviews (company portal)`);

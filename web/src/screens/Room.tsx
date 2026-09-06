@@ -2,12 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import { PANEL, panelistById, type PanelistId } from '@kyro/shared';
 import { useSession } from '../lib/useSession.js';
 import { joinAsCandidate, leave, type JoinResult } from '../lib/agora.js';
-import { interview, scoped, signIn } from '../lib/session.js';
-import { AVATARS } from '../lib/labels.js';
 import type { AgentState } from '../lib/rtm.js';
 import PanelistTile from '../components/PanelistTile.js';
 import BidRail from '../components/BidRail.js';
 import ThemeToggle from '../components/ThemeToggle.js';
+
+const CHANNEL = 'demo-channel';
 
 interface Props {
   candidateName: string;
@@ -16,6 +16,12 @@ interface Props {
   level?: string;
   onEnd: (actualDurationSec?: number) => void;
 }
+
+const AVATARS: Record<PanelistId, string> = {
+  technical: '/assets/arjun_mehta.jpg',
+  product: '/assets/ananya_shah.jpg',
+  hr: '/assets/rohan_iyer.jpg',
+};
 
 /**
  * Where the interview actually is, derived from the turn count the server
@@ -63,11 +69,7 @@ function formatTimer(seconds: number): string {
 }
 
 export default function Room({ candidateName, role, level, onEnd }: Props) {
-  // Which interview this tab is in. Set by signing in, which is also what
-  // creates it server-side; restored on a reload so the running agent is not
-  // orphaned by a refresh.
-  const [interviewId, setInterviewId] = useState<string | null>(() => interview()?.sessionId ?? null);
-  const { model, bids, speaking: serverSpeaking, caption, heard, connected, concluded } = useSession(interviewId);
+  const { model, bids, speaking: serverSpeaking, caption, heard, connected, concluded } = useSession();
   const [session, setSession] = useState<JoinResult | null>(null);
   const [elapsedSec, setElapsedSec] = useState<number>(0);
 
@@ -336,15 +338,14 @@ export default function Room({ candidateName, role, level, onEnd }: Props) {
     localStream?.getAudioTracks().forEach(t => t.stop());
 
     try {
-      // Signing in IS starting the interview: the server mints the session, the
-      // channel is named after it, and nothing below works without the id it
-      // returns. So a failure here is fatal to the join — it used to be a
-      // warning the code carried on past, back when there was one shared
-      // channel to fall into.
-      const started = await signIn({ name: candidateName, role, level });
-      setInterviewId(started.sessionId);
+      // Ensure candidate role & profile are synced with server
+      await fetch('/candidate', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ name: candidateName, role, level }),
+      }).catch(err => console.warn('Candidate sync warning:', err));
 
-      const result = await joinAsCandidate(started.channel, undefined, {
+      const result = await joinAsCandidate(CHANNEL, undefined, {
         onTranscript: t => {
           if (t.speaker === 'candidate') setLiveCandidate(t.text);
           else setLivePanel(t.text);
@@ -363,7 +364,7 @@ export default function Room({ candidateName, role, level, onEnd }: Props) {
       setSession(result);
 
       // Start the panel agent
-      const res = await fetch(scoped('/agent/start'), { method: 'POST' });
+      const res = await fetch('/agent/start', { method: 'POST' });
       if (!res.ok) {
         const body = (await res.json().catch(() => null)) as { error?: string } | null;
         setPanelError(body?.error ?? `The panel could not start (${res.status}).`);
@@ -378,7 +379,7 @@ export default function Room({ candidateName, role, level, onEnd }: Props) {
   async function handleLeave() {
     const actualDuration = elapsedSec;
     try {
-      await fetch(scoped('/agent/stop'), { method: 'POST' });
+      await fetch('/agent/stop', { method: 'POST' });
     } catch {
       // Best effort
     }
@@ -410,10 +411,7 @@ export default function Room({ candidateName, role, level, onEnd }: Props) {
   useEffect(() => {
     const stopAgent = () => {
       if (!session) return;
-      // The session id rides in the query string, which is the whole reason it
-      // is not a header: sendBeacon cannot set one, and this is the request
-      // that most needs to arrive — it is what stops a billable agent.
-      navigator.sendBeacon(scoped('/agent/stop'));
+      navigator.sendBeacon('/agent/stop');
     };
     // pagehide fires on mobile Safari's bfcache path where unload never does.
     window.addEventListener('pagehide', stopAgent);

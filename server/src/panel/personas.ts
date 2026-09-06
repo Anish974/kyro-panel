@@ -32,6 +32,12 @@ Ask one question at a time. Two sentences maximum.`;
 }
 
 /** Default system prompts for offline checks and fallbacks. */
+export const SYSTEM_PROMPTS: Record<PanelistId, string> = {
+  technical: getSystemPrompt('technical', 'backend engineer'),
+  product: getSystemPrompt('product', 'backend engineer'),
+  hr: getSystemPrompt('hr', 'backend engineer'),
+};
+
 /** What makes each panelist want the floor. */
 export const SIGNALS: Record<PanelistId, RegExp> = {
   technical: /\b(redis|queue|shard|latenc|database|cache|async|architect|scale|throughput|index|api|replica|partition|frontend|render|hook|component|state|query|schema|pipeline|model)\w*/i,

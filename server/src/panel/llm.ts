@@ -12,74 +12,7 @@ export const LLM_ENABLED = Boolean(BASE && MODEL && KEY);
 // prematurely falls back to canned keyword templates.
 const TIMEOUT_MS = 8000;
 
-/**
- * How long to wait out a rate limit before trying once more.
- *
- * Free tiers throttle in bursts, and a throttled bid drops the whole panel onto
- * canned keyword lines — which the candidate hears immediately, as three
- * interviewers who suddenly went generic. Agora is already filling this pause
- * with a murmur, so a second of patience is cheaper than the fallback.
- */
-const RETRY_AFTER_MS = 1100;
-
 export async function ask(system: string, user: string, maxTokens = 220): Promise<string> {
-  const send = () =>
-    fetch(`${BASE}/chat/completions`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', authorization: `Bearer ${KEY}` },
-      body: JSON.stringify({
-        model: MODEL,
-        messages: [
-          { role: 'system', content: system },
-          { role: 'user', content: user },
-        ],
-        max_tokens: maxTokens,
-        temperature: 0.7,
-      }),
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-    });
-
-  let res = await send();
-
-  // Once, and only for a rate limit. Anything else is a request that will fail
-  // again the same way, and a second attempt would only spend another second of
-  // the candidate's silence finding that out.
-  if (res.status === 429) {
-    console.warn('[llm] rate limited — one retry');
-    await new Promise(resolve => setTimeout(resolve, RETRY_AFTER_MS));
-    res = await send();
-  }
-
-  if (!res.ok) throw new Error(`LLM ${res.status}: ${(await res.text()).slice(0, 200)}`);
-  const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
-  return data.choices?.[0]?.message?.content ?? '';
-}
-
-/**
- * A stream can be cut off mid-sentence, which is worse than a slow one — the
- * candidate hears half a question. So it gets longer than `TIMEOUT_MS`, which
- * guards a call whose whole answer is still worthless when it lands late.
- */
-const STREAM_TIMEOUT_MS = 15_000;
-
-/**
- * The same call, delivered a token at a time.
- *
- * This exists for one reason: the reply is spoken. Waiting for the whole thing
- * before handing it to TTS puts the entire generation time in front of the
- * first syllable, and the room sits silent for it. Forwarded as it arrives, the
- * panel starts talking as soon as it has a few words — the rest is written
- * while it is still speaking the beginning.
- *
- * `onDelta` gets each fragment. The full text is returned as well, so callers
- * that also need to store the reply do not have to reassemble it.
- */
-export async function askStream(
-  system: string,
-  user: string,
-  maxTokens: number,
-  onDelta: (text: string) => void,
-): Promise<string> {
   const res = await fetch(`${BASE}/chat/completions`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', authorization: `Bearer ${KEY}` },
@@ -91,52 +24,13 @@ export async function askStream(
       ],
       max_tokens: maxTokens,
       temperature: 0.7,
-      stream: true,
     }),
-    signal: AbortSignal.timeout(STREAM_TIMEOUT_MS),
+    signal: AbortSignal.timeout(TIMEOUT_MS),
   });
 
   if (!res.ok) throw new Error(`LLM ${res.status}: ${(await res.text()).slice(0, 200)}`);
-  if (!res.body) throw new Error('LLM returned no body to stream');
-
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
-  let full = '';
-
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    // Carriage returns are dropped so one frame separator works for providers
-    // that send \r\n\r\n and for those that send \n\n.
-    buffer += decoder.decode(value, { stream: true }).replace(/\r/g, '');
-
-    let cut: number;
-    while ((cut = buffer.indexOf('\n\n')) !== -1) {
-      const frame = buffer.slice(0, cut);
-      buffer = buffer.slice(cut + 2);
-
-      for (const line of frame.split('\n')) {
-        if (!line.startsWith('data:')) continue;
-        const payload = line.slice(5).trim();
-        if (!payload || payload === '[DONE]') continue;
-        try {
-          const delta = (JSON.parse(payload) as {
-            choices?: { delta?: { content?: string } }[];
-          }).choices?.[0]?.delta?.content;
-          if (delta) {
-            full += delta;
-            onDelta(delta);
-          }
-        } catch {
-          // Keep-alives and vendor-specific frames are not our chunks. A frame
-          // we cannot read is not a reason to drop the ones after it.
-        }
-      }
-    }
-  }
-
-  return full;
+  const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+  return data.choices?.[0]?.message?.content ?? '';
 }
 
 /**

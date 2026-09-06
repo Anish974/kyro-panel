@@ -20,21 +20,7 @@ export interface JoinResult {
 
 async function fetchToken(channel: string, uid: number) {
   const res = await fetch(`/token?channel=${encodeURIComponent(channel)}&uid=${uid}`);
-
-  if (!res.ok) {
-    // The server explains its own refusals — a 403 here means the channel has
-    // no interview behind it, which is a very different problem from the server
-    // being down. Guessing "is the server running?" at every status sent the
-    // first person who hit a 403 looking in the wrong place entirely.
-    const said = (await res.json().catch(() => null)) as { error?: string } | null;
-    throw new Error(
-      said?.error ??
-        (res.status >= 500
-          ? `the server could not issue a token (${res.status})`
-          : `token request failed (${res.status})`),
-    );
-  }
-
+  if (!res.ok) throw new Error(`token request failed (${res.status}) — is the server running?`);
   return res.json() as Promise<{ appId: string; token: string; rtmToken: string }>;
 }
 

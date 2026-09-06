@@ -93,25 +93,9 @@ still needs editing:**
 
 7. **Placeholder left in the deck.** Page 1 still reads
    `<Write your Team Name>vv`.
-8. **Latency number.** The deck says 700ms. Measured was ~1.4 s. Three things
-   have changed since that measurement, and none of them has been re-measured
-   against a live interview yet — do not present a new number until one has:
-
-   - **Turn detection was never configured.** Agora's default waits 640ms of
-     silence before it decides the candidate has finished. Now 480ms
-     (`turn_detection` in `server/src/panel/agora-agent.ts`), the shortest that
-     still lets someone pause to pick a word.
-   - **A turn is two LLM calls instead of one.** The single call drafted all
-     three panelists' replies, threw two away, and the candidate waited through
-     every token of all three. Now: bids only (~100 tokens), then the winner's
-     line alone.
-   - **The reply streams.** It used to be generated in full, then sent in one
-     go, so the entire generation sat in front of the first syllable. The
-     fragments now go to Agora as they arrive and TTS starts on the first few.
-
-   The remaining win is the one `workflow.md` section 3 describes and we have
-   not built: bid on the partial transcript while the candidate is still
-   talking, so the bid call is off the response path entirely.
+8. **Latency number.** The deck says 700ms. Measured is ~1.4 s — see
+   [Latency](#latency--measured-not-claimed). Either the deck changes or the
+   pipeline gets faster; do not present 700 ms as achieved.
 9. ~~**`legacy/` still used the old names.**~~ Deleted — nothing imported it,
    and `git log` still has every line.
 

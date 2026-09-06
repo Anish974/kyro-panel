@@ -88,9 +88,3 @@ create index if not exists scorecards_hiring_recent_idx
 -- application nothing and close the REST door completely.
 alter table public.interviews enable row level security;
 alter table public.scorecards enable row level security;
-
--- The role the panel would redirect this candidate to, when it would redirect
--- them at all. jsonb rather than a text column plus a reason column plus a quote
--- column: it is one object the UI renders whole, and it is absent far more often
--- than it is present.
-alter table public.scorecards add column if not exists suggested_role jsonb;

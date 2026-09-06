@@ -14,7 +14,7 @@ let clientInstance: SupabaseClient | null = envUrl && envKey ? createClient(envU
 let initPromise: Promise<SupabaseClient | null> | null = null;
 const authListeners: Array<(session: Session | null) => void> = [];
 
-async function getSupabase(): Promise<SupabaseClient | null> {
+export async function getSupabase(): Promise<SupabaseClient | null> {
   if (clientInstance) return clientInstance;
   if (initPromise) return initPromise;
 

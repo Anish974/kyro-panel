@@ -1,5 +1,5 @@
 import { Router, type Response } from 'express';
-import { panelistById, type Panelist, type PanelistId } from '@kyro/shared';
+import { panelistById, type Panelist } from '@kyro/shared';
 import { CONCLUDE_AT_TURN, runPanel } from '../panel/bidding.js';
 import { ingest } from '../panel/ledger.js';
 import { getModel } from '../panel/model.js';
@@ -15,15 +15,6 @@ import { broadcast } from './events.js';
 
 const router = Router();
 
-/**
- * How often a half-written reply is pushed to the room as a caption.
- *
- * The words go to Agora token by token because TTS can start on the first few.
- * A reader cannot, so the caption is coalesced — roughly the rate a person
- * reads at, and a few events a turn instead of a few hundred.
- */
-const CAPTION_INTERVAL_MS = 150;
-
 interface ChatMessage { role: string; content: string }
 
 router.post('/chat/completions', async (req, res) => {
@@ -38,7 +29,7 @@ router.post('/chat/completions', async (req, res) => {
   if (!answer) {
     const asker = getModel().lastSpeaker ?? 'technical';
     console.log(`[llm] empty answer, asking candidate to repeat`);
-    return speak(res, panelistById(asker), "Sorry, I didn't catch that — could you say it again?", true);
+    return stream(res, panelistById(asker), "Sorry, I didn't catch that — could you say it again?", true);
   }
 
   // Show what we heard before the panel spends a second thinking about it.
@@ -58,70 +49,26 @@ router.post('/chat/completions', async (req, res) => {
     const lastQuestion =
       [...model.transcript].reverse().find(t => t.speaker !== 'candidate')?.text ?? null;
     console.log(`[llm] ${kind} — answering without spending a turn (turns stay at ${model.turns})`);
-    return speak(res, panelistById(asker), replyTo(kind, lastQuestion), true);
+    return stream(res, panelistById(asker), replyTo(kind, lastQuestion), true);
   }
 
   // Ledger first: the panel should be able to bid on a fresh contradiction.
   const claims = ingest(answer);
-
-  // The response is opened the moment the floor is decided, not once the reply
-  // is finished. Everything after that point is written into a connection Agora
-  // is already reading, so the first words reach TTS while the rest of the
-  // sentence is still being generated.
-  let writer: Writer | null = null;
-  let floor: PanelistId | null = null;
-  let caption = '';
-  let captionAt = 0;
-
-  const decision = await runPanel(answer, {
-    onFloor: (bids, id) => {
-      const speaker = panelistById(id);
-      floor = id;
-      console.log(
-        `turn ${getModel().turns} | ` +
-        bids.map(b => `${b.panelist} ${b.score}`).join('  ') +
-        ` | floor -> ${speaker.name} (${speaker.voice})`,
-      );
-
-      for (const claim of claims) broadcast({ type: 'claim', claim });
-      broadcast({ type: 'scenario', scenario: getModel().scenario });
-      broadcast({ type: 'bids', bids, winner: id });
-      // No text yet. The tile lights up now; the words follow as they are
-      // written, which is also roughly when they are spoken.
-      broadcast({ type: 'speaking', panelist: id });
-
-      writer = open(res, speaker, true);
-    },
-
-    onReplyDelta: text => {
-      writer?.write(text);
-      caption += text;
-      // One caption event per token would be a few hundred messages a turn for
-      // a sentence nobody can read that fast anyway.
-      const now = Date.now();
-      if (now - captionAt >= CAPTION_INTERVAL_MS) {
-        captionAt = now;
-        broadcast({ type: 'caption', speaker: floor!, text: caption, final: false });
-      }
-    },
-  });
-
+  const decision = await runPanel(answer);
   const winner = panelistById(decision.winner);
 
-  // Either the reply streamed, or it did not exist to stream — a canned line
-  // from the keyword fallback, or a panel that never reached the LLM at all.
-  if (!writer) {
-    speak(res, winner, decision.reply, decision.interruptable);
-  } else {
-    // onFloor assigns this from inside a callback, which the compiler cannot
-    // see — it still believes the variable is the null it was initialised to.
-    const w = writer as Writer;
-    if (!w.sent().trim()) w.write(decision.reply);
-    w.end();
-    broadcast({ type: 'caption', speaker: decision.winner, text: decision.reply, final: true });
-  }
+  console.log(
+    `turn ${getModel().turns} | ` +
+    decision.bids.map(b => `${b.panelist} ${b.score}`).join('  ') +
+    ` | floor -> ${winner.name} (${winner.voice})`,
+  );
 
+  for (const claim of claims) broadcast({ type: 'claim', claim });
+  broadcast({ type: 'scenario', scenario: getModel().scenario });
+  broadcast({ type: 'bids', bids: decision.bids, winner: decision.winner });
   broadcast({ type: 'state', model: getModel() });
+
+  stream(res, winner, decision.reply, decision.interruptable);
 
   // bidding.ts switches to its closing instructions at this turn, so the reply
   // just streamed IS the goodbye. Nothing used to happen next: the panel said
@@ -144,29 +91,17 @@ router.post('/chat/completions', async (req, res) => {
 const speakingTime = (text: string): number =>
   Math.min(20_000, Math.round((text.split(/\s+/).length / 150) * 60_000) + 2_500);
 
-interface Writer {
-  /** Send some more of the reply. Agora speaks it as it lands. */
-  write(text: string): void;
-  /** Everything written so far, for the transcript and the caption. */
-  sent(): string;
-  /** Finish the response. Safe to call once. */
-  end(): void;
-}
-
-/**
- * Opens the response and claims the floor for one panelist.
- *
- * Split from the words on purpose. The panel takes a moment to decide WHO
- * speaks and rather longer to decide WHAT they say, and the voice can be
- * selected the instant the first of those is known — so the metadata chunk goes
- * out early and the reply trickles in behind it.
- */
-function open(res: Response, speaker: Panelist, interruptable: boolean): Writer {
+/** The SSE shape Agora expects, with the speaking panelist's voice attached. */
+function stream(res: Response, speaker: Panelist, reply: string, interruptable: boolean): void {
   res.writeHead(200, {
     'content-type': 'text/event-stream',
     'cache-control': 'no-cache',
     connection: 'keep-alive',
   });
+
+  // Every reply the panel speaks goes out through here, so the caption is
+  // broadcast here too — the "didn't catch that" path used to speak silently.
+  broadcast({ type: 'speaking', panelist: speaker.id, text: reply });
 
   const id = `kyro-${Date.now()}`;
   const send = (obj: unknown) => res.write(`data: ${JSON.stringify(obj)}\n\n`);
@@ -194,38 +129,17 @@ function open(res: Response, speaker: Panelist, interruptable: boolean): Writer 
     },
   });
 
-  let all = '';
-  let closed = false;
+  for (const word of reply.split(' ')) {
+    send({
+      id,
+      object: 'chat.completion.chunk',
+      choices: [{ index: 0, delta: { content: word + ' ' }, finish_reason: null }],
+    });
+  }
 
-  return {
-    write(text) {
-      if (closed || !text) return;
-      all += text;
-      send({
-        id,
-        object: 'chat.completion.chunk',
-        choices: [{ index: 0, delta: { content: text }, finish_reason: null }],
-      });
-    },
-    sent: () => all,
-    end() {
-      if (closed) return;
-      closed = true;
-      send({ id, object: 'chat.completion.chunk', choices: [{ index: 0, delta: {}, finish_reason: 'stop' }] });
-      res.write('data: [DONE]\n\n');
-      res.end();
-    },
-  };
-}
-
-/** A whole reply at once, for the turns the panel does not have to think about. */
-function speak(res: Response, speaker: Panelist, reply: string, interruptable: boolean): void {
-  // Every reply the panel speaks goes out through here, so the caption is
-  // broadcast here too — the "didn't catch that" path used to speak silently.
-  broadcast({ type: 'speaking', panelist: speaker.id, text: reply });
-  const w = open(res, speaker, interruptable);
-  w.write(reply);
-  w.end();
+  send({ id, object: 'chat.completion.chunk', choices: [{ index: 0, delta: {}, finish_reason: 'stop' }] });
+  res.write('data: [DONE]\n\n');
+  res.end();
 }
 
 export default router;

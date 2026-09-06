@@ -154,41 +154,6 @@ export async function list(ownerId: string): Promise<Interview[]> {
   return rows.map(toInterview);
 }
 
-/**
- * The other roles this company is hiring for, as seen from one interview.
- *
- * Scoped through the interview's own owner rather than taken from a caller: a
- * scorecard must never be able to name a role belonging to a different company,
- * which is the same boundary the portal listing draws.
- *
- * Returns nothing for a mock — a candidate practising on themselves has no
- * recruiter behind them and no roles to be redirected into.
- */
-export async function otherRoles(code: string): Promise<string[]> {
-  const interview = await find(code);
-  if (!interview?.ownerId) return [];
-
-  const different = (r: string) =>
-    r.trim().toLowerCase() !== interview.role.trim().toLowerCase();
-
-  const rows = await query<{ role: string }>(
-    `select distinct role from interviews
-      where owner_id = $1 and mock = false
-      order by role
-      limit 25`,
-    [interview.ownerId],
-  );
-
-  if (rows === null) {
-    return [...new Set([...interviews.values()]
-      .filter(i => i.ownerId === interview.ownerId && !i.mock)
-      .map(i => i.role))]
-      .filter(different)
-      .sort();
-  }
-  return rows.map(r => r.role).filter(different);
-}
-
 /** Marks the moment the candidate actually joined, so the portal can show it. */
 export async function markStarted(code: string): Promise<Interview | null> {
   const key = clean(code, 16).toUpperCase();

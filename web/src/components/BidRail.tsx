@@ -1,4 +1,3 @@
-import { CLAIM } from '../lib/labels.js';
 import {
   COMPETENCIES,
   panelistById,
@@ -14,6 +13,13 @@ interface Props {
   isOpen: boolean;
   onClose: () => void;
 }
+
+const CLAIM_STYLE: Record<Claim['status'], { label: string; color: string; bg: string; border: string }> = {
+  contradicted: { label: 'CONTRADICTION', color: '#DC2626', bg: '#FEF2F2', border: '#FECACA' },
+  vague: { label: 'UNQUANTIFIED', color: '#D97706', bg: '#FFFBEB', border: '#FDE68A' },
+  verified: { label: 'CORROBORATED', color: '#059669', bg: '#ECFDF5', border: '#A7F3D0' },
+  open: { label: 'TRACKED', color: '#6B7280', bg: '#F9FAFB', border: '#E5E7EB' },
+};
 
 function skillColor(v: number): string {
   if (v < 0.35) return '#EF4444';
@@ -187,7 +193,7 @@ export default function BidRail({ model, bids, isOpen, onClose }: Props) {
             ) : (
               <div className="flex flex-col gap-3">
                 {claims.map(claim => {
-                  const s = CLAIM[claim.status];
+                  const s = CLAIM_STYLE[claim.status];
                   return (
                     <div
                       key={claim.id}

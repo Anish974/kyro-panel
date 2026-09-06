@@ -10,7 +10,6 @@ import CompanySignIn from './screens/CompanySignIn.js';
 import Deliberating from './screens/Deliberating.js';
 import NotFound from './screens/NotFound.js';
 import CookieBanner from './components/CookieBanner.js';
-import { scoped } from './lib/session.js';
 import ShortcutsModal from './components/ShortcutsModal.js';
 import { currentSession, onAuthChange } from './lib/supabase.js';
 
@@ -94,7 +93,7 @@ export default function App() {
     }).toString();
 
     try {
-      const res = await fetch(scoped(`/scorecard?${query}`));
+      const res = await fetch(`/scorecard?${query}`);
       if (res.ok) {
         const data: ScorecardData = await res.json();
         if (typeof actualDurationSec === 'number') {

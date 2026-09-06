@@ -3,7 +3,6 @@ import type { Scorecard } from '@kyro/shared';
 import ScheduleInterview from '../components/ScheduleInterview.js';
 import ThemeToggle from '../components/ThemeToggle.js';
 import { TableRowSkeleton } from '../components/SkeletonLoader.js';
-import { VERDICT } from '../lib/labels.js';
 import EmptyState from '../components/EmptyState.js';
 import { authedFetch, signOut } from '../lib/supabase.js';
 
@@ -12,6 +11,13 @@ interface Props {
   onSelectScorecard: (scorecard: Scorecard) => void;
   localHistory?: Scorecard[];
 }
+
+const VERDICT_STYLES: Record<string, { label: string; color: string; bg: string; border: string }> = {
+  hire: { label: 'HIRE', color: '#16A34A', bg: '#F0FDF4', border: '#BBF7D0' },
+  lean_hire: { label: 'LEAN HIRE', color: '#2563EB', bg: '#EFF6FF', border: '#BFDBFE' },
+  lean_no_hire: { label: 'LEAN NO HIRE', color: '#D97706', bg: '#FFFBEB', border: '#FDE68A' },
+  no_hire: { label: 'NO HIRE', color: '#DC2626', bg: '#FEF2F2', border: '#FECACA' },
+};
 
 function formatDuration(sec?: number) {
   if (!sec) return '15m 00s';
@@ -258,7 +264,7 @@ export default function CompanyPortal({ onBack, onSelectScorecard, localHistory 
                     const prod = sc.verdicts.find(v => v.panelist === 'product');
                     const hr = sc.verdicts.find(v => v.panelist === 'hr');
                     const dominantVerdict = tech?.verdict || 'lean_hire';
-                    const verdictStyle = VERDICT[dominantVerdict] ?? VERDICT.lean_hire;
+                    const verdictStyle = VERDICT_STYLES[dominantVerdict] || VERDICT_STYLES.lean_hire;
 
                     return (
                       <tr key={sc.sessionId} className="hover:bg-gray-50/80 dark:hover:bg-[#1E232D]/70 transition-colors">

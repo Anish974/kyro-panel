@@ -10,7 +10,7 @@
 export type AgentState = 'idle' | 'listening' | 'thinking' | 'speaking' | 'silent';
 
 /** ETurnStatus: 0 in progress, 1 ended, 2 interrupted. */
-const TURN_IN_PROGRESS = 0;
+export const TURN_IN_PROGRESS = 0;
 
 export interface LiveTranscript {
   speaker: 'candidate' | 'panel';

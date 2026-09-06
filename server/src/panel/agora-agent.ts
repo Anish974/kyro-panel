@@ -1,6 +1,6 @@
 import { PANEL, panelistById, type CandidateProfile, type PanelistId } from '@kyro/shared';
-import { AGENT_UID, credentials, mint } from './tokens.js';
-import { AMBIENT_ID, findSession, inSession, profile, session, whenEvicted, type RunningAgent } from './model.js';
+import { AGENT_UID, CANDIDATE_UID, credentials, mint } from './tokens.js';
+import { profile } from './model.js';
 
 /**
  * Who speaks the greeting. Arjun opens the interview, so the agent must start
@@ -39,48 +39,28 @@ const IDLE_TIMEOUT = 90;
  */
 const MAX_SESSION_MS = 15 * 60 * 1000;
 
-/**
- * The billing cap's timers, keyed by session.
- *
- * They cannot live on the Session itself: a timer is a process-local handle,
- * and everything on the session is meant to be plain interview state.
- */
-const reapers = new Map<string, ReturnType<typeof setTimeout>>();
+let reaper: ReturnType<typeof setTimeout> | null = null;
 
-export type { RunningAgent } from './model.js';
+export interface RunningAgent {
+  agentId: string;
+  channel: string;
+  startedAt: number;
+}
 
-// One agent per session, not one per server.
+// The server holds one interview in memory, so it can hold at most one agent.
+// This is the real invariant, not a rate limit bolted on: a second agent in the
+// same channel would talk over the first and write into the same session.
 //
-// The invariant is unchanged in spirit — a second agent in the same channel
-// would talk over the first and write into the same interview — but it is now
-// scoped to the interview it protects, so two candidates can be in two rooms at
-// once without either being able to disturb the other.
+// It is also what keeps an open /agent/start from being a way to burn Agora
+// minutes — a caller can start one agent, not a thousand.
 //
-// It still bounds the spend: a caller holding one session id can start one
-// agent, and the number of sessions is itself capped in model.ts.
-export const running = (): RunningAgent | null => session().agent;
+// ponytail: in-memory, like the session. Both move together if this ever holds
+// more than one interview.
+let current: RunningAgent | null = null;
 
-export const channelName = (): string => session().channel;
+export const running = (): RunningAgent | null => current;
 
-/**
- * A session that is swept for being idle must not leave a billable agent behind
- * in a channel nobody is listening to.
- */
-whenEvicted(s => {
-  const timer = reapers.get(s.id);
-  if (timer) clearTimeout(timer);
-  reapers.delete(s.id);
-  if (s.agent) {
-    console.warn(`[agent] session ${s.id} expired with ${s.agent.agentId} still running — stopping it`);
-    void leave(s.agent.agentId);
-  }
-});
-
-/** Agora's callback URL for one session. See the note at its call site. */
-const prefixed = (base: string, sessionId: string): string => {
-  const trimmed = base.replace(/\/$/, '');
-  return sessionId === AMBIENT_ID ? trimmed : `${trimmed}/s/${sessionId}`;
-};
+export const channelName = (): string => process.env.AGORA_CHANNEL ?? 'demo-channel';
 
 const auth = (id: string, secret: string): string =>
   'Basic ' + Buffer.from(`${id}:${secret}`).toString('base64');
@@ -182,34 +162,6 @@ export function buildJoinBody(opts: {
       enable_string_uid: false,
       idle_timeout: IDLE_TIMEOUT,
 
-      // Turn detection was left on Agora's defaults, which cost us 160ms of
-      // dead air on every single turn: the engine waits out
-      // `silence_duration_ms` of quiet before it decides the candidate has
-      // finished and only then calls us. The default is 640.
-      //
-      // 480 is the floor worth taking. Below that a candidate who pauses to
-      // pick a word gets cut off mid-sentence, and an interview is full of
-      // those pauses. The other two numbers are Agora's own defaults, written
-      // out so the next person tuning this can see the whole shape.
-      //
-      // `prefix_padding_ms` is lookback, not latency — it only decides how much
-      // audio before the detected onset gets sent to ASR. 300 is enough to keep
-      // a soft first syllable; 800 (the default) mostly ships room tone.
-      turn_detection: {
-        mode: 'default',
-        config: {
-          speech_threshold: 0.5,
-          start_of_speech: {
-            mode: 'vad',
-            vad_config: { interrupt_duration_ms: 160, prefix_padding_ms: 300 },
-          },
-          end_of_speech: {
-            mode: 'vad',
-            vad_config: { silence_duration_ms: 480 },
-          },
-        },
-      },
-
       asr: {
         credential_mode: 'managed',
         vendor: 'deepgram',
@@ -226,11 +178,7 @@ export function buildJoinBody(opts: {
         ],
         greeting_message: greeting(candidate),
         failure_message: 'Give me a second.',
-        // Agora replays this many past turns into every /chat/completions call.
-        // We read exactly one message out of that payload — the last user turn
-        // — because the real transcript lives in model.ts. Twenty turns of
-        // history was bytes on the wire and nothing else.
-        max_history: 6,
+        max_history: 20,
         params: { model: 'kyro-panel' },
       },
 
@@ -252,15 +200,13 @@ export function buildJoinBody(opts: {
         },
       },
 
-      // The panel used to take ~1350ms to decide who speaks and draft the
-      // reply, and this filled the silence the candidate sat in.
+      // The panel takes ~1350ms to decide who speaks and draft the reply
+      // (docs/decisions.md). That is a real silence the candidate sits in.
+      // Agora fills it from its own side, so the wait costs nothing extra and
+      // the room stops sounding like it hung.
       //
-      // The turn is two calls now — bids, then the winner's line streamed — so
-      // the first words normally leave well before this fires. That is why the
-      // trigger moved out from 900ms: at 900 it would land on top of a reply
-      // that had already started, which is worse than the pause it covers. At
-      // 1200 it only speaks for a turn that is genuinely running late, which is
-      // exactly what it was for.
+      // Fires at 900ms, comfortably before the reply lands, so the filler is
+      // already playing when it arrives rather than colliding with it.
       //
       // The filler is spoken in whatever TTS voice is currently set — the
       // PREVIOUS turn's winner, because we only name the next voice in the
@@ -271,7 +217,7 @@ export function buildJoinBody(opts: {
         enable: true,
         trigger: {
           mode: 'fixed_time',
-          fixed_time_config: { response_wait_ms: 1200 },
+          fixed_time_config: { response_wait_ms: 900 },
         },
         content: {
           mode: 'static',
@@ -288,33 +234,15 @@ export function buildJoinBody(opts: {
           },
         },
       },
-      // Turns on the Signaling side channel. The engine then publishes live
-      // partial transcripts (both sides) as RTM channel messages, and its own
-      // state — idle / listening / thinking / speaking / silent — as RTM
-      // presence on the same channel. Both are things our SSE feed cannot know:
-      // it only hears from us, and only once a whole turn is already over.
-      advanced_features: {
-        enable_rtm: true,
-      },
-
-      parameters: {
-        data_channel: 'rtm',
-        enable_metrics: true,
-        enable_error_message: true,
-        // Agora's low-latency RTC profile for a live two-way conversation. The
-        // default profile buffers for smoothness, which is the right trade for
-        // music and the wrong one for a room where one side is waiting to be
-        // asked a question.
-        audio_scenario: 'chorus',
-      },
     },
 
-    // These used to be sent BESIDE properties. The REST schema puts both INSIDE
-    // it (docs.agora.io/en/conversational-ai/rest-api/join), and the copies
-    // above are the ones that count. They are still sent at the top level too:
-    // RTM transcripts demonstrably worked with them out here, and until an
-    // interview has run on the corrected body this is not the thing to find out
-    // the hard way. Delete this block once a session has proved it redundant.
+    // Turns on the Signaling side channel. The engine then publishes live
+    // partial transcripts (both sides) as RTM channel messages, and its own
+    // state — idle / listening / thinking / speaking / silent — as RTM presence
+    // on the same channel. Both are things our SSE feed cannot know: it only
+    // hears from us, and only once a whole turn is already over.
+    //
+    // These two sit BESIDE properties, not inside it.
     advanced_features: {
       enable_rtm: true,
     },
@@ -322,7 +250,6 @@ export function buildJoinBody(opts: {
       data_channel: 'rtm',
       enable_metrics: true,
       enable_error_message: true,
-      audio_scenario: 'chorus',
     },
   };
 }
@@ -334,9 +261,8 @@ export function buildJoinBody(opts: {
  * publicly reachable — Agora runs in the cloud and cannot see localhost.
  */
 export async function startAgent(orchestratorUrl: string): Promise<RunningAgent> {
-  const s = session();
-  if (s.agent) {
-    throw new AgentConfigError(`An agent is already in ${s.agent.channel} (${s.agent.agentId}).`);
+  if (current) {
+    throw new AgentConfigError(`An agent is already in ${current.channel} (${current.agentId}).`);
   }
 
   const { appId, customerId, customerSecret, orchestratorKey } = config();
@@ -350,19 +276,11 @@ export async function startAgent(orchestratorUrl: string): Promise<RunningAgent>
     );
   }
 
-  const channel = s.channel;
+  const channel = channelName();
   const body = buildJoinBody({
     channel,
     token: mint(creds, channel, AGENT_UID).token,
-    // Agora calls back on a URL that names the session, so the turn it asks for
-    // is scored against the interview it came from. This is the only thing that
-    // ties a request arriving from Agora's cloud to one of the candidates in
-    // memory — there is nothing else in the chat-completions body to key on.
-    //
-    // The ambient session is the exception and gets no prefix: its id is not a
-    // secret, so the route refuses it, and an unprefixed callback lands on the
-    // ambient interview anyway. That is the CLI's path, unchanged.
-    orchestratorUrl: prefixed(orchestratorUrl, s.id),
+    orchestratorUrl,
     orchestratorKey,
     candidate: profile(),
   });
@@ -379,69 +297,44 @@ export async function startAgent(orchestratorUrl: string): Promise<RunningAgent>
   const data = JSON.parse(text) as { agent_id?: string };
   if (!data.agent_id) throw new Error(`Agora returned no agent_id: ${text.slice(0, 200)}`);
 
-  s.agent = { agentId: data.agent_id, channel, startedAt: Date.now() };
+  current = { agentId: data.agent_id, channel, startedAt: Date.now() };
 
   // Hard ceiling on a billable agent. unref() so a pending reaper never keeps
   // the process alive on its own.
-  //
-  // The session is captured, not looked up when it fires: this callback runs
-  // outside any request, so there is no async context for `session()` to read
-  // and it would reap the ambient session instead of this one.
-  const reaper = setTimeout(() => {
-    console.warn(`[agent] ${s.agent?.agentId} hit the ${MAX_SESSION_MS / 60000}-minute cap — stopping it`);
-    void stopAgentFor(s.id);
+  reaper = setTimeout(() => {
+    console.warn(`[agent] ${current?.agentId} hit the ${MAX_SESSION_MS / 60000}-minute cap — stopping it`);
+    void stopAgent();
   }, MAX_SESSION_MS);
   reaper.unref?.();
-  reapers.set(s.id, reaper);
 
-  return s.agent;
-}
-
-/** The bare REST call. Used by the sweep, which has no session context left. */
-async function leave(agentId: string): Promise<{ stopped: boolean; detail: string }> {
-  const { appId, customerId, customerSecret } = config();
-  const res = await fetch(`${BASE}/${appId}/agents/${agentId}/leave`, {
-    method: 'POST',
-    headers: { authorization: auth(customerId, customerSecret) },
-  });
-  return {
-    stopped: res.ok,
-    detail: res.ok
-      ? `agent ${agentId} stopped`
-      : `stop failed ${res.status}: ${(await res.text()).slice(0, 200)}`,
-  };
+  return current;
 }
 
 /**
- * Takes this session's panel out of its channel.
+ * Takes the panel out of the channel. Defaults to the agent this process
+ * started, so the room's Leave button needs no id.
  *
  * Clears the tracked agent even when Agora reports a failure: an agent we can
  * no longer address must not block the next start forever. Agora's own
  * idle_timeout collects anything genuinely left behind.
  */
 export async function stopAgent(agentId?: string): Promise<{ stopped: boolean; detail: string }> {
-  const s = session();
-  const id = agentId ?? s.agent?.agentId;
+  const id = agentId ?? current?.agentId;
   if (!id) return { stopped: false, detail: 'no agent is running' };
 
+  const { appId, customerId, customerSecret } = config();
   try {
-    return await leave(id);
+    const res = await fetch(`${BASE}/${appId}/agents/${id}/leave`, {
+      method: 'POST',
+      headers: { authorization: auth(customerId, customerSecret) },
+    });
+    const detail = res.ok ? `agent ${id} stopped` : `stop failed ${res.status}: ${(await res.text()).slice(0, 200)}`;
+    return { stopped: res.ok, detail };
   } finally {
-    if (!agentId || agentId === s.agent?.agentId) {
-      s.agent = null;
-      const timer = reapers.get(s.id);
-      if (timer) clearTimeout(timer);
-      reapers.delete(s.id);
+    if (!agentId || agentId === current?.agentId) {
+      current = null;
+      if (reaper) clearTimeout(reaper);
+      reaper = null;
     }
   }
-}
-
-/**
- * The same, addressed by session id rather than by async context — for the
- * billing reaper, which fires long after the request that armed it is gone.
- */
-async function stopAgentFor(sessionId: string): Promise<{ stopped: boolean; detail: string }> {
-  const s = findSession(sessionId);
-  if (!s?.agent) return { stopped: false, detail: 'no agent is running' };
-  return inSession(s, () => stopAgent());
 }

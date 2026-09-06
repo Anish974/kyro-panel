@@ -1,14 +1,8 @@
 import { useEffect, useState } from 'react';
 import { emptyModel, type Bid, type CandidateModel, type PanelistId, type SessionEvent } from '@kyro/shared';
 
-/**
- * Live session state, pushed from the server over SSE. One-way.
- *
- * Takes the interview id because the stream is per-interview now: `/events`
- * with no session lands on the shared ambient one, which is nobody's room. Null
- * until the candidate has signed in, and the stream opens the moment it is not.
- */
-export function useSession(sessionId: string | null) {
+/** Live session state, pushed from the server over SSE. One-way. */
+export function useSession() {
   const [model, setModel] = useState<CandidateModel>(() => emptyModel('pending'));
   const [bids, setBids] = useState<Bid[]>([]);
   const [speaking, setSpeaking] = useState<PanelistId | null>(null);
@@ -23,12 +17,7 @@ export function useSession(sessionId: string | null) {
   const [concluded, setConcluded] = useState<{ reason: string; speakMs: number } | null>(null);
 
   useEffect(() => {
-    if (!sessionId) {
-      setConnected(false);
-      return;
-    }
-
-    const es = new EventSource(`/events?session=${encodeURIComponent(sessionId)}`);
+    const es = new EventSource('/events');
     es.onopen = () => setConnected(true);
     es.onerror = () => setConnected(false);
     es.onmessage = e => {
@@ -51,7 +40,7 @@ export function useSession(sessionId: string | null) {
       }
     };
     return () => es.close();
-  }, [sessionId]);
+  }, []);
 
   return { model, bids, speaking, caption, heard, connected, concluded };
 }

@@ -9,8 +9,6 @@ import {
 } from '@kyro/shared';
 import { SIGNALS } from './personas.js';
 import { getModel } from './model.js';
-import { otherRoles } from './interviews.js';
-import { suggestRole } from './redirect.js';
 import { writeVerdicts } from './verdicts.js';
 
 // The artefact the hiring team actually reads. Three separate verdicts built
@@ -107,8 +105,6 @@ export async function buildScorecard(
   level?: string,
   customDuration?: number,
   mock = false,
-  /** The invite code, which is how the other open roles are found. */
-  interviewCode: string | null = null,
 ): Promise<Scorecard> {
   const model = getModel();
   const currentLevel = level || model.profile?.level || 'Intermediate (2-6 years)';
@@ -119,22 +115,6 @@ export async function buildScorecard(
   // Written after the duration is settled, so the panel's write-up and the
   // number on the card agree about how long the interview actually ran.
   const verdicts = await writeVerdicts(PANEL.map(p => buildVerdict(p.id)), durationSec);
-
-  // Only when the panel actually said no to THIS role. A candidate the panel
-  // wants is not a candidate to redirect, and offering a hire "you might also
-  // suit support" reads as a demotion rather than an opportunity.
-  //
-  // Majority rather than unanimity: two of three saying no is a no in practice,
-  // and holding out for all three would silence the suggestion on exactly the
-  // split cards where a second look is worth most.
-  const against = verdicts.filter(v => !HIRE_SIDE(v.verdict)).length;
-  const rejected = against > verdicts.length / 2;
-
-  // A mock has no company behind it, so there is nothing to be redirected into.
-  const suggestedRole =
-    rejected && !mock && interviewCode
-      ? (await suggestRole(role, await otherRoles(interviewCode))) ?? undefined
-      : undefined;
 
   return {
     sessionId: model.sessionId,
@@ -148,6 +128,5 @@ export async function buildScorecard(
     timestamp: Date.now(),
     turns: model.turns,
     mock,
-    ...(suggestedRole ? { suggestedRole } : {}),
   };
 }
