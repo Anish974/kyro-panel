@@ -1,5 +1,6 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
 import type { NextFunction, Request, Response } from 'express';
+import { userIdFrom } from '../db/supabase.js';
 
 // This server is reachable from the public internet — a cloudflared tunnel in
 // dev, a permanent URL once deployed. Anything that writes to the interview
@@ -50,3 +51,34 @@ export function requireSecret(req: Request, res: Response, next: NextFunction): 
 
   next();
 }
+
+/**
+ * A signed-in recruiter, or a 401.
+ *
+ * Everything a company can see is scoped to the account that scheduled it —
+ * before this, one URL showed every candidate's name, resume and verdict to
+ * anyone who found it, across every company using the deployment.
+ *
+ * The id lands on res.locals rather than the request, so a route reads it from
+ * one place and cannot mistake a client-supplied field for a verified one.
+ */
+export async function requireRecruiter(req: Request, res: Response, next: NextFunction): Promise<void> {
+  // No project configured means auth cannot be checked. Refuse rather than wave
+  // everyone through — the same rule requireSecret follows for a missing key.
+  if (!process.env.SUPABASE_URL?.trim() || !process.env.SUPABASE_ANON_KEY?.trim()) {
+    res.status(503).json({ error: 'sign-in is not configured on this server' });
+    return;
+  }
+
+  const userId = await userIdFrom(req.get('authorization'));
+  if (!userId) {
+    res.status(401).json({ error: 'sign in to continue' });
+    return;
+  }
+
+  res.locals.recruiterId = userId;
+  next();
+}
+
+/** The verified recruiter on a request that got past requireRecruiter. */
+export const recruiterId = (res: Response): string => String(res.locals.recruiterId);

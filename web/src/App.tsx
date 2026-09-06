@@ -6,6 +6,8 @@ import Login, { type Candidate } from './screens/Login.js';
 import CompanyPortal from './screens/CompanyPortal.js';
 import Landing from './screens/Landing.js';
 import CandidateEntry from './screens/CandidateEntry.js';
+import CompanySignIn from './screens/CompanySignIn.js';
+import { currentSession, onAuthChange } from './lib/supabase.js';
 import Deliberating from './screens/Deliberating.js';
 
 /**
@@ -27,6 +29,8 @@ export default function App() {
   );
   const [invite, setInvite] = useState<Interview | null>(null);
   const [inviteError, setInviteError] = useState('');
+  // undefined while we are still asking; null means signed out.
+  const [signedIn, setSignedIn] = useState<boolean | undefined>(undefined);
   const [candidate, setCandidate] = useState<Candidate | null>(null);
   const [scorecard, setScorecard] = useState<ScorecardData | null>(null);
   const [returnToView, setReturnToView] = useState<'landing' | 'company' | 'room'>('landing');
@@ -45,6 +49,9 @@ export default function App() {
       level: candidate.level || 'Intermediate (2-6 years)',
       duration: String(durationParam),
       ...(invite?.mock ? { mock: '1' } : {}),
+      // Ties the scorecard to the interview, which is how the recruiter who
+      // scheduled it — and only them — gets to see it.
+      ...(invite && !invite.mock ? { code: invite.code } : {}),
     }).toString();
 
     try {
@@ -111,6 +118,13 @@ export default function App() {
     setView('scorecard');
     setDeliberating(false);
   }
+
+  // The recruiter's session, kept live: a magic link lands back on this page
+  // and the portal has to open without a reload.
+  useEffect(() => {
+    void currentSession().then(session => setSignedIn(session !== null));
+    return onAuthChange(session => setSignedIn(session !== null));
+  }, []);
 
   // Resolve the invite before anything is drawn: the login screen has nothing
   // to show without it, and a dead link must say so rather than sit blank.
@@ -184,6 +198,14 @@ export default function App() {
   }
 
   if (view === 'company') {
+    if (signedIn === undefined) {
+      return (
+        <div className="min-h-screen bg-[#FAF9F6] grid place-items-center px-4 text-center">
+          <p className="text-sm text-[#4B5565]">Checking your session…</p>
+        </div>
+      );
+    }
+    if (!signedIn) return <CompanySignIn onBack={() => setView('landing')} />;
     return (
       <CompanyPortal onSelectScorecard={handleSelectScorecard} onBack={() => setView('landing')} />
     );

@@ -16,10 +16,14 @@ import { InterviewError, create, find, list, markStarted, reset } from '../panel
 
 reset();
 
+const ACME = 'acme-recruiter-uuid';
+const RIVAL = 'rival-recruiter-uuid';
+
 const made = await create({
   candidateName: 'Anish Patankar',
   role: 'Full-Stack Engineer',
   level: 'Intern',
+  ownerId: ACME,
 });
 
 assert.match(made.code, /^[0-9A-HJKMNP-TV-Z]{6}$/, `code must be 6 unambiguous chars, got ${made.code}`);
@@ -48,13 +52,14 @@ const long = await create({ candidateName: 'x'.repeat(500), role: 'y'.repeat(500
 assert.equal(long.candidateName.length, 80, 'the name is capped');
 assert.equal(long.role.length, 80, 'the role is capped');
 
-const controls = await create({ candidateName: 'An\nish\u0000', role: 'Eng\tineer', level: 'Intern' });
+const controls = await create({ candidateName: 'An\nish\u0000', role: 'Eng\tineer', level: 'Intern', ownerId: ACME });
 assert.ok(!/[\u0000-\u001f]/.test(controls.candidateName + controls.role), 'control characters are stripped');
 
 // --- the portal's view ------------------------------------------------------
 
-const scheduled = await list();
+const scheduled = await list(ACME);
 assert.equal(scheduled[0].code, controls.code, 'the newest interview is listed first');
+assert.ok(scheduled.every(i => i.ownerId === ACME), 'and the list holds nothing that is not theirs');
 assert.equal(new Set(scheduled.map(i => i.code)).size, scheduled.length, 'codes never collide');
 
 const started = await markStarted(made.code);
@@ -63,13 +68,35 @@ const again = await markStarted(made.code);
 assert.equal(again?.startedAt, started?.startedAt, 'a refresh must not restart the clock');
 assert.equal(await markStarted('ZZZZZZ'), null, 'an unknown code cannot be started');
 
+// --- one company cannot see another's candidates ---------------------------
+
+// The bug this closes: every scorecard and every candidate name was one URL
+// away from anyone who found it, across every company on the deployment.
+await create({ candidateName: 'Rival Candidate', role: 'Backend Engineer', level: 'Intern', ownerId: RIVAL });
+
+const acme = await list(ACME);
+const rival = await list(RIVAL);
+assert.ok(acme.length > 0 && rival.length > 0, 'both recruiters have interviews');
+assert.ok(acme.every(i => i.ownerId === ACME), "acme's list is only acme's");
+assert.ok(
+  !acme.some(i => i.candidateName === 'Rival Candidate'),
+  "one company must never see another company's candidate",
+);
+assert.equal(rival.length, 1, 'and the rival sees exactly their own');
+assert.deepEqual(await list('nobody-at-all'), [], 'an unknown recruiter sees nothing');
+
 // --- practice versus assessment --------------------------------------------
 
 // A mock is the one place a candidate may pick their own level, because nobody
 // hires off it. Everything hangs off this flag, so it must not be settable by
 // anything that merely looks truthy arriving over the wire.
 assert.equal(made.mock, false, 'an interview is an assessment unless it says otherwise');
-assert.equal((await create({ candidateName: 'A', role: 'R', level: 'Intern', mock: true })).mock, true);
+const practice = await create({ candidateName: 'A', role: 'R', level: 'Intern', mock: true, ownerId: ACME });
+assert.equal(practice.mock, true);
+// A mock is the candidate's own. Even handed an owner it takes none, which is
+// what keeps practice out of every company portal.
+assert.equal(practice.ownerId, null, 'a mock belongs to nobody, whoever created it');
+assert.ok(!(await list(ACME)).some(i => i.code === practice.code), 'and never lands in a portal');
 for (const truthy of ['yes', 'true', 1, {}, []]) {
   assert.equal(
     (await create({ candidateName: 'A', role: 'R', level: 'Intern', mock: truthy })).mock,
@@ -80,5 +107,6 @@ for (const truthy of ['yes', 'true', 1, {}, []]) {
 
 console.log('interviews  the company sets role and level, the candidate only turns up');
 console.log('            unpublished levels, blank fields and control characters are refused');
-console.log('            a mock is practice, and only a real boolean makes one');
+console.log('            a mock is practice, owned by nobody, and only a real boolean makes one');
+console.log('            one recruiter never sees another recruiter’s candidates');
 console.log('\nself-check passed');

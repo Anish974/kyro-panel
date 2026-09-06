@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@kyro/shared": "*",
+    "@supabase/supabase-js": "^2.115.0",
     "agora-token": "^2.0.6",
     "express": "^5.2.1",
     "pg": "^8.23.0",

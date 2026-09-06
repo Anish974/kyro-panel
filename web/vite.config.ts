@@ -4,6 +4,9 @@ import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  // One .env at the repo root for both workspaces. Without this vite reads
+  // web/.env and every VITE_ variable arrives undefined.
+  envDir: '..',
   server: {
     port: 3000,
     // Everything the server owns — tokens, live events, state — is proxied so
@@ -15,6 +18,8 @@ export default defineConfig({
       '/candidate': 'http://localhost:8787',
       '/agent': 'http://localhost:8787',
       '/scorecard': 'http://localhost:8787',
+      '/scorecards': 'http://localhost:8787',
+      '/interviews': 'http://localhost:8787',
       '/reset': 'http://localhost:8787',
     },
   },

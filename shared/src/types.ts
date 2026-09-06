@@ -162,6 +162,11 @@ export interface Interview {
    * hiring off the result. Kept out of the company portal.
    */
   mock: boolean;
+  /**
+   * The recruiter who scheduled it, as a Supabase Auth user id. Null for a
+   * mock, which the candidate set up for themselves and no company owns.
+   */
+  ownerId: string | null;
 }
 
 export const PROFILE_LIMITS = {

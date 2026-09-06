@@ -311,11 +311,16 @@ const toScorecard = (r: ScorecardRow): Scorecard => ({
  * Upsert, because /scorecard is a GET the room may retry — a second request for
  * the same session must correct the row it wrote, not add a duplicate next to it.
  */
-export async function saveScorecardToHistory(scorecard: Scorecard): Promise<void> {
+export async function saveScorecardToHistory(
+  scorecard: Scorecard,
+  interviewCode: string | null = null,
+): Promise<void> {
   const rows = await query(
     `insert into scorecards
-       (session_id, candidate_name, role, level, duration_sec, turns, dissent, mock, verdicts, claims)
-       values ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10::jsonb)
+       (session_id, candidate_name, role, level, duration_sec, turns, dissent, mock, verdicts, claims,
+        interview_code)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10::jsonb,
+               (select code from interviews where code = $11))
      on conflict (session_id) do update set
        candidate_name = excluded.candidate_name,
        role           = excluded.role,
@@ -325,7 +330,8 @@ export async function saveScorecardToHistory(scorecard: Scorecard): Promise<void
        dissent        = excluded.dissent,
        mock           = excluded.mock,
        verdicts       = excluded.verdicts,
-       claims         = excluded.claims`,
+       claims         = excluded.claims,
+       interview_code = coalesce(excluded.interview_code, scorecards.interview_code)`,
     [
       scorecard.sessionId,
       scorecard.candidateName,
@@ -337,6 +343,10 @@ export async function saveScorecardToHistory(scorecard: Scorecard): Promise<void
       scorecard.mock === true,
       JSON.stringify(scorecard.verdicts),
       JSON.stringify(scorecard.claims),
+      // Looked up rather than inserted straight: a code that no longer exists
+      // becomes null instead of failing the whole write on a foreign key. The
+      // scorecard is the record worth keeping; the link is a convenience.
+      interviewCode ? interviewCode.toUpperCase() : null,
     ],
   );
   if (rows !== null) return;
@@ -346,10 +356,26 @@ export async function saveScorecardToHistory(scorecard: Scorecard): Promise<void
   else scorecardsHistory.unshift(scorecard);
 }
 
-/** Newest first. `mock` interviews are practice and the caller filters them. */
-export async function getScorecardsHistory(): Promise<Scorecard[]> {
+/**
+ * The scorecards one recruiter is allowed to see, newest first.
+ *
+ * Ownership is not stored on the scorecard — it is derived through the
+ * interview that produced it, so there is one place a company's boundary is
+ * defined and it cannot drift between two tables.
+ *
+ * A scorecard with no interview behind it (a mock, or a session that predates
+ * invite codes) belongs to nobody and is returned to nobody.
+ */
+export async function getScorecardsHistory(ownerId: string): Promise<Scorecard[]> {
   const rows = await query<ScorecardRow>(
-    'select * from scorecards order by created_at desc limit 200',
+    `select s.*
+       from scorecards s
+       join interviews i on i.code = s.interview_code
+      where i.owner_id = $1
+        and s.mock = false
+      order by s.created_at desc
+      limit 200`,
+    [ownerId],
   );
   return rows === null ? scorecardsHistory : rows.map(toScorecard);
 }

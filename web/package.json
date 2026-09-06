@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@kyro/shared": "*",
+    "@supabase/supabase-js": "^2.115.0",
     "agora-rtc-sdk-ng": "^4.24.7",
     "agora-rtm": "^2.3.0",
     "pdfjs-dist": "^6.3.289",

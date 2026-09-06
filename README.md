@@ -53,7 +53,8 @@ are marked as such and never appear in the company portal.
 **To try it in one minute** — press *Get started*, choose **Mock interview**,
 pick a role and difficulty, allow the mic and talk.
 
-**To see the hiring side** — press *I'm hiring*:
+**To see the hiring side** — press *I'm hiring* and sign in. No password: you
+get a link by email, and opening it brings you back signed in.
 
 1. **Schedule an interview** — candidate name, role, experience bar.
 2. Copy the invite link and open it (another tab is fine).
@@ -207,9 +208,10 @@ That is the point — it is the only thing keeping two developers in sync.
 | Company schedules the interview, candidate joins by invite link | done |
 | Mock interviews, kept out of the company portal | done |
 | Interviews and scorecards in Postgres, RLS closed to the anon key | done |
+| Recruiter sign-in; every company sees only its own candidates | done |
+| Invite code enforced on `/agent/start` and `/scorecard` | not yet |
 | Shared secret on every write | done |
 | `/token` bound to the configured channel and non-reserved uids | done |
-| Invite code enforced on `/agent/start` and `/scorecard` | not yet |
 | Join + AI disclosure screen, device check | not yet |
 | Deployment | done ([Live on Render](https://kyro-panel.onrender.com/)) |
 

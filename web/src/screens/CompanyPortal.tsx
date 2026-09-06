@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import ScheduleInterview from '../components/ScheduleInterview.js';
+import { authedFetch, signOut } from '../lib/supabase.js';
 import type { Scorecard, Verdict } from '@kyro/shared';
 
 interface Props {
@@ -144,7 +145,7 @@ export default function CompanyPortal({ onBack, onSelectScorecard, localHistory 
     async function fetchScorecards() {
       setLoading(true);
       try {
-        const res = await fetch('/scorecards');
+        const res = await authedFetch('/scorecards');
         if (res.ok) {
           const data: Scorecard[] = await res.json();
           if (mounted && Array.isArray(data) && data.length > 0) {
@@ -214,6 +215,13 @@ export default function CompanyPortal({ onBack, onSelectScorecard, localHistory 
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
           </svg>
           <span>Home</span>
+        </button>
+
+        <button
+          onClick={() => void signOut()}
+          className="h-10 px-5 rounded-xl border border-[#EBE6DF] bg-white hover:bg-gray-50 text-xs sm:text-sm font-bold text-gray-800 hover:text-gray-950 transition-colors shadow-2xs cursor-pointer"
+        >
+          Sign out
         </button>
       </header>
 

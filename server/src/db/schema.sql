@@ -22,11 +22,25 @@ create table if not exists public.interviews (
   started_at      timestamptz
 );
 
+-- Which recruiter scheduled it. A Supabase Auth user id, added after the fact,
+-- so it is nullable: a mock interview has no owner because the candidate set it
+-- up for themselves and no company should ever see it in a portal.
+--
+-- No foreign key to auth.users on purpose — that table belongs to Supabase, and
+-- coupling our schema to it means a deleted account takes its interviews and
+-- their scorecards with it. Orphaned rows are the better failure here.
+alter table public.interviews add column if not exists owner_id uuid;
+
 -- The portal lists newest first and nothing else, so this is the whole access
 -- pattern. created_at alone would still need a sort within equal timestamps;
 -- code breaks the tie the same way the application does.
 create index if not exists interviews_recent_idx
   on public.interviews (created_at desc, code desc);
+
+-- Every portal query starts "the interviews that are mine", so the owner has to
+-- lead the index or it sorts the whole table and throws most of it away.
+create index if not exists interviews_owner_idx
+  on public.interviews (owner_id, created_at desc);
 
 -- ---------------------------------------------------------------- scorecards
 create table if not exists public.scorecards (

@@ -9,6 +9,7 @@ import {
   setProfile,
 } from '../panel/model.js';
 import { buildScorecard } from '../panel/scorecard.js';
+import { recruiterId, requireRecruiter } from './auth.js';
 
 // One-way push to the room UI: bids, captions, claims, state.
 // SSE, not WebSocket — the browser never sends anything back on this channel.
@@ -101,19 +102,21 @@ router.get('/scorecard', async (req, res) => {
     customDuration,
     req.query.mock === '1',
   );
-  await saveScorecardToHistory(scorecard);
+  // The room passes the invite code it joined with, which is what ties this
+  // scorecard to the recruiter who scheduled it. A mock sends none.
+  await saveScorecardToHistory(scorecard, req.query.code ? String(req.query.code) : null);
   broadcast({ type: 'scorecard', scorecard });
   res.json(scorecard);
 });
 
-// Recruiter / Company Portal endpoint: list all historical candidate assessments.
+// Company portal: the assessments this recruiter's own interviews produced.
 //
-// Mock interviews are practice a candidate ran on themselves, choosing their own
-// level — real results, but not hiring data, and nothing a recruiter should be
-// reading as a signal. ?mock=1 asks for them anyway.
-router.get('/scorecards', async (req, res) => {
-  const history = await getScorecardsHistory();
-  res.json(req.query.mock === '1' ? history : history.filter(s => !s.mock));
+// Two things are excluded and neither is a filter the caller can lift. Another
+// company's candidates, because ownership is joined through the interview. And
+// mock interviews, which are practice a candidate ran on themselves — real
+// results, but not hiring data, and owned by nobody.
+router.get('/scorecards', requireRecruiter, async (_req, res) => {
+  res.json(await getScorecardsHistory(recruiterId(res)));
 });
 
 export default router;

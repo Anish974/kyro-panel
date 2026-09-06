@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { EXPERIENCE_LEVELS, PROFILE_LIMITS, type Interview } from '@kyro/shared';
+import { authedFetch } from '../lib/supabase.js';
 
 // The hiring side of the product. The company names the candidate, the role and
 // the bar, and gets back a link. Everything the candidate used to choose about
@@ -42,7 +43,7 @@ export default function ScheduleInterview() {
     setError('');
     setCreating(true);
     try {
-      const res = await fetch('/interviews', {
+      const res = await authedFetch('/interviews', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ candidateName: name.trim(), role: effectiveRole, level }),

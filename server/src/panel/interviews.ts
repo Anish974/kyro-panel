@@ -37,6 +37,7 @@ interface Row {
   role: string;
   level: string;
   mock: boolean;
+  owner_id: string | null;
   created_at: Date;
   started_at: Date | null;
 }
@@ -47,6 +48,7 @@ const toInterview = (r: Row): Interview => ({
   role: r.role,
   level: r.level,
   mock: r.mock,
+  ownerId: r.owner_id,
   createdAt: r.created_at.getTime(),
   startedAt: r.started_at ? r.started_at.getTime() : null,
 });
@@ -68,11 +70,14 @@ export async function create(input: {
   role: unknown;
   level: unknown;
   mock?: unknown;
+  /** The verified recruiter. Never read off the request body. */
+  ownerId?: string | null;
 }): Promise<Interview> {
   const candidateName = clean(input.candidateName, PROFILE_LIMITS.name);
   const role = clean(input.role, PROFILE_LIMITS.role);
   const level = clean(input.level, PROFILE_LIMITS.level);
   const mock = input.mock === true;
+  const ownerId = mock ? null : (input.ownerId ?? null);
 
   if (!candidateName) throw new InterviewError('candidate name is required');
   if (!role) throw new InterviewError('role is required');
@@ -88,11 +93,11 @@ export async function create(input: {
   for (let attempt = 0; attempt < 5; attempt++) {
     const code = randomCode();
     const rows = await query<Row>(
-      `insert into interviews (code, candidate_name, role, level, mock)
-            values ($1, $2, $3, $4, $5)
+      `insert into interviews (code, candidate_name, role, level, mock, owner_id)
+            values ($1, $2, $3, $4, $5, $6)
        on conflict (code) do nothing
          returning *`,
-      [code, candidateName, role, level, mock],
+      [code, candidateName, role, level, mock, ownerId],
     );
 
     if (rows === null) {
@@ -103,6 +108,7 @@ export async function create(input: {
         role,
         level,
         mock,
+        ownerId,
         createdAt: Date.now(),
         startedAt: null,
       };
@@ -125,17 +131,25 @@ export async function find(code: string): Promise<Interview | null> {
 }
 
 /**
- * Newest first — the company portal reads it as a schedule.
+ * One recruiter's schedule, newest first. Scoped by owner, not filtered in the
+ * caller: a list endpoint that fetches everything and trims afterwards is one
+ * forgotten filter away from handing over every company's candidates.
  *
  * Two interviews scheduled in the same millisecond tie on createdAt, and a
  * stable sort then leaves them in insertion order: oldest first, in the list
  * that promises newest first. Reversing before sorting settles the tie the
  * only way a reader would expect.
  */
-export async function list(): Promise<Interview[]> {
-  const rows = await query<Row>('select * from interviews order by created_at desc, code desc limit 200');
+export async function list(ownerId: string): Promise<Interview[]> {
+  const rows = await query<Row>(
+    'select * from interviews where owner_id = $1 order by created_at desc, code desc limit 200',
+    [ownerId],
+  );
   if (rows === null) {
-    return [...interviews.values()].reverse().sort((a, b) => b.createdAt - a.createdAt);
+    return [...interviews.values()]
+      .reverse()
+      .filter(i => i.ownerId === ownerId)
+      .sort((a, b) => b.createdAt - a.createdAt);
   }
   return rows.map(toInterview);
 }
