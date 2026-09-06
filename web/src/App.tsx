@@ -4,6 +4,8 @@ import Room from './screens/Room.js';
 import Scorecard from './screens/Scorecard.js';
 import Login, { type Candidate } from './screens/Login.js';
 import CompanyPortal from './screens/CompanyPortal.js';
+import Landing from './screens/Landing.js';
+import CandidateEntry from './screens/CandidateEntry.js';
 import Deliberating from './screens/Deliberating.js';
 
 /**
@@ -18,14 +20,16 @@ export default function App() {
   // The company portal is the front door. A candidate reaches the login screen
   // only through ?i=<code>, because without an invite there is no role, no
   // level, and so no interview to walk into.
-  const [view, setView] = useState<'login' | 'company' | 'room' | 'scorecard'>(
-    inviteCode ? 'login' : 'company',
+  // A link with ?i= goes straight to that interview. Everyone else lands on the
+  // page that explains what this is and asks which side they are on.
+  const [view, setView] = useState<'landing' | 'candidate' | 'login' | 'company' | 'room' | 'scorecard'>(
+    inviteCode ? 'login' : 'landing',
   );
   const [invite, setInvite] = useState<Interview | null>(null);
   const [inviteError, setInviteError] = useState('');
   const [candidate, setCandidate] = useState<Candidate | null>(null);
   const [scorecard, setScorecard] = useState<ScorecardData | null>(null);
-  const [returnToView, setReturnToView] = useState<'login' | 'company' | 'room'>('login');
+  const [returnToView, setReturnToView] = useState<'landing' | 'company' | 'room'>('landing');
   // The write-up is a real LLM call over the transcript, so it takes a couple
   // of seconds. Showing that beats a frozen room or a scorecard that appears
   // instantly as though it had been decided before the interview ended.
@@ -40,6 +44,7 @@ export default function App() {
       role: candidate.role,
       level: candidate.level || 'Intermediate (2-6 years)',
       duration: String(durationParam),
+      ...(invite?.mock ? { mock: '1' } : {}),
     }).toString();
 
     try {
@@ -128,7 +133,9 @@ export default function App() {
   function handleLogin(c: Candidate) {
     setCandidate(c);
     // Idempotent, and the interview runs whether or not this lands.
-    void fetch(`/interviews/${encodeURIComponent(inviteCode)}/start`, { method: 'POST' }).catch(() => {});
+    if (invite) {
+      void fetch(`/interviews/${encodeURIComponent(invite.code)}/start`, { method: 'POST' }).catch(() => {});
+    }
     setView('room');
   }
 
@@ -144,7 +151,8 @@ export default function App() {
     } else {
       setScorecard(null);
       setCandidate(null);
-      setView('login');
+      setInvite(null);
+      setView('landing');
     }
   }
 
@@ -154,9 +162,30 @@ export default function App() {
     return <Deliberating candidateName={candidate.name} role={candidate.role} />;
   }
 
+  if (view === 'landing') {
+    return (
+      <Landing
+        onCompany={() => setView('company')}
+        onCandidate={() => setView('candidate')}
+      />
+    );
+  }
+
+  if (view === 'candidate') {
+    return (
+      <CandidateEntry
+        onBack={() => setView('landing')}
+        onReady={picked => {
+          setInvite(picked);
+          setView('login');
+        }}
+      />
+    );
+  }
+
   if (view === 'company') {
     return (
-      <CompanyPortal onSelectScorecard={handleSelectScorecard} />
+      <CompanyPortal onSelectScorecard={handleSelectScorecard} onBack={() => setView('landing')} />
     );
   }
 

@@ -39,8 +39,19 @@ export class InterviewError extends Error {}
 const clean = (value: unknown, limit: number): string =>
   String(value ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, limit);
 
-/** Company side: schedule one interview. Returns the code the link is built on. */
-export function create(input: { candidateName: unknown; role: unknown; level: unknown }): Interview {
+/**
+ * Schedule one interview. Returns the code the link is built on.
+ *
+ * `mock: true` marks practice a candidate set up for themselves. The only
+ * difference is what it means afterwards — a mock result is not hiring data and
+ * never reaches the company portal.
+ */
+export function create(input: {
+  candidateName: unknown;
+  role: unknown;
+  level: unknown;
+  mock?: unknown;
+}): Interview {
   const candidateName = clean(input.candidateName, PROFILE_LIMITS.name);
   const role = clean(input.role, PROFILE_LIMITS.role);
   const level = clean(input.level, PROFILE_LIMITS.level);
@@ -61,6 +72,7 @@ export function create(input: { candidateName: unknown; role: unknown; level: un
     level,
     createdAt: Date.now(),
     startedAt: null,
+    mock: input.mock === true,
   };
   interviews.set(interview.code, interview);
   return interview;

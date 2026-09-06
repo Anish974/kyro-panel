@@ -156,6 +156,12 @@ export interface Interview {
   createdAt: number;
   /** When the candidate first opened the room, or null if they have not. */
   startedAt: number | null;
+  /**
+   * Practice, not an assessment. A candidate schedules these for themselves —
+   * and so picks their own level, which is only acceptable because nobody is
+   * hiring off the result. Kept out of the company portal.
+   */
+  mock: boolean;
 }
 
 export const PROFILE_LIMITS = {
@@ -237,6 +243,8 @@ export interface Scorecard {
   dissent: boolean;
   timestamp?: number;
   turns?: number;
+  /** From a mock interview the candidate ran on themselves. Not hiring data. */
+  mock?: boolean;
 }
 
 // -------------------------------------------- server -> browser (SSE /events)

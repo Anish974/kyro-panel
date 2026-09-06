@@ -56,6 +56,22 @@ const again = markStarted(made.code);
 assert.equal(again?.startedAt, started?.startedAt, 'a refresh must not restart the clock');
 assert.equal(markStarted('ZZZZZZ'), null, 'an unknown code cannot be started');
 
+// --- practice versus assessment --------------------------------------------
+
+// A mock is the one place a candidate may pick their own level, because nobody
+// hires off it. Everything hangs off this flag, so it must not be settable by
+// anything that merely looks truthy arriving over the wire.
+assert.equal(made.mock, false, 'an interview is an assessment unless it says otherwise');
+assert.equal(create({ candidateName: 'A', role: 'R', level: 'Intern', mock: true }).mock, true);
+for (const truthy of ['yes', 'true', 1, {}, []]) {
+  assert.equal(
+    create({ candidateName: 'A', role: 'R', level: 'Intern', mock: truthy }).mock,
+    false,
+    `mock: ${JSON.stringify(truthy)} must not pass for practice`,
+  );
+}
+
 console.log('interviews  the company sets role and level, the candidate only turns up');
 console.log('            unpublished levels, blank fields and control characters are refused');
+console.log('            a mock is practice, and only a real boolean makes one');
 console.log('\nself-check passed');

@@ -104,6 +104,7 @@ export async function buildScorecard(
   role = 'Senior Backend Engineer',
   level?: string,
   customDuration?: number,
+  mock = false,
 ): Promise<Scorecard> {
   const model = getModel();
   const currentLevel = level || model.profile?.level || 'Intermediate (2-6 years)';
@@ -126,5 +127,6 @@ export async function buildScorecard(
     dissent: new Set(verdicts.map(v => HIRE_SIDE(v.verdict))).size > 1,
     timestamp: Date.now(),
     turns: model.turns,
+    mock,
   };
 }
