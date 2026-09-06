@@ -181,7 +181,7 @@ npm install
 Create `.env` in the root (it is gitignored — never commit it):
 
 ```
-AGORA_APP_ID=8a2d37e3319f40ed99c103e973627aa2
+AGORA_APP_ID=9490396c88014747a6d390cc046ec807
 AGORA_APP_CERTIFICATE=<ask Anish>
 AGORA_CHANNEL=demo-channel
 
