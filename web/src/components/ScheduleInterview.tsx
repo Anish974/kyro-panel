@@ -109,21 +109,28 @@ export default function ScheduleInterview() {
         </div>
 
         {/* Access Code Explanation Box */}
-        <div className="mt-3.5 p-3.5 rounded-2xl bg-[#F4F1EA]/70 dark:bg-[#1E232D]/80 border border-[#E6DAC8] dark:border-[#2D333F] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-start sm:items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-blue-100 dark:bg-blue-950/80 text-[#2563EB] dark:text-blue-400 flex items-center justify-center font-bold text-xs shrink-0 mt-0.5 sm:mt-0">
-              🔑
+        <div className="mt-3.5 p-4 rounded-2xl bg-[#FAF9F6] dark:bg-[#1E232D] border border-[#EBE6DF] dark:border-[#2D333F] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-[#2563EB] dark:text-blue-400 flex items-center justify-center shrink-0">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+              </svg>
             </div>
-            <div className="text-xs text-[#5D5040] dark:text-[#CBB9A4] leading-relaxed">
-              <span className="font-bold text-gray-950 dark:text-white">Interview Access Code:</span> The code after <code className="px-1.5 py-0.5 rounded bg-white dark:bg-[#12141A] text-[#2563EB] dark:text-blue-400 font-mono font-bold border border-[#E6DAC8] dark:border-[#2D333F]">?i=</code> is <strong className="font-mono text-sm text-gray-950 dark:text-white font-black">{created.code}</strong>. This is the code to give the interview — the candidate can click the direct link or enter this code on the landing page.
+            <div className="text-xs text-[#4B5565] dark:text-[#94A3B8] leading-relaxed">
+              <span className="font-bold text-gray-900 dark:text-gray-100 mr-1.5">Interview Access Code:</span>
+              <span className="font-mono font-extrabold text-xs text-[#2563EB] dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 rounded-md border border-blue-200/60 dark:border-blue-800/60 mr-1.5">{created.code}</span>
+              <span className="text-gray-500 dark:text-gray-400">— candidate can click direct link or enter this code on the landing page.</span>
             </div>
           </div>
           <button
             type="button"
             onClick={copyCode}
-            className="px-3.5 py-1.5 rounded-xl bg-white dark:bg-[#161920] border border-[#E6DAC8] dark:border-[#2D333F] hover:bg-gray-50 dark:hover:bg-[#222631] text-xs font-bold text-gray-800 dark:text-gray-200 transition-colors cursor-pointer whitespace-nowrap shrink-0 self-start sm:self-auto shadow-2xs active:scale-95"
+            className="px-3.5 py-2 rounded-xl bg-white dark:bg-[#161920] border border-[#EBE6DF] dark:border-[#2D333F] hover:bg-gray-50 dark:hover:bg-[#222631] text-xs font-bold text-gray-800 dark:text-gray-200 transition-all cursor-pointer whitespace-nowrap shrink-0 self-start sm:self-auto shadow-2xs active:scale-95 flex items-center gap-1.5"
           >
-            {copiedCode ? 'Copied code!' : `Copy Code (${created.code})`}
+            <svg className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg>
+            <span>{copiedCode ? 'Copied code!' : 'Copy Code'}</span>
           </button>
         </div>
 
