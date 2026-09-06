@@ -250,6 +250,17 @@ export interface Scorecard {
   turns?: number;
   /** From a mock interview the candidate ran on themselves. Not hiring data. */
   mock?: boolean;
+  /**
+   * Everything that was said, in order, with the second it was said at.
+   *
+   * The verdicts quote two lines each and the ledger keeps the checkable
+   * sentences; neither is the conversation. Without this, an interview that
+   * produced a surprising result could not be reviewed at all — the panel's
+   * reasoning was auditable and the thing it reasoned about was gone.
+   *
+   * Absent on scorecards written before this was stored.
+   */
+  transcript?: TranscriptTurn[];
 }
 
 // -------------------------------------------- server -> browser (SSE /events)

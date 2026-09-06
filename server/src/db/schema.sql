@@ -88,3 +88,9 @@ create index if not exists scorecards_hiring_recent_idx
 -- application nothing and close the REST door completely.
 alter table public.interviews enable row level security;
 alter table public.scorecards enable row level security;
+
+-- What was actually said. The verdicts quote a line or two each and the ledger
+-- keeps the checkable sentences, but neither is the conversation — and a hiring
+-- decision nobody can read back is not a reviewable one. jsonb because it is
+-- read whole, by one screen, and never queried into.
+alter table public.scorecards add column if not exists transcript jsonb;

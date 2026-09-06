@@ -1,4 +1,4 @@
-import { COMPETENCIES, PANEL, type CompetencyId, type Scorecard, panelistById } from '@kyro/shared';
+import { COMPETENCIES, PANEL, type CompetencyId, type PanelistId, type Scorecard, panelistById } from '@kyro/shared';
 import { AVATARS, CLAIM, VERDICT } from '../lib/labels.js';
 import ThemeToggle from '../components/ThemeToggle.js';
 
@@ -62,7 +62,7 @@ export default function Scorecard({ scorecard, onBack }: Props) {
               {scorecard.role}
             </h1>
             <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">
-              Comprehensive evaluation across System Architecture, Product Thinking, and Team Alignment.
+              Three separate verdicts across {Object.values(COMPETENCIES).slice(0, 3).join(', ').toLowerCase()} and more — kept apart, never averaged.
             </p>
           </div>
 
@@ -241,6 +241,43 @@ export default function Scorecard({ scorecard, onBack }: Props) {
             </div>
           )}
         </section>
+
+        {/* The conversation itself, last because it is the reference rather than
+            the summary: the verdicts quote two lines each, and a recruiter who
+            disagrees with one needs to be able to read what surrounded it. */}
+        {scorecard.transcript && scorecard.transcript.length > 0 && (
+          <section className="flex flex-col gap-4">
+            <div className="flex items-baseline justify-between">
+              <h2 className="text-lg font-extrabold text-gray-950 dark:text-white font-display">Full Transcript</h2>
+              <span className="text-xs font-semibold text-gray-400 dark:text-gray-500">
+                {scorecard.transcript.length} turns
+              </span>
+            </div>
+
+            <div className="rounded-2xl border border-[#EBE6DF] dark:border-[#222631] bg-white dark:bg-[#161920] divide-y divide-[#EBE6DF] dark:divide-[#222631] overflow-hidden">
+              {scorecard.transcript.map((turn, i) => {
+                const candidate = turn.speaker === 'candidate';
+                return (
+                  <div key={i} className="px-6 py-4 flex gap-4">
+                    <span className="font-mono text-xs font-semibold text-gray-400 dark:text-gray-500 pt-0.5 shrink-0 w-12">
+                      {mmss(turn.t)}
+                    </span>
+                    <span
+                      className={`text-xs font-bold tracking-wide shrink-0 w-24 pt-0.5 ${
+                        candidate
+                          ? 'text-gray-900 dark:text-gray-200'
+                          : 'text-[#A48D78] dark:text-[#CBB9A4]'
+                      }`}
+                    >
+                      {candidate ? scorecard.candidateName.split(' ')[0] : panelistById(turn.speaker as PanelistId).name.split(' ')[0]}
+                    </span>
+                    <p className="text-sm text-gray-800 dark:text-gray-300 leading-relaxed">{turn.text}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
       </div>
     </div>
   );

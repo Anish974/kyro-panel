@@ -128,5 +128,8 @@ export async function buildScorecard(
     timestamp: Date.now(),
     turns: model.turns,
     mock,
+    // The conversation itself, so a disputed verdict can be read back against
+    // what was actually said rather than against the two lines it quoted.
+    transcript: model.transcript,
   };
 }

@@ -35,6 +35,30 @@ for (const v of card.verdicts) {
 assert.ok(by.technical.evidence.length > 0, 'technical heard system-design signal and must cite it');
 
 // No quotes, no confidence.
+// ------------------------------------------------------- the record itself
+// The verdicts quote two lines each and the ledger keeps the checkable
+// sentences. Neither is the conversation, and a hiring decision nobody can read
+// back is not a reviewable one — so the whole transcript rides on the card.
+assert.ok(card.transcript, 'the scorecard must carry the transcript');
+assert.equal(
+  card.transcript!.length,
+  model.getModel().transcript.length,
+  'all of it, not a sample',
+);
+assert.deepEqual(
+  card.transcript!.map(t => t.text),
+  model.getModel().transcript.map(t => t.text),
+  'in order, word for word',
+);
+assert.ok(
+  card.transcript!.every(t => typeof t.t === 'number'),
+  'every line carries the second it was said at, so a quote can be found again',
+);
+assert.ok(
+  card.transcript!.some(t => t.speaker === 'candidate'),
+  'including what the candidate said, which is the half being judged',
+);
+
 model.reset();
 const empty = await buildScorecard('Nobody');
 for (const v of empty.verdicts) {
@@ -46,4 +70,5 @@ for (const v of card.verdicts) {
   console.log(v.panelist.padEnd(10), v.verdict.padEnd(13), v.score, '| evidence', v.evidence.length);
 }
 console.log('dissent', card.dissent);
+console.log('         the full transcript is on the card, in order, with timings');
 console.log('\nself-check passed');

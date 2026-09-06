@@ -184,6 +184,7 @@ interface ScorecardRow {
   mock: boolean;
   verdicts: Scorecard['verdicts'];
   claims: Scorecard['claims'];
+  transcript: Scorecard['transcript'] | null;
   created_at: Date;
 }
 
@@ -198,6 +199,7 @@ const toScorecard = (r: ScorecardRow): Scorecard => ({
   mock: r.mock,
   verdicts: r.verdicts,
   claims: r.claims,
+  ...(r.transcript ? { transcript: r.transcript } : {}),
   timestamp: r.created_at.getTime(),
 });
 
@@ -212,9 +214,9 @@ export async function saveScorecardToHistory(
   const rows = await query(
     `insert into scorecards
        (session_id, candidate_name, role, level, duration_sec, turns, dissent, mock, verdicts, claims,
-        interview_code)
-       values ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10::jsonb,
-               (select code from interviews where code = $11))
+        transcript, interview_code)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10::jsonb, $11::jsonb,
+               (select code from interviews where code = $12))
      on conflict (session_id) do update set
        candidate_name = excluded.candidate_name,
        role           = excluded.role,
@@ -225,6 +227,7 @@ export async function saveScorecardToHistory(
        mock           = excluded.mock,
        verdicts       = excluded.verdicts,
        claims         = excluded.claims,
+       transcript     = excluded.transcript,
        interview_code = coalesce(excluded.interview_code, scorecards.interview_code)`,
     [
       scorecard.sessionId,
@@ -237,6 +240,7 @@ export async function saveScorecardToHistory(
       scorecard.mock === true,
       JSON.stringify(scorecard.verdicts),
       JSON.stringify(scorecard.claims),
+      scorecard.transcript ? JSON.stringify(scorecard.transcript) : null,
       // Looked up rather than inserted straight: a code that no longer exists
       // becomes null instead of failing the whole write on a foreign key. The
       // scorecard is the record worth keeping; the link is a convenience.
