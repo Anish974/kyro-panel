@@ -96,12 +96,7 @@ export default function Landing({ onCompany, onCandidate }: Props) {
       {/* Main Content Area */}
       <main className="flex-1 max-w-[1140px] w-full mx-auto px-6 py-12 flex flex-col gap-20">
         {/* Hero Section */}
-        <section className="text-center pt-6 pb-4">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#F4F1EA] dark:bg-[#1E232D] border border-[#E6DAC8] dark:border-[#2D333F] text-xs font-bold text-[#78644E] dark:text-[#CBB9A4] mb-6">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            Coordinated AI Voice Panel
-          </div>
-
+        <section className="text-center pt-8 pb-4">
           <h1 className="font-display text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[1.08] text-[#181A20] dark:text-[#F9FAFB] max-w-4xl mx-auto">
             Three AI interviewers.
             <br />
@@ -110,12 +105,7 @@ export default function Landing({ onCompany, onCandidate }: Props) {
             </span>
           </h1>
 
-          <p className="mt-6 text-base sm:text-xl text-[#4B5565] dark:text-[#94A3B8] max-w-2xl mx-auto leading-relaxed">
-            A <strong>Technical Architect</strong>, <strong>Product Manager</strong>, and <strong>Hiring Lead</strong> share 
-            one real-time memory of your interview, dynamically bidding for who speaks next and delivering three independent verdicts.
-          </p>
-
-          <div className="mt-9 flex flex-col sm:flex-row gap-3.5 justify-center items-center">
+          <div className="mt-8 flex flex-col sm:flex-row gap-3.5 justify-center items-center">
             <button
               onClick={onCandidate}
               className="w-full sm:w-auto h-12 px-8 rounded-xl bg-[#181A20] dark:bg-[#F9FAFB] text-white dark:text-[#0F1115] font-bold text-sm hover:bg-black dark:hover:bg-white transition-all cursor-pointer shadow-sm hover:shadow-md"
@@ -151,7 +141,7 @@ export default function Landing({ onCompany, onCandidate }: Props) {
             <div className="bg-white dark:bg-[#161920] rounded-3xl border border-[#EBE6DF] dark:border-[#222631] p-8 sm:p-9 shadow-xs hover:shadow-md transition-all flex flex-col justify-between">
               <div>
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold bg-blue-50 dark:bg-blue-950/50 text-[#2563EB] dark:text-blue-400 border border-blue-200/60 dark:border-blue-800/60 mb-5">
-                  🎓 For Candidates &amp; Job Seekers
+                  Candidate
                 </div>
                 <h3 className="font-display text-2xl font-extrabold text-[#181A20] dark:text-[#F9FAFB] leading-snug">
                   Practice high-pressure panel interviews with unvarnished feedback
@@ -191,7 +181,7 @@ export default function Landing({ onCompany, onCandidate }: Props) {
             <div className="bg-white dark:bg-[#161920] rounded-3xl border border-[#EBE6DF] dark:border-[#222631] p-8 sm:p-9 shadow-xs hover:shadow-md transition-all flex flex-col justify-between">
               <div>
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold bg-purple-50 dark:bg-purple-950/50 text-[#8B5CF6] dark:text-purple-400 border border-purple-200/60 dark:border-purple-800/60 mb-5">
-                  💼 For Hiring Teams &amp; Recruiters
+                  For Hiring Teams
                 </div>
                 <h3 className="font-display text-2xl font-extrabold text-[#181A20] dark:text-[#F9FAFB] leading-snug">
                   Comprehensive 3-way candidate evaluations in a single automated round
