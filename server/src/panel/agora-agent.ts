@@ -111,6 +111,92 @@ export function greeting(p: CandidateProfile | null): string {
   return `Hi ${firstName}, thanks for making the time. ${intro} We are here for the ${p.role} role.${resume} ${ask}`;
 }
 
+
+/**
+ * Terms to hand the recogniser before it hears a word of the interview.
+ *
+ * Deepgram mangles exactly what an interview is about: product names, company
+ * names, acronyms. One real interview reached the panel as "I was interned in
+ * Vietnam transfer. We failed UTMS" — a company name mis-heard, and "built"
+ * flipped to "failed" — and the panel spent a turn asking the candidate to
+ * account for a failure that never happened.
+ *
+ * The fix is that we already know the words. The candidate uploaded a resume
+ * full of them, and they picked a role. Nova-3 takes them as `keyterm` and
+ * weights them while decoding, so the recogniser hears "UTMS" instead of
+ * guessing at the sounds.
+ *
+ * Single tokens only. A keyterm list is delimited by spaces, so a multi-word
+ * phrase cannot be told apart from two separate terms — and single tokens are
+ * what gets mis-heard anyway.
+ */
+
+/** Capitalised because a sentence started, not because it is a name. */
+const NOT_A_TERM = new Set([
+  'the', 'this', 'that', 'these', 'those', 'and', 'but', 'for', 'with', 'from', 'into',
+  'our', 'their', 'his', 'her', 'its', 'was', 'were', 'has', 'have', 'had', 'been',
+  'built', 'created', 'designed', 'developed', 'implemented', 'worked', 'used', 'led',
+  'managed', 'improved', 'reduced', 'increased', 'responsible', 'experience', 'skills',
+  'education', 'projects', 'summary', 'objective', 'present', 'current', 'university',
+  'college', 'bachelor', 'master', 'science', 'engineering', 'engineer', 'developer',
+  'intern', 'internship', 'january', 'february', 'march', 'april', 'may', 'june',
+  'july', 'august', 'september', 'october', 'november', 'december',
+  // Boosting a word the recogniser already gets right buys nothing and costs a
+  // slot that a rare one needed. These are the words a resume capitalises at
+  // the start of a bullet, not the words it will be mis-heard on.
+  'also', 'additionally', 'however', 'using', 'utilized', 'including', 'currently',
+  'previously', 'backend', 'frontend', 'fullstack', 'software', 'system', 'systems',
+  'application', 'applications', 'platform', 'team', 'teams', 'company', 'technologies',
+  'technology', 'tools', 'work', 'role', 'key', 'main', 'other', 'both', 'each',
+  'when', 'where', 'while', 'after', 'before', 'during', 'then', 'there', 'here',
+  'over', 'under', 'across', 'between', 'through', 'about', 'per', 'via',
+]);
+
+/** How many terms ride along. Deepgram caps the list; 40 stays well inside it. */
+const MAX_KEYTERMS = 40;
+
+/**
+ * A token worth boosting: an acronym, or a name the writer capitalised
+ * mid-sentence, or something with internal capitals or digits like MongoDB or
+ * S3. Two characters minimum, because single letters match everything.
+ */
+const CANDIDATE_TOKEN = /\b[A-Za-z][A-Za-z0-9]*(?:[.+#-][A-Za-z0-9]+)*\b/g;
+
+const worthBoosting = (token: string): boolean => {
+  if (token.length < 2 || token.length > 24) return false;
+  if (NOT_A_TERM.has(token.toLowerCase())) return false;
+  // ALL CAPS is an acronym: UTMS, MQTT, AWS, SQL.
+  if (/^[A-Z0-9]{2,8}$/.test(token)) return true;
+  // Internal capitals or digits: MongoDB, PostgreSQL, S3, Nova3.
+  if (/^[A-Z][a-z]*[A-Z0-9]/.test(token)) return true;
+  // A plain capitalised word is a name often enough to be worth it.
+  return /^[A-Z][a-z]{2,}$/.test(token);
+};
+
+/** The words this interview is most likely to turn on, most frequent first. */
+export function keyterms(p: CandidateProfile | null): string[] {
+  if (!p) return [];
+
+  const counts = new Map<string, number>();
+  const harvest = (text: string, weight: number) => {
+    for (const token of text.match(CANDIDATE_TOKEN) ?? []) {
+      if (!worthBoosting(token)) continue;
+      counts.set(token, (counts.get(token) ?? 0) + weight);
+    }
+  };
+
+  // The name and the role are certain to come up, so they outrank anything the
+  // resume merely mentions once.
+  harvest(p.name, 100);
+  harvest(p.role, 50);
+  harvest(p.resumeText ?? '', 1);
+
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .slice(0, MAX_KEYTERMS)
+    .map(([term]) => term);
+}
+
 /** Thrown for every configuration problem so callers can report one shape. */
 export class AgentConfigError extends Error {}
 
@@ -157,6 +243,7 @@ export function buildJoinBody(opts: {
   candidate: CandidateProfile | null;
 }): Record<string, unknown> {
   const { channel, token, orchestratorUrl, orchestratorKey, candidate } = opts;
+  const boost = keyterms(candidate);
 
   return {
     name: `kyro-panel-${Date.now()}`,
@@ -194,10 +281,21 @@ export function buildJoinBody(opts: {
         },
       },
 
+      // `keyterm` is nova-3 only, which is what we run. Terms are delimited by
+      // spaces in one string, so every term we send is a single token — see
+      // keyterms() for why the resume is where they come from.
+      //
+      // Omitted entirely when there is nothing to boost: an empty keyterm is a
+      // parameter Deepgram has to reject rather than ignore.
       asr: {
         credential_mode: 'managed',
         vendor: 'deepgram',
-        params: { url: 'wss://api.deepgram.com/v1/listen', model: 'nova-3', language: 'en-US' },
+        params: {
+          url: 'wss://api.deepgram.com/v1/listen',
+          model: 'nova-3',
+          language: 'en-US',
+          ...(boost.length ? { keyterm: boost.join('%20') } : {}),
+        },
       },
 
       // Our panel stands in for the LLM: it bids, picks a winner, and streams
@@ -313,6 +411,12 @@ export async function startAgent(orchestratorUrl: string): Promise<RunningAgent>
   if (!data.agent_id) throw new Error(`Agora returned no agent_id: ${text.slice(0, 200)}`);
 
   current = { agentId: data.agent_id, channel, startedAt: Date.now() };
+
+  // Printed because it is the one part of the join we cannot verify from here:
+  // if the recogniser is still mangling a name that appears in this list, the
+  // encoding is wrong rather than the idea.
+  const boost = keyterms(profile());
+  if (boost.length) console.log(`[agent] boosting ${boost.length} keyterms: ${boost.slice(0, 12).join(', ')}${boost.length > 12 ? ' …' : ''}`);
 
   // Hard ceiling on a billable agent. unref() so a pending reaper never keeps
   // the process alive on its own.
