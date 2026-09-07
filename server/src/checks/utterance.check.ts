@@ -113,6 +113,37 @@ assert.match(
   'with nothing asked yet, fall back to the opening ask',
 );
 
+// 5. A bare acknowledgement is the candidate waiting, not answering.
+//
+// These came out of one real interview and were all graded as answers. They
+// spent three of its eleven turns, and they sit in the transcript directly
+// under real questions — so the write-up read a candidate who answered "what
+// data structure did you use" with the word "okay", and all three panelists
+// marked him down for evasiveness he never showed.
+for (const said of ['Yeah. Okay.', 'Okay, sir.', 'Okay sir. No problem. Continue.', 'Mhm', 'got it', 'Alright.']) {
+  assert.notEqual(classify(said), 'answer', `"${said}" is not an answer and must not cost a turn`);
+}
+
+// A bare yes or no stays an answer — see the list above. "Did you measure it?"
+// deserves to be answerable in one word, and dropping that would cost the
+// candidate a turn they really did take.
+for (const said of ['Yes.', 'No.', 'Yeah']) {
+  assert.equal(classify(said), 'answer', `"${said}" answers a yes/no question`);
+}
+
+// And only when the acknowledgement is the WHOLE utterance. An answer that
+// opens with one of these words is still an answer, and losing those would be
+// far worse than the turn this saves.
+for (const said of [
+  'Okay, so we sharded by tenant id because hot tenants held locks.',
+  'Right, the queue drains as soon as the socket reconnects.',
+  'Yes, we measured it at about four thousand requests per second.',
+  'Sure, the RTL fires after the reconnect window closes.',
+]) {
+  assert.equal(classify(said), 'answer', `"${said.slice(0, 40)}..." is a real answer`);
+}
+
 console.log('utterance  audio checks and repeat requests never cost a turn');
 console.log('           real answers survive, even when they quote the trigger words');
+console.log('           a bare "okay, sir" hands the question back instead of taking a turn');
 console.log('\nself-check passed');

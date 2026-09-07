@@ -101,6 +101,30 @@ assert.equal(
 const panelTurns = model.getModel().transcript.filter(t => t.speaker !== 'candidate').length;
 assert.equal(panelTurns, 1, 'one paragraph, one panelist, one question');
 
+// ------------------------------------- the same final, sent twice
+
+// Agora re-sends a final it has already sent. `continues` refuses equal strings
+// by design — nothing was added, so there is nothing to supersede — and that
+// left a gap: an exact repeat looked like a brand new answer. Another turn out
+// of the ten, a duplicate line in the transcript, and a second question about
+// the answer just given. Straight from a real transcript, one second apart:
+//
+//   [178s] CANDIDATE: And the connection stays down. It will trigger the RTL...
+//   [179s] CANDIDATE: And the connection stays down. It will trigger the RTL...
+//
+// followed by two questions from the same panelist. Read back later that is a
+// candidate repeating himself and ignoring a question. He did neither.
+const turnsBeforeRepeat = model.getModel().turns;
+const panelBeforeRepeat = model.getModel().transcript.filter(t => t.speaker !== 'candidate').length;
+
+assert.equal(await said(GROWN), '', 'an identical repeat is answered with silence');
+assert.equal(model.getModel().turns, turnsBeforeRepeat, 'and costs no turn');
+assert.equal(
+  model.getModel().transcript.filter(t => t.speaker !== 'candidate').length,
+  panelBeforeRepeat,
+  'and earns no second question about the answer just given',
+);
+
 // ------------------------------------------- but silence is not forever
 
 // Uncapped, the hold went badly the other way. A real answer arrived as six
@@ -133,5 +157,6 @@ server.close();
 console.log('floor  half a sentence is not an answer, and does not cost a turn');
 console.log('       a growing ASR final is the same answer, not a new one');
 console.log('       but a candidate who keeps talking is answered, not left in silence');
+console.log('       an identical final resent by Agora costs no turn and no question');
 console.log(`       one paragraph got one question back (last: "${lastSaid.slice(0, 40)}…")`);
 console.log('\nself-check passed');

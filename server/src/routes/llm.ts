@@ -3,7 +3,7 @@ import { panelistById, type Panelist } from '@kyro/shared';
 import { CONCLUDE_AT_TURN, runPanel } from '../panel/bidding.js';
 import { ingest } from '../panel/ledger.js';
 import { addTurn, getModel } from '../panel/model.js';
-import { continues } from '../panel/continuation.js';
+import { continues, repeats } from '../panel/continuation.js';
 import { classify, replyTo } from '../panel/utterance.js';
 import { broadcast } from './events.js';
 
@@ -82,11 +82,25 @@ router.post('/chat/completions', async (req, res) => {
   // saying "Hello? Hello?". Silence is the right answer to an interruption and
   // the wrong answer to a question.
   const previous = [...getModel().transcript].reverse().find(t => t.speaker === 'candidate');
-  if (previous && continues(previous.text, answer) && held < HOLD_LIMIT) {
+  const growing = previous ? continues(previous.text, answer) : false;
+  const resent = previous ? repeats(previous.text, answer) : false;
+
+  if ((growing || resent) && held < HOLD_LIMIT) {
     held++;
-    ingest(answer);
-    addTurn({ speaker: 'candidate', text: answer });
-    console.log(`[llm] continuation ${held}/${HOLD_LIMIT} — candidate still talking, holding the floor`);
+
+    // A continuation carries words the transcript has not seen, and addTurn
+    // supersedes the shorter version with it. A resend carries nothing new —
+    // and addTurn would not supersede it either, because `continues` refuses
+    // equal strings, so it would append a duplicate line AND count a second
+    // turn. Recording nothing is the whole point of recognising a resend.
+    if (growing) {
+      ingest(answer);
+      addTurn({ speaker: 'candidate', text: answer });
+    }
+
+    console.log(
+      `[llm] ${resent ? 'resend' : 'continuation'} ${held}/${HOLD_LIMIT} — holding the floor`,
+    );
     return silence(res);
   }
   held = 0;

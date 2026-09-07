@@ -36,3 +36,24 @@ export function continues(earlier: string, later: string): boolean {
   if (a.length < MIN_PREFIX) return false;
   return b.length > a.length && b.startsWith(a);
 }
+
+/**
+ * The same utterance again, word for word.
+ *
+ * `continues` deliberately refuses equal strings — nothing was added, so there
+ * is nothing to supersede — and that left a gap. Agora re-sends a final it has
+ * already sent, and an exact repeat looked like a brand new answer: it took a
+ * turn out of the ten, added a second identical line to the transcript, and
+ * earned a second question about the answer just given. One real interview has
+ * these back to back a second apart:
+ *
+ *   [178s] CANDIDATE: And the connection stays down. It will trigger the RTL...
+ *   [179s] CANDIDATE: And the connection stays down. It will trigger the RTL...
+ *
+ * followed by two questions from the same panelist. Read back later, that is a
+ * candidate repeating himself and ignoring a question. He did neither.
+ */
+export function repeats(earlier: string, later: string): boolean {
+  const a = normalise(earlier);
+  return a.length > 0 && a === normalise(later);
+}

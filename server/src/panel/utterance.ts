@@ -55,6 +55,31 @@ const BARE_CHECK =
   /^\s*(hi|hey|hello|yo|namaste|good (morning|afternoon|evening)|testing|test|mic test|audio test|check)([\s.,!?]|\b(one|two|three|1|2|3)\b)*$/i;
 
 /**
+ * The whole utterance is the candidate saying "go on".
+ *
+ * "Yeah. Okay." is not an answer to "what data structure did you use". It was
+ * graded as one: it spent a turn out of the ten, and it sits in the transcript
+ * under a real question, so the write-up at the end reads a candidate who
+ * answered a technical question with the word "okay". One interview lost three
+ * of its eleven turns this way — "Sound", "Yeah. Okay." and "Okay, sir." — and
+ * every panelist marked him down for evasiveness he never showed.
+ *
+ * Anchored like BARE_CHECK, so only the whole utterance counts. "Okay, so we
+ * sharded by tenant" is an answer that happens to start with okay.
+ */
+const BARE_ACK =
+  /^\s*((yeah|yes|yep|ya|ok|okay|k|alright|right|sure|fine|got it|understood|no problem|continue|go on|carry on|please continue|hmm+|mhm+|uh huh)[\s.,!?]*(sir|ma'?am|madam)?[\s.,!?]*)+$/i;
+
+/**
+ * The one shape that stays an answer: a bare yes or no, on its own.
+ *
+ * "Did you measure it?" — "Yes." is a real answer to a real question, and
+ * throwing it away would cost the candidate a turn they actually took. Two of
+ * them together is different: "Yeah. Okay." answers nothing.
+ */
+const SOLE_YES_NO = /^\s*(yes|yeah|yep|ya|no|nope)[\s.,!?]*$/i;
+
+/**
  * A short utterance that stops on a word an English sentence cannot end on.
  *
  * ASR finalises on a pause, not on a sentence, so a candidate drawing breath
@@ -81,6 +106,10 @@ export function classify(text: string): UtteranceKind {
   if (t.length > SHORT) return 'answer';
 
   if (AUDIO_CHECK.test(t) || BARE_CHECK.test(t)) return 'audio-check';
+
+  // "Okay, sir." is the candidate waiting, not answering. Handing the question
+  // back is what a panel does — and it costs neither a turn nor an LLM call.
+  if (BARE_ACK.test(t) && !SOLE_YES_NO.test(t)) return 'clarify';
   // Clarify before thinking: "give me a second" is a pause, but "could you say
   // that again, give me a second" is really a request to repeat.
   if (CLARIFY.test(t)) return 'clarify';
