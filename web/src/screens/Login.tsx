@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { PROFILE_LIMITS, type Interview } from '@kyro/shared';
+import { PROFILE_LIMITS, type Duration, type Interview } from '@kyro/shared';
 import { RESUME_ACCEPT, extractResumeText } from '../lib/resume.js';
 import ThemeToggle from '../components/ThemeToggle.js';
 
@@ -7,6 +7,12 @@ export interface Candidate {
   name: string;
   role: string;
   level: string;
+  /**
+   * How long the company booked the interview for. Comes off the invite and is
+   * posted with the profile, the same route role and level already take — it is
+   * what paces the panel, so the server has to be told before the agent joins.
+   */
+  durationMin: Duration;
   /** Plain text pulled out of the uploaded resume, if one was attached. */
   resumeText?: string;
 }
@@ -89,6 +95,7 @@ export default function Login({ invite, onLogin, onBack }: Props) {
       name: name.trim(),
       role: invite.role,
       level: invite.level,
+      durationMin: invite.durationMin,
       ...(resumeText ? { resumeText } : {}),
     });
   };

@@ -21,7 +21,6 @@ process.env.ORCHESTRATOR_API_KEY = 'conclude-check';
 
 const eventRoutes = (await import('../routes/events.js')).default;
 const llmRoutes = (await import('../routes/llm.js')).default;
-const { CONCLUDE_AT_TURN } = await import('../panel/bidding.js');
 const model = await import('../panel/model.js');
 
 const app = express();
@@ -35,6 +34,10 @@ const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 
 model.reset(true);
 model.setProfile({ name: 'Ada Lovelace', role: 'Backend Engineer', level: 'Intermediate (2-6 years)' });
+
+// Read after setProfile, because the budget is derived from the length that
+// session was booked for.
+const CONCLUDE_AT_TURN = model.concludeAtTurn();
 
 // Watch the room's feed, exactly as the browser does.
 const control = new AbortController();

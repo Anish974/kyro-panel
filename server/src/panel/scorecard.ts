@@ -9,7 +9,7 @@ import {
 } from '@kyro/shared';
 import { SIGNALS } from './personas.js';
 import { getModel } from './model.js';
-import { writeVerdicts } from './verdicts.js';
+import { confidenceCeiling, writeVerdicts } from './verdicts.js';
 
 // The artefact the hiring team actually reads. Three separate verdicts built
 // from the same shared model — never averaged, because the disagreement is the
@@ -77,12 +77,21 @@ function buildVerdict(id: PanelistId): PanelistVerdict {
       ? `Interview concluded early before candidate responses were recorded. Insufficient data to evaluate.`
       : `Limited candidate responses on this domain during the session (${model.turns} turns completed). Confidence is low.${gap}`;
 
+  // Confidence is evidence-bound and turn-bound, under exactly the same two
+  // ceilings the LLM write-up obeys in verdicts.ts. They used to differ, and
+  // they differed the wrong way round: this path returned 0.9 off five turns
+  // while the write-up was capped at 0.75 for the same interview, so a card
+  // whose write-up had FAILED claimed more certainty than one that worked.
+  const raw = 0.35 + evidence.length * 0.2 + model.turns * 0.03;
+
   return {
     panelist: id,
     verdict: verdictFor(score),
     score,
-    // Confidence is evidence-bound: no quotes, no confidence.
-    confidence: model.turns === 0 ? 0.2 : Math.min(0.35 + evidence.length * 0.2 + model.turns * 0.03, 0.95),
+    confidence:
+      model.turns === 0
+        ? 0.2
+        : Math.min(raw, evidence.length ? confidenceCeiling() : 0.4),
     rationale,
     evidence,
     ratings,

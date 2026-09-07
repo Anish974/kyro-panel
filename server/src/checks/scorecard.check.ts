@@ -6,6 +6,7 @@
 import assert from 'node:assert';
 import { runPanel } from '../panel/bidding.js';
 import { buildScorecard } from '../panel/scorecard.js';
+import { confidenceCeiling } from '../panel/verdicts.js';
 import * as model from '../panel/model.js';
 
 model.reset();
@@ -58,6 +59,23 @@ assert.ok(
   card.transcript!.some(t => t.speaker === 'candidate'),
   'including what the candidate said, which is the half being judged',
 );
+
+// A verdict is only ever as sure as the interview behind it, and the two paths
+// that write one must agree about that. This card came off three turns with no
+// LLM key, so the arithmetic path wrote it — and it used to claim up to 0.95
+// while the write-up path was held to 0.6 on the very same transcript. A failed
+// write-up reading as MORE certain than a successful one is the wrong way round
+// on a hiring document.
+const ceiling = confidenceCeiling();
+for (const v of card.verdicts) {
+  assert.ok(
+    v.confidence <= ceiling,
+    `${v.panelist} is over the ${ceiling} ceiling for ${model.getModel().turns} turns: ${v.confidence}`,
+  );
+  if (v.evidence.length === 0) {
+    assert.ok(v.confidence <= 0.4, `${v.panelist} cited nothing but claims ${v.confidence}`);
+  }
+}
 
 model.reset();
 const empty = await buildScorecard('Nobody');

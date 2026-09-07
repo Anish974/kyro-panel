@@ -1,5 +1,7 @@
 import {
+  DEFAULT_DURATION,
   PROFILE_LIMITS,
+  asDuration,
   emptyModel,
   type CandidateModel,
   type CandidateProfile,
@@ -7,11 +9,13 @@ import {
   type CompetencyId,
   type PanelistId,
   type Scenario,
+  type Duration,
   type Scorecard,
   type TranscriptTurn,
 } from '@kyro/shared';
 import { continues } from './continuation.js';
 import { query } from '../db/pool.js';
+import { find as findInterview } from './interviews.js';
 
 // One session in memory. This is why the server must be long-running and must
 // not be deployed to a serverless platform — a cold start loses the interview.
@@ -25,9 +29,34 @@ let model: CandidateModel = emptyModel(`s-${Date.now()}`);
 // /reset is measured from server start, and a fresh demo opens at 14 minutes.
 let startedAt = Date.now();
 
+/**
+ * Growing ASR finals the panel has sat through without answering, and whether
+ * the closing has already been announced.
+ *
+ * Both belong to the session, so both die with it. `held` used to live in
+ * routes/llm.ts and was never cleared by /reset — a session that ended
+ * mid-continuation left the counter at its limit, and the first real answer of
+ * the NEXT interview was swallowed as if it were more of the last one. On a
+ * ten-turn budget that was one wasted question; on a five-turn screen it is a
+ * fifth of the interview.
+ */
+let held = 0;
+let concludedAnnounced = false;
+
 // Completed scorecards. Postgres when DATABASE_URL is set — this is the half of
 // the app that has to outlive the process, because a recruiter reads it days
 let scorecardsHistory: Scorecard[] = [];
+
+/**
+ * Which interview each in-memory scorecard came out of, keyed by session.
+ *
+ * Ownership is never stored on a scorecard — it is derived through the
+ * interview that produced it, which is exactly what the SQL join does. Without
+ * this the no-database path had no way to derive it at all, so it returned
+ * every scorecard it held to whoever asked: one company's portal listing
+ * another company's candidates, mocks included.
+ */
+const scorecardInterview = new Map<string, string>();
 
 export const getModel = (): CandidateModel => ({
   ...model,
@@ -44,8 +73,14 @@ export function resetSessionTimer(): void {
  * not make the panel forget the candidate's name. Pass true to clear it too.
  */
 export function reset(forgetProfile = false): void {
+  const keptDuration = model.durationMin;
   model = emptyModel(`s-${Date.now()}`, forgetProfile ? null : model.profile);
+  // The schedule outlives a reset the same way the profile does — it is what
+  // the company booked, not something the candidate said.
+  model.durationMin = keptDuration;
   startedAt = Date.now();
+  held = 0;
+  concludedAnnounced = false;
 }
 
 /**
@@ -77,9 +112,22 @@ export function setProfile(raw: unknown): CandidateProfile | null {
   const email = line(input.email, PROFILE_LIMITS.email);
   const resumeText = clean(input.resumeText, PROFILE_LIMITS.resumeText).replace(/\n{3,}/g, '\n\n');
 
+  // How long this interview was booked for. Arrives from the invite the
+  // candidate opened, through the login screen, exactly like role and level.
+  //
+  // ponytail: browser-supplied, like role and level already are — a tampered
+  // post could book itself a shorter or longer panel. The invite code is the
+  // fix (resolve all three server-side from the interview row), and it is the
+  // same one-line change for all three fields. Closed set until then, so the
+  // worst case is one of ours rather than an arbitrary number.
+  const duration = asDuration(input.durationMin) ?? DEFAULT_DURATION;
+
   // Reset interview session and clock to 0s for the candidate
   startedAt = Date.now();
+  held = 0;
+  concludedAnnounced = false;
   model = emptyModel(`s-${Date.now()}`, null);
+  model.durationMin = duration;
 
   model.profile = {
     name,
@@ -173,6 +221,72 @@ export function adjustDifficulty(delta: number): void {
 
 export const lastSpeaker = (): PanelistId | null => model.lastSpeaker;
 
+// ------------------------------------------------------------------- pacing
+
+/**
+ * Questions per scheduled minute.
+ *
+ * Measured, not chosen: the panel's ten-turn interview ran ten to twelve
+ * minutes, which is a question a minute once the panelist's two sentences, the
+ * candidate's answer and the ~1.4s decision are all counted. It is the one
+ * knob worth turning if real interviews come in consistently short or long —
+ * everything else derives from what it produces.
+ */
+const TURNS_PER_MINUTE = 1;
+
+/**
+ * The turn on which the panel stops asking and starts closing.
+ *
+ * Never below three. A budget that leaves no room to ask anything is not a
+ * short interview, it is a broken one, and the floor is cheaper than validating
+ * the same thing in four places.
+ */
+export const concludeAtTurn = (): number =>
+  Math.max(3, Math.round(model.durationMin * TURNS_PER_MINUTE));
+
+/**
+ * Is the interview over?
+ *
+ * Turn count is the primary clock because it is what the panel actually
+ * controls. The wall clock is the backstop: turns and minutes only track each
+ * other on average, and one candidate who answers every question at length can
+ * spend the whole booked slot in four turns. Without this that interview ran
+ * until Agora's idle timeout collected it, billing the whole time.
+ */
+export const shouldConclude = (): boolean =>
+  model.turns >= concludeAtTurn() || getModel().elapsed >= model.durationMin * 60;
+
+/**
+ * True exactly once per session, on the first call after the interview is over.
+ *
+ * The room restarts its leave timer every time it is told the panel concluded,
+ * so telling it twice means the call never ends. The old guard was
+ * `turns === CONCLUDE_AT_TURN`, which fires once only because turns moves by
+ * one — it cannot express "or the clock ran out", so the latch is explicit now.
+ */
+export function announceConclusion(): boolean {
+  if (concludedAnnounced) return false;
+  concludedAnnounced = true;
+  return true;
+}
+
+/**
+ * Take one more turn of silence while the candidate is still talking, or refuse
+ * because they have had the benefit of the doubt long enough.
+ */
+export function takeHold(limit: number): boolean {
+  if (held >= limit) return false;
+  held++;
+  return true;
+}
+
+/** They finished. The next continuation starts counting from nothing. */
+export function releaseHold(): void {
+  held = 0;
+}
+
+export const durationMin = (): Duration => model.durationMin;
+
 interface ScorecardRow {
   session_id: string;
   candidate_name: string;
@@ -249,6 +363,10 @@ export async function saveScorecardToHistory(
   );
   if (rows !== null) return;
 
+  // Same link the insert above writes into interview_code, kept beside the row
+  // rather than on it so the shape the API returns does not change.
+  if (interviewCode) scorecardInterview.set(scorecard.sessionId, interviewCode.toUpperCase());
+
   const idx = scorecardsHistory.findIndex(s => s.sessionId === scorecard.sessionId);
   if (idx >= 0) scorecardsHistory[idx] = scorecard;
   else scorecardsHistory.unshift(scorecard);
@@ -275,5 +393,18 @@ export async function getScorecardsHistory(ownerId: string): Promise<Scorecard[]
       limit 200`,
     [ownerId],
   );
-  return rows === null ? scorecardsHistory : rows.map(toScorecard);
+  if (rows !== null) return rows.map(toScorecard);
+
+  // No database. Derive ownership the same way the join above does — through
+  // the interview — rather than handing back the whole list. This returned
+  // every company's scorecards to every recruiter, and mocks along with them.
+  const owned: Scorecard[] = [];
+  for (const card of scorecardsHistory) {
+    if (card.mock) continue;
+    const code = scorecardInterview.get(card.sessionId);
+    if (!code) continue;
+    const interview = await findInterview(code);
+    if (interview?.ownerId === ownerId) owned.push(card);
+  }
+  return owned;
 }

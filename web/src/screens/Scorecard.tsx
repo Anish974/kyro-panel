@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { COMPETENCIES, PANEL, type CompetencyId, type PanelistId, type Scorecard, panelistById } from '@kyro/shared';
-import { AVATARS, CLAIM, VERDICT } from '../lib/labels.js';
+import { AVATARS, CLAIM, CONFIDENCE, VERDICT } from '../lib/labels.js';
 import ThemeToggle from '../components/ThemeToggle.js';
 
 interface Props {
@@ -140,6 +140,8 @@ export default function Scorecard({ scorecard, onBack }: Props) {
           {scorecard.verdicts.map(v => {
             const p = panelistById(v.panelist);
             const style = VERDICT[v.verdict] || VERDICT.lean_hire;
+            const band = CONFIDENCE(v.confidence);
+            const pct = Math.round(v.confidence * 100);
             return (
               <div
                 key={v.panelist}
@@ -169,6 +171,32 @@ export default function Scorecard({ scorecard, onBack }: Props) {
                       {v.score.toFixed(1)}
                     </span>
                     <span className="text-xs text-gray-400 font-semibold">/ 5.0</span>
+                  </div>
+                </div>
+
+                {/* How much of an interview this verdict is actually built on.
+                    The server already caps it — 0.2 for a panelist who never
+                    asked anything, 0.4 with no verified quote, a ceiling set by
+                    the turn count — and none of that was on the page, so every
+                    verdict was drawn with the same authority. */}
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-extrabold tracking-widest text-[#A48D78] dark:text-[#CBB9A4] uppercase">
+                      Confidence
+                    </span>
+                    <span className="font-mono text-xs font-bold" style={{ color: band.color }}>
+                      {band.label} · {pct}%
+                    </span>
+                  </div>
+                  <div
+                    className="h-1.5 rounded-full bg-[#F4F1EA] dark:bg-[#222631] overflow-hidden"
+                    role="meter"
+                    aria-valuenow={pct}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-label={`${p.name} confidence`}
+                  >
+                    <div className="h-full rounded-full" style={{ width: `${pct}%`, background: band.color }} />
                   </div>
                 </div>
 
@@ -229,13 +257,21 @@ export default function Scorecard({ scorecard, onBack }: Props) {
                 {competencies.map(c => (
                   <tr key={c} className="hover:bg-gray-50/70 dark:hover:bg-[#1E232D]/70 transition-colors">
                     <td className="px-8 py-4 text-sm font-semibold text-gray-900 dark:text-gray-200">{COMPETENCIES[c]}</td>
-                    {scorecard.verdicts.map(v => (
-                      <td key={v.panelist} className="px-8 py-4 font-mono text-sm font-bold text-right text-gray-800 dark:text-gray-200">
-                        {v.ratings[c] === undefined
-                          ? <span className="text-gray-300 dark:text-gray-600 font-normal">&mdash;</span>
-                          : v.ratings[c]!.toFixed(1)}
-                      </td>
-                    ))}
+                    {/* Driven by PANEL and matched on id, exactly like the
+                        header above. Mapping the verdicts array here instead
+                        lined the cells up by position, so one missing or
+                        reordered verdict would file every score under the wrong
+                        interviewer's name without anything looking wrong. */}
+                    {PANEL.map(p => {
+                      const rating = scorecard.verdicts.find(v => v.panelist === p.id)?.ratings[c];
+                      return (
+                        <td key={p.id} className="px-8 py-4 font-mono text-sm font-bold text-right text-gray-800 dark:text-gray-200">
+                          {rating === undefined
+                            ? <span className="text-gray-300 dark:text-gray-600 font-normal">&mdash;</span>
+                            : rating.toFixed(1)}
+                        </td>
+                      );
+                    })}
                   </tr>
                 ))}
               </tbody>

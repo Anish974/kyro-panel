@@ -45,17 +45,8 @@ interface Draft {
   scenario?: string;
 }
 
-/**
- * The turn at which the panel stops asking and starts closing.
- *
- * routes/llm.ts imports this to know when the reply it just streamed was the
- * goodbye, and tells the room to end the call. A literal in both places drifts,
- * and the room would either cut the closing off or never end at all.
- */
-export const CONCLUDE_AT_TURN = 10;
-
-/** One turn earlier the panel starts steering toward the close. */
-const LATE_STAGE_TURN = CONCLUDE_AT_TURN - 2;
+/** Two turns before the close, the panel starts steering toward it. */
+const lateStageTurn = (): number => model.concludeAtTurn() - 2;
 
 /**
  * How many questions in a row one panelist may ask before the floor moves.
@@ -64,8 +55,13 @@ const LATE_STAGE_TURN = CONCLUDE_AT_TURN - 2;
  * interviewer does. A third is a monologue — and every turn one of them takes
  * is a turn the other two never get, which they are then asked to write a
  * verdict from.
+ *
+ * A short interview cannot afford even two. Five turns split three ways is a
+ * question and a half each; let one panelist take two in a row and somebody
+ * ends up asking nothing at all, which verdicts.ts then has to cap at 0.2
+ * confidence. On a screen, rotation matters more than follow-up.
  */
-const FLOOR_LIMIT = 2;
+const floorLimit = (): number => (model.concludeAtTurn() >= 9 ? 2 : 1);
 
 /**
  * Before a share rule kicks in, so a panelist who opens strongly is not fought
@@ -101,10 +97,24 @@ const SCENARIO_LENGTH = 3;
 /** Nothing to role-play about until the candidate has said enough to build on. */
 const SCENARIO_EARLIEST_TURN = 3;
 
+/**
+ * The shortest interview a role-play fits inside.
+ *
+ * It cannot start before turn 3 and it runs for 3 answers, so on a five-turn
+ * screen it would BE the interview — every question from one premise, and two
+ * panelists left with nothing of their own to write up. Under this budget the
+ * panel just asks questions.
+ */
+const SCENARIO_MIN_BUDGET = 8;
+
 /** A role-play needs material to be built from, and room to actually run. */
 function canOpenScenario(): boolean {
   const m = model.getModel();
-  return !m.scenario && m.turns >= SCENARIO_EARLIEST_TURN;
+  return (
+    !m.scenario &&
+    m.turns >= SCENARIO_EARLIEST_TURN &&
+    model.concludeAtTurn() >= SCENARIO_MIN_BUDGET
+  );
 }
 
 /**
@@ -157,6 +167,8 @@ export function context(answer: string): string {
   const m = model.getModel();
   const level = m.profile?.level || 'Intermediate (2-6 years)';
   const canOpen = canOpenScenario();
+  const budget = model.concludeAtTurn();
+  const closing = model.shouldConclude();
   const recent = m.transcript
     .slice(-6)
     .map(t => `${t.speaker === 'candidate' ? 'CANDIDATE' : t.speaker.toUpperCase()}: ${t.text}`)
@@ -173,7 +185,7 @@ export function context(answer: string): string {
     `Competency scores so far (0-1): ${JSON.stringify(m.skills)}`,
     `Open gaps the panel noticed: ${m.gaps.length ? m.gaps.join('; ') : 'none'}`,
     `Who spoke last: ${m.lastSpeaker ?? 'nobody'}`,
-    `Question ${m.turns} of about 10 (Target duration: 10-12 minutes). Difficulty level ${m.difficulty} of 5 (calibrated for ${level}).`,
+    `Question ${m.turns} of about ${budget} (Target duration: ${m.durationMin} minutes). Difficulty level ${m.difficulty} of 5 (calibrated for ${level}).`,
     `Pitch what you ask strictly at the ${level} tier. Do not ask junior questions to an expert, and do not ask 10+ year architect questions to an intern.`,
     '',
     // The panel opened by asking them to introduce themselves, so this turn is
@@ -198,15 +210,15 @@ export function context(answer: string): string {
           'Whoever the introduction speaks to most should score highest — the other two score',
           'lower but still write the question they would have asked.',
         ].join('\n')
-      : m.turns >= CONCLUDE_AT_TURN
+      : closing
         ? [
-            'FINAL TURN / CONCLUSION: The interview has reached its target duration of 10-12 minutes (10 turns).',
+            `FINAL TURN / CONCLUSION: The interview has reached its target duration of ${m.durationMin} minutes (${budget} turns).`,
             'Rohan or the highest bidder should politely wrap up the interview, thank the candidate by name for their time, and state that the panel is concluding to finalize their scorecard.',
             'Do NOT ask another open-ended technical challenge. Keep it a warm, professional closing sentence.',
           ].join('\n')
-        : m.turns >= LATE_STAGE_TURN
+        : m.turns >= lateStageTurn()
           ? [
-              'LATE STAGE: Approaching the 10-12 minute mark (Question 8-9 of 10).',
+              `LATE STAGE: Approaching the ${m.durationMin} minute mark (Question ${lateStageTurn()}-${budget - 1} of ${budget}).`,
               'Focus on closing any remaining unanswered gaps or asking a final key trade-off question before wrapping up.',
             ].join('\n')
           : '',
@@ -217,7 +229,7 @@ export function context(answer: string): string {
           'Stay inside it. Press on what they would actually do, step by step.',
           'Do not start another one.',
         ].join('\n')
-      : canOpen && m.turns < LATE_STAGE_TURN
+      : canOpen && m.turns < lateStageTurn()
         ? [
             'No role-play is running, and you may start one. Put the candidate inside a',
             'concrete situation built from something they have ALREADY claimed — their own',
@@ -429,7 +441,7 @@ export async function runPanel(answer: string): Promise<TurnDecision> {
   // A penalty is a preference. This is the guarantee: two in a row, then yield
   // to anyone else who can speak.
   const hogging = new Set(
-    PANEL.map(p => p.id).filter(id => consecutiveTurns(id) >= FLOOR_LIMIT || overHalf(id)),
+    PANEL.map(p => p.id).filter(id => consecutiveTurns(id) >= floorLimit() || overHalf(id)),
   );
   const eligible = bids.filter(b => !hogging.has(b.panelist));
   const pool = eligible.length ? eligible : bids;

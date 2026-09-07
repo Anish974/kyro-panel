@@ -22,6 +22,15 @@ create table if not exists public.interviews (
   started_at      timestamptz
 );
 
+-- How long the interview is booked for, in minutes. Added after the fact, so
+-- every row written before it is null — and null means ten, because ten turns
+-- over ten to twelve minutes is exactly what those interviews were. Checked
+-- against the same closed set the application offers, so a bad write cannot
+-- pace a panel off a number nobody chose.
+alter table public.interviews
+  add column if not exists duration_min integer
+  check (duration_min is null or duration_min in (5, 10, 15));
+
 -- Which recruiter scheduled it. A Supabase Auth user id, added after the fact,
 -- so it is nullable: a mock interview has no owner because the candidate set it
 -- up for themselves and no company should ever see it in a portal.

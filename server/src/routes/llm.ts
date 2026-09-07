@@ -1,8 +1,15 @@
 import { Router, type Response } from 'express';
 import { panelistById, type Panelist } from '@kyro/shared';
-import { CONCLUDE_AT_TURN, runPanel } from '../panel/bidding.js';
+import { runPanel } from '../panel/bidding.js';
 import { ingest } from '../panel/ledger.js';
-import { addTurn, getModel } from '../panel/model.js';
+import {
+  addTurn,
+  announceConclusion,
+  getModel,
+  releaseHold,
+  shouldConclude,
+  takeHold,
+} from '../panel/model.js';
 import { continues, repeats } from '../panel/continuation.js';
 import { classify, replyTo } from '../panel/utterance.js';
 import { broadcast } from './events.js';
@@ -28,9 +35,6 @@ const router = Router();
  * reduces how often the guess is needed.
  */
 const HOLD_LIMIT = 2;
-
-/** ponytail: one interview per process, like the model it guards. */
-let held = 0;
 
 interface ChatMessage { role: string; content: string }
 
@@ -85,8 +89,7 @@ router.post('/chat/completions', async (req, res) => {
   const growing = previous ? continues(previous.text, answer) : false;
   const resent = previous ? repeats(previous.text, answer) : false;
 
-  if ((growing || resent) && held < HOLD_LIMIT) {
-    held++;
+  if ((growing || resent) && takeHold(HOLD_LIMIT)) {
 
     // A continuation carries words the transcript has not seen, and addTurn
     // supersedes the shorter version with it. A resend carries nothing new —
@@ -98,12 +101,10 @@ router.post('/chat/completions', async (req, res) => {
       addTurn({ speaker: 'candidate', text: answer });
     }
 
-    console.log(
-      `[llm] ${resent ? 'resend' : 'continuation'} ${held}/${HOLD_LIMIT} — holding the floor`,
-    );
+    console.log(`[llm] ${resent ? 'resend' : 'continuation'} — holding the floor`);
     return silence(res);
   }
-  held = 0;
+  releaseHold();
 
   // Ledger first: the panel should be able to bid on a fresh contradiction.
   const claims = ingest(answer);
@@ -123,20 +124,23 @@ router.post('/chat/completions', async (req, res) => {
 
   stream(res, winner, decision.reply, decision.interruptable);
 
-  // bidding.ts switches to its closing instructions at this turn, so the reply
-  // just streamed IS the goodbye. Nothing used to happen next: the panel said
-  // "we're concluding to finalise your scorecard" and then sat there until the
-  // idle timeout, and the candidate had to work out that it was over.
+  // bidding.ts switches to its closing instructions once this is true, so the
+  // reply just streamed IS the goodbye. Nothing used to happen next: the panel
+  // said "we're concluding to finalise your scorecard" and then sat there until
+  // the idle timeout, and the candidate had to work out that it was over.
   //
   // Told after the reply is on the wire, with an estimate of how long it takes
   // to say, so the room can let the closing finish before it ends the call.
   //
-  // Exactly ON the turn, not from it onwards. `>=` fired this on every turn
-  // after the tenth, and the room restarts its leave timer on each one — so the
-  // call never ended and the panel said goodbye five times in a row. turns only
-  // ever moves by one, so equality crosses here once.
-  if (getModel().turns === CONCLUDE_AT_TURN) {
-    console.log(`[llm] turn ${getModel().turns} — panel has closed the interview`);
+  // Once, and only once. The room restarts its leave timer every time it hears
+  // this, so a second one means the call never ends — the panel said goodbye
+  // five times in a row that way. Equality on the turn number used to be the
+  // guard; it cannot express "or the booked time ran out", so the latch is
+  // explicit and lives with the session that owns it.
+  if (shouldConclude() && announceConclusion()) {
+    console.log(
+      `[llm] turn ${getModel().turns} of ${getModel().durationMin}min — panel has closed the interview`,
+    );
     broadcast({
       type: 'concluded',
       reason: 'The panel has finished the interview.',

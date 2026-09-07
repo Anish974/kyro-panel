@@ -140,6 +140,41 @@ export interface CandidateProfile {
   resumeText?: string;
 }
 
+// ------------------------------------------------------------------ duration
+
+/**
+ * How long an interview is scheduled to run, in minutes.
+ *
+ * The panel paces itself by turn count, not by the clock — and ten turns is
+ * what ten to twelve minutes of real conversation measured as, so one question
+ * a minute is close enough to build on. Everything downstream derives from this
+ * one number: the turn the panel starts closing on, how sure a verdict is
+ * allowed to be, whether there is room for a role-play at all, and how long an
+ * Agora agent is permitted to bill for.
+ *
+ * A five-minute interview is not a shorter version of the same assessment. It
+ * is roughly five questions split three ways, so at least one panelist barely
+ * gets to ask anything — which is why the confidence ceiling scales with the
+ * budget rather than staying pinned to absolute turn counts. The card has to
+ * say it was thin; it must not imply ten questions' worth of certainty.
+ */
+export const DURATIONS = [5, 10, 15] as const;
+
+export type Duration = (typeof DURATIONS)[number];
+
+export const DEFAULT_DURATION: Duration = 10;
+
+/** What each option is honestly for. Read on both scheduling forms. */
+export const DURATION_LABELS: Record<Duration, string> = {
+  5: '5 minutes — quick screen',
+  10: '10 minutes — standard interview',
+  15: '15 minutes — in depth',
+};
+
+/** Narrows anything that arrived over the wire to a scheduled duration. */
+export const asDuration = (value: unknown): Duration | null =>
+  (DURATIONS as readonly number[]).includes(Number(value)) ? (Number(value) as Duration) : null;
+
 /** Hard caps applied server-side. Shared so the form can refuse before posting. */
 /**
  * One scheduled interview. Created by the company, opened by the candidate
@@ -153,6 +188,8 @@ export interface Interview {
   role: string;
   /** One of EXPERIENCE_LEVELS. Drives panel difficulty. */
   level: string;
+  /** One of DURATIONS. Drives the turn budget and every ceiling built on it. */
+  durationMin: Duration;
   createdAt: number;
   /** When the candidate first opened the room, or null if they have not. */
   startedAt: number | null;
@@ -198,6 +235,12 @@ export interface CandidateModel {
   scenario: Scenario | null;
   /** Seconds since the session started. */
   elapsed: number;
+  /**
+   * The scheduled length, carried onto the live session so the panel can pace
+   * itself. Set from the interview the candidate joined; DEFAULT_DURATION for a
+   * session that never had one.
+   */
+  durationMin: Duration;
 }
 
 // -------------------------------------------------------------------- bidding
@@ -304,5 +347,6 @@ export function emptyModel(sessionId: string, profile: CandidateProfile | null =
     lastSpeaker: null,
     scenario: null,
     elapsed: 0,
+    durationMin: DEFAULT_DURATION,
   };
 }

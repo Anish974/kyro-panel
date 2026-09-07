@@ -21,14 +21,15 @@ panel disagrees, that disagreement is the most useful thing on the page.
 
 Kyro Panel has two sides, and a landing page that asks which one you are.
 
-**Hiring** — schedule an interview with a candidate name, a role, and the bar to
-hold them to. You get a link. Scorecards come back to the same portal.
+**Hiring** — schedule an interview with a candidate name, a role, the bar to
+hold them to, and how long it should run. You get a link. Scorecards come back
+to the same portal.
 
 **Candidate** — open the invite link a company sent, or run a **mock interview**
 to practise.
 
 ```
-company     →  Schedule an interview  →  name · role · bar
+company     →  Schedule an interview  →  name · role · bar · length
                                       →  /?i=MY0W03
 
 candidate   →  that link              →  role and bar already set
@@ -207,6 +208,7 @@ That is the point — it is the only thing keeping two developers in sync.
 | Landing page, company / candidate split | done |
 | Company schedules the interview, candidate joins by invite link | done |
 | Mock interviews, kept out of the company portal | done |
+| Interview length — 5, 10 or 15 minutes, paced and scored to the booking | done |
 | Interviews and scorecards in Postgres, RLS closed to the anon key | done |
 | Recruiter sign-in; every company sees only its own candidates | done |
 | Invite code enforced on `/agent/start` and `/scorecard` | not yet |

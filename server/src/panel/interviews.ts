@@ -1,5 +1,11 @@
 import { randomBytes } from 'node:crypto';
-import { EXPERIENCE_LEVELS, PROFILE_LIMITS, type Interview } from '@kyro/shared';
+import {
+  DEFAULT_DURATION,
+  EXPERIENCE_LEVELS,
+  PROFILE_LIMITS,
+  asDuration,
+  type Interview,
+} from '@kyro/shared';
 import { query } from '../db/pool.js';
 
 // Who decides the bar.
@@ -36,6 +42,7 @@ interface Row {
   candidate_name: string;
   role: string;
   level: string;
+  duration_min: number;
   mock: boolean;
   owner_id: string | null;
   created_at: Date;
@@ -47,6 +54,10 @@ const toInterview = (r: Row): Interview => ({
   candidateName: r.candidate_name,
   role: r.role,
   level: r.level,
+  // Rows written before the column existed come back null, and a scheduled
+  // interview with no length is still a ten-minute one — that is what every
+  // interview before this feature actually was.
+  durationMin: asDuration(r.duration_min) ?? DEFAULT_DURATION,
   mock: r.mock,
   ownerId: r.owner_id,
   createdAt: r.created_at.getTime(),
@@ -69,6 +80,7 @@ export async function create(input: {
   candidateName: unknown;
   role: unknown;
   level: unknown;
+  durationMin?: unknown;
   mock?: unknown;
   /** The verified recruiter. Never read off the request body. */
   ownerId?: string | null;
@@ -78,6 +90,9 @@ export async function create(input: {
   const level = clean(input.level, PROFILE_LIMITS.level);
   const mock = input.mock === true;
   const ownerId = mock ? null : (input.ownerId ?? null);
+  // Same reasoning as the level below: an unrecognised number would silently
+  // pace the whole interview off something nobody offered.
+  const durationMin = asDuration(input.durationMin) ?? DEFAULT_DURATION;
 
   if (!candidateName) throw new InterviewError('candidate name is required');
   if (!role) throw new InterviewError('role is required');
@@ -93,11 +108,11 @@ export async function create(input: {
   for (let attempt = 0; attempt < 5; attempt++) {
     const code = randomCode();
     const rows = await query<Row>(
-      `insert into interviews (code, candidate_name, role, level, mock, owner_id)
-            values ($1, $2, $3, $4, $5, $6)
+      `insert into interviews (code, candidate_name, role, level, duration_min, mock, owner_id)
+            values ($1, $2, $3, $4, $5, $6, $7)
        on conflict (code) do nothing
          returning *`,
-      [code, candidateName, role, level, mock, ownerId],
+      [code, candidateName, role, level, durationMin, mock, ownerId],
     );
 
     if (rows === null) {
@@ -107,6 +122,7 @@ export async function create(input: {
         candidateName,
         role,
         level,
+        durationMin,
         mock,
         ownerId,
         createdAt: Date.now(),

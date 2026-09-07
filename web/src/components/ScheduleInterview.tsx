@@ -1,5 +1,13 @@
 import { useState } from 'react';
-import { EXPERIENCE_LEVELS, PROFILE_LIMITS, type Interview } from '@kyro/shared';
+import {
+  DEFAULT_DURATION,
+  DURATIONS,
+  DURATION_LABELS,
+  EXPERIENCE_LEVELS,
+  PROFILE_LIMITS,
+  type Duration,
+  type Interview,
+} from '@kyro/shared';
 import { authedFetch } from '../lib/supabase.js';
 
 const ROLES = [
@@ -23,6 +31,7 @@ export default function ScheduleInterview() {
   const [role, setRole] = useState<string>(ROLES[0]);
   const [customRole, setCustomRole] = useState('');
   const [level, setLevel] = useState<string>('Intermediate (2-6 years)');
+  const [durationMin, setDurationMin] = useState<Duration>(DEFAULT_DURATION);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
   const [created, setCreated] = useState<Interview | null>(null);
@@ -43,7 +52,7 @@ export default function ScheduleInterview() {
       const res = await authedFetch('/interviews', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ candidateName: name.trim(), role: effectiveRole, level }),
+        body: JSON.stringify({ candidateName: name.trim(), role: effectiveRole, level, durationMin }),
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body?.error ?? 'Could not schedule that interview');
@@ -200,6 +209,29 @@ export default function ScheduleInterview() {
           <select id="clevel" value={level} onChange={e => setLevel(e.target.value)} className={`${field} cursor-pointer`}>
             {EXPERIENCE_LEVELS.map(l => <option key={l} value={l}>{l}</option>)}
           </select>
+        </div>
+
+        <div className="md:col-span-3">
+          <label htmlFor="cduration" className="block text-xs font-semibold uppercase tracking-wider text-[#4B5565] dark:text-[#94A3B8] mb-2 font-mono">
+            Length
+          </label>
+          <select
+            id="cduration"
+            value={durationMin}
+            onChange={e => setDurationMin(Number(e.target.value) as Duration)}
+            className={`${field} cursor-pointer`}
+          >
+            {DURATIONS.map(d => <option key={d} value={d}>{DURATION_LABELS[d]}</option>)}
+          </select>
+          {/* The panel asks about a question a minute, so five minutes is five
+              questions split three ways. Worth saying before someone books one
+              and reads the result as a full assessment. */}
+          {durationMin === 5 && (
+            <p className="mt-2 text-xs text-[#A16207] dark:text-[#FDE68A]">
+              Around five questions across three interviewers. Enough to screen, not to decide —
+              the verdicts come back marked low confidence.
+            </p>
+          )}
         </div>
 
         <div className="md:col-span-3">

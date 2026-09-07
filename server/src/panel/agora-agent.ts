@@ -1,6 +1,6 @@
 import { PANEL, panelistById, type CandidateProfile, type PanelistId } from '@kyro/shared';
 import { AGENT_UID, CANDIDATE_UID, credentials, mint } from './tokens.js';
-import { profile } from './model.js';
+import { durationMin, profile } from './model.js';
 
 /**
  * Who speaks the greeting. Arjun opens the interview, so the agent must start
@@ -29,15 +29,21 @@ const BASE = 'https://api.agora.io/api/conversational-ai-agent/v2/projects';
 const IDLE_TIMEOUT = 90;
 
 /**
- * Nothing should hold an agent longer than this.
+ * How long past the booked end an agent may still be running.
  *
- * The interview targets 10-12 minutes. Conversational AI bills by the minute
- * and the free tier is 300 of them, so one agent left running by a crashed tab,
- * a blocked beacon or a dropped network can quietly eat a real interview's
- * worth of quota. The browser stops the agent on leave and on unload; this is
- * what catches the times neither happens.
+ * Conversational AI bills by the minute and the free tier is 300 of them, so an
+ * agent left behind by a crashed tab, a blocked beacon or a dropped network
+ * quietly eats a real interview's worth of quota. The browser stops the agent
+ * on leave and on unload; this is what catches the times neither happens.
+ *
+ * The grace matters in both directions. Fixed at fifteen minutes it was wrong
+ * either way once the length became a choice: a five-minute screen kept billing
+ * for ten minutes after it ended, and a fifteen-minute interview was cut off by
+ * its own reaper mid-conversation.
  */
-const MAX_SESSION_MS = 15 * 60 * 1000;
+const REAPER_GRACE_MS = 4 * 60 * 1000;
+
+const maxSessionMs = (): number => durationMin() * 60_000 + REAPER_GRACE_MS;
 
 let reaper: ReturnType<typeof setTimeout> | null = null;
 
@@ -321,10 +327,11 @@ export async function startAgent(orchestratorUrl: string): Promise<RunningAgent>
 
   // Hard ceiling on a billable agent. unref() so a pending reaper never keeps
   // the process alive on its own.
+  const cap = maxSessionMs();
   reaper = setTimeout(() => {
-    console.warn(`[agent] ${current?.agentId} hit the ${MAX_SESSION_MS / 60000}-minute cap — stopping it`);
+    console.warn(`[agent] ${current?.agentId} hit the ${cap / 60000}-minute cap — stopping it`);
     void stopAgent();
-  }, MAX_SESSION_MS);
+  }, cap);
   reaper.unref?.();
 
   return current;

@@ -789,8 +789,14 @@ export default function Room({ candidateName, role, level, onEnd }: Props) {
               <span className="font-mono font-black text-xs sm:text-sm text-[#111827] dark:text-white tracking-tight leading-none">
                 {formatTimer(session ? elapsedSec : (model.elapsed || 0))}
               </span>
+              {/* Both halves used to be the literal 10, from when every
+                  interview was ten minutes. They come off what the company
+                  actually booked now, or the candidate would be told they are
+                  on turn 3 of 10 in a five-minute screen. */}
               <span className="text-[10px] text-[#4B5565] dark:text-[#94A3B8] font-semibold leading-none mt-0.5">
-                {model.turns > 0 ? `Turn ${model.turns}/10` : '10-12m max'}
+                {model.turns > 0
+                  ? `Turn ${model.turns}/${model.durationMin}`
+                  : `${model.durationMin}m max`}
               </span>
             </div>
           </div>

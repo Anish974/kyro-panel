@@ -1,5 +1,13 @@
 import { useState } from 'react';
-import { EXPERIENCE_LEVELS, PROFILE_LIMITS, type Interview } from '@kyro/shared';
+import {
+  DEFAULT_DURATION,
+  DURATIONS,
+  DURATION_LABELS,
+  EXPERIENCE_LEVELS,
+  PROFILE_LIMITS,
+  type Duration,
+  type Interview,
+} from '@kyro/shared';
 import ThemeToggle from '../components/ThemeToggle.js';
 
 interface Props {
@@ -27,6 +35,7 @@ export default function CandidateEntry({ onReady, onBack }: Props) {
   const [name, setName] = useState('');
   const [role, setRole] = useState<string>(ROLES[0]);
   const [level, setLevel] = useState<string>('Intermediate (2-6 years)');
+  const [durationMin, setDurationMin] = useState<Duration>(DEFAULT_DURATION);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -58,7 +67,7 @@ export default function CandidateEntry({ onReady, onBack }: Props) {
       const res = await fetch('/interviews', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ candidateName: name.trim(), role, level, mock: true }),
+        body: JSON.stringify({ candidateName: name.trim(), role, level, durationMin, mock: true }),
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body?.error ?? 'Could not start that mock interview');
@@ -166,6 +175,23 @@ export default function CandidateEntry({ onReady, onBack }: Props) {
               </select>
               <p className="mt-2 text-xs text-[#64748B] dark:text-[#94A3B8]">
                 Yours to choose here — it is practice. A real interview sets this for you.
+              </p>
+            </div>
+
+            <div>
+              <label htmlFor="mduration" className="block text-xs font-semibold uppercase tracking-wider text-[#4B5565] dark:text-[#94A3B8] mb-2 font-mono">
+                Length
+              </label>
+              <select
+                id="mduration"
+                value={durationMin}
+                onChange={e => setDurationMin(Number(e.target.value) as Duration)}
+                className={`${field} cursor-pointer`}
+              >
+                {DURATIONS.map(d => <option key={d} value={d}>{DURATION_LABELS[d]}</option>)}
+              </select>
+              <p className="mt-2 text-xs text-[#64748B] dark:text-[#94A3B8]">
+                About one question a minute, shared between the three of them.
               </p>
             </div>
 

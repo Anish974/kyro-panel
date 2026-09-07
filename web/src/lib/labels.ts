@@ -35,3 +35,22 @@ export const AVATARS: Record<PanelistId, string> = {
   product: '/assets/ananya_shah.jpg',
   hr: '/assets/rohan_iyer.jpg',
 };
+
+/**
+ * How sure a panelist was allowed to be, as a band.
+ *
+ * The server caps this hard and for good reasons: 0.2 when a panelist never
+ * asked a question at all, 0.4 when nothing they wrote could be tied to a
+ * verified quote, and a ceiling set by how many turns the interview actually
+ * ran. None of that reached the page — so a verdict written off two answers was
+ * drawn exactly like one written off ten, and a recruiter had no way to tell.
+ *
+ * Deliberately not red: low confidence is the panel saying "we did not find
+ * out", which is not the same as a bad candidate. Red is what no_hire uses.
+ */
+export const CONFIDENCE = (c: number): Badge =>
+  c < 0.35
+    ? { label: 'LOW', color: '#B45309', bg: '#FFFBEB', border: '#FDE68A' }
+    : c < 0.7
+      ? { label: 'MODERATE', color: '#A16207', bg: '#FEFCE8', border: '#FEF08A' }
+      : { label: 'HIGH', color: '#4B5565', bg: '#F9FAFB', border: '#E5E7EB' };

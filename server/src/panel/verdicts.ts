@@ -7,7 +7,7 @@ import {
   type Verdict,
 } from '@kyro/shared';
 import { LLM_ENABLED, ask, parseJson } from './llm.js';
-import { getModel } from './model.js';
+import { concludeAtTurn, getModel } from './model.js';
 
 // What the three panelists actually write up at the end.
 //
@@ -119,15 +119,27 @@ function verifyEvidence(raw: RawVerdict['evidence'], lines: { text: string; t: n
 /**
  * How sure any panelist is allowed to be, given how much they actually heard.
  *
- * Ten questions is a full interview and earns the normal 0.95 ceiling. Four
- * answers is a fragment, and a verdict written off a fragment must say so in
- * the number, not just in the prose.
+ * A full interview earns the normal 0.95 ceiling. A fragment does not, and a
+ * verdict written off a fragment must say so in the number, not just in the
+ * prose.
+ *
+ * Measured as a SHARE of what was booked, not as an absolute turn count. Five
+ * answers is most of a five-minute screen and barely half of a fifteen-minute
+ * interview; scoring both at 0.75 would call a completed screen unreliable and
+ * a half-abandoned interview solid. The fractions below reproduce the old
+ * thresholds exactly on a ten-turn budget, which is what every interview before
+ * this feature was.
+ *
+ * Exported because scorecard.ts's arithmetic verdicts have to obey the very
+ * same ceiling. They did not, and the result was backwards: a failed LLM
+ * write-up produced 0.9 confidence off five turns while a successful one was
+ * held to 0.75 on the same interview.
  */
-function confidenceCeiling(): number {
-  const turns = getModel().turns;
-  if (turns >= 8) return 0.95;
-  if (turns >= 5) return 0.75;
-  if (turns >= 3) return 0.6;
+export function confidenceCeiling(): number {
+  const share = getModel().turns / Math.max(1, concludeAtTurn());
+  if (share >= 0.8) return 0.95;
+  if (share >= 0.5) return 0.75;
+  if (share >= 0.3) return 0.6;
   return 0.4;
 }
 
@@ -215,7 +227,7 @@ function referenceBlock(fallbacks: PanelistVerdict[], durationSec: number): stri
 
   return [
     `Candidate: ${m.profile?.name ?? 'unknown'} — ${m.profile?.role ?? 'unknown role'}${m.profile?.level ? ` (${m.profile.level})` : ''}`,
-    `Questions answered: ${m.turns} of a target 10, over about ${minutes} minute${minutes === 1 ? '' : 's'}.`,
+    `Questions answered: ${m.turns} of a target ${concludeAtTurn()}, over about ${minutes} minute${minutes === 1 ? '' : 's'} of a ${m.durationMin}-minute interview.`,
     `Competency scores the panel tracked live (0-1): ${skills}`,
     `Gaps the panel noted: ${m.gaps.length ? m.gaps.join('; ') : 'none'}`,
     `Reference scores out of 5: ${fallbacks.map(f => `${f.panelist} ${f.score}`).join(', ')}`,
