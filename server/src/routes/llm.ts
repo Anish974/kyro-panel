@@ -6,6 +6,7 @@ import {
   addTurn,
   announceConclusion,
   getModel,
+  notePremiseDenied,
   releaseHold,
   shouldConclude,
   takeHold,
@@ -69,6 +70,11 @@ router.post('/chat/completions', async (req, res) => {
     // The last thing a panelist actually said, to hand back on a "repeat that".
     const lastQuestion =
       [...model.transcript].reverse().find(t => t.speaker !== 'candidate')?.text ?? null;
+    // A denial has to outlive this reply, or the next question carries on from
+    // the same invented premise — which is how one candidate was asked about a
+    // bot he had never mentioned three times running.
+    if (kind === 'correction') notePremiseDenied();
+
     console.log(`[llm] ${kind} — answering without spending a turn (turns stay at ${model.turns})`);
     return stream(res, panelistById(asker), replyTo(kind, lastQuestion), true);
   }

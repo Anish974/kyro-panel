@@ -11,7 +11,7 @@
 // straight into the resume. The candidate had not said a word about themselves
 // yet and was already being asked about data skew across Spark executors.
 
-export type UtteranceKind = 'audio-check' | 'clarify' | 'thinking' | 'answer';
+export type UtteranceKind = 'audio-check' | 'clarify' | 'thinking' | 'correction' | 'answer';
 
 /**
  * Only a SHORT utterance can be an audio check.
@@ -38,6 +38,23 @@ const AUDIO_CHECK =
  */
 const THINKING =
   /\b(let me think|give me a (second|moment|minute)|hold on|one (second|moment|minute)|i need a (second|moment|minute)|let me (gather|collect) my thoughts|thinking(\s+about (it|that))?|bear with me|just a (sec|second|moment))\b/i;
+
+/**
+ * The candidate telling us we put words in their mouth.
+ *
+ * Speech-to-text turns "what to do about the bug" into "what to on the bot",
+ * and a panel that takes the transcript literally will then ask three questions
+ * about a bot that never existed. One real interview went exactly that way: the
+ * candidate said "I didn't talk about what, ma'am", was asked about the bot
+ * again, said "I didn't talk about bot", and was asked a third time. Three of
+ * his eight turns went on defending himself against a mis-hearing.
+ *
+ * A denial is not an answer and must not cost a turn. It also has to reach the
+ * panel — see model.notePremiseDenied — because the correction is useless if
+ * the next question carries on from the same invented premise.
+ */
+const CORRECTION =
+  /\b(i (did ?n[o']?t|never) (say|said|talk about|mention|meant?)|(that'?s|thats) not what i (said|meant)|i (said|meant) something else|you (misheard|mis-heard|got that wrong)|no,? i (did ?n[o']?t|never))\b/i;
 
 /** They want something repeated or explained before they can answer. */
 const CLARIFY =
@@ -125,6 +142,10 @@ export function classify(text: string): UtteranceKind {
 
   // "Okay, sir." is the candidate waiting, not answering. Handing the question
   // back is what a panel does — and it costs neither a turn nor an LLM call.
+  // Before everything else: if they are telling us we misheard them, nothing
+  // else about the utterance matters.
+  if (CORRECTION.test(t)) return 'correction';
+
   if (BARE_ACK.test(t) && !SOLE_YES_NO.test(t)) return 'clarify';
   // Clarify before thinking: "give me a second" is a pause, but "could you say
   // that again, give me a second" is really a request to repeat.
@@ -150,6 +171,12 @@ export function classify(text: string): UtteranceKind {
  * waiting to start, not looking for conversation.
  */
 export function replyTo(kind: Exclude<UtteranceKind, 'answer'>, lastQuestion: string | null): string {
+  // Never hand the question back here — the question is the problem. Repeating
+  // it is how a panel asks about the same imaginary bot a third time.
+  if (kind === 'correction') {
+    return 'Apologies — I misheard you there. Let us leave that; carry on from what you were actually describing.';
+  }
+
   if (kind === 'audio-check') {
     return lastQuestion
       ? `We can hear you clearly. Let me repeat: ${lastQuestion}`

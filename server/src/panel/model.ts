@@ -45,6 +45,16 @@ let held = 0;
 let concludedAnnounced = false;
 
 /**
+ * The candidate has just told us we misheard them.
+ *
+ * Consumed by the next turn's prompt and then cleared. Without it the denial
+ * goes nowhere: routes/llm.ts answers a correction without running the panel,
+ * so the panel would never learn that the thing it is asking about was never
+ * said — and it asked a third time.
+ */
+let premiseDenied = false;
+
+/**
  * The interview this session belongs to, resolved server-side from the code the
  * candidate joined with.
  *
@@ -99,6 +109,7 @@ export function reset(forgetProfile = false): void {
   startedAt = Date.now();
   held = 0;
   concludedAnnounced = false;
+  premiseDenied = false;
   simulatedElapsed = null;
 }
 
@@ -153,6 +164,7 @@ export function setProfile(raw: unknown, interviewRow: Interview | null = null):
   startedAt = Date.now();
   held = 0;
   concludedAnnounced = false;
+  premiseDenied = false;
   model = emptyModel(`s-${Date.now()}`, null);
   model.durationMin = duration;
   sessionInterview = interviewRow;
@@ -339,6 +351,18 @@ export function takeHold(limit: number): boolean {
   if (held >= limit) return false;
   held++;
   return true;
+}
+
+/** The candidate said we put words in their mouth. The next turn is told. */
+export function notePremiseDenied(): void {
+  premiseDenied = true;
+}
+
+/** Reads the flag and clears it — one turn is all the warning needs to last. */
+export function takePremiseDenied(): boolean {
+  const denied = premiseDenied;
+  premiseDenied = false;
+  return denied;
 }
 
 /** They finished. The next continuation starts counting from nothing. */

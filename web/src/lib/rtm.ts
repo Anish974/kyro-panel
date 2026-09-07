@@ -66,7 +66,21 @@ export async function connectRtm(
       try {
         const parsed = JSON.parse(raw) as Record<string, unknown>;
         const transcript = toTranscript(parsed);
-        if (transcript) handlers.onTranscript?.(transcript);
+        if (transcript) {
+          handlers.onTranscript?.(transcript);
+          return;
+        }
+
+        // Everything that is not a transcript used to be dropped here in
+        // silence — including the errors we explicitly asked Agora for with
+        // `enable_error_message` when the agent joined.
+        //
+        // That is why a panelist could go inaudible with a caption still on
+        // screen and nothing to explain it: our caption comes from our own
+        // server the moment we answer Agora, so it appears whether or not the
+        // text was ever turned into audio. When the speech synthesis failed,
+        // Agora said so on this channel and we threw it away.
+        console.warn('[rtm] non-transcript message from Agora:', parsed);
       } catch {
         // ignore malformed message
       }

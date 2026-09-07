@@ -171,6 +171,7 @@ export function context(answer: string): string {
   const canOpen = canOpenScenario();
   const budget = model.concludeAtTurn();
   const closing = model.shouldConclude();
+  const denied = model.takePremiseDenied();
   const recent = m.transcript
     .slice(-6)
     .map(t => `${t.speaker === 'candidate' ? 'CANDIDATE' : t.speaker.toUpperCase()}: ${t.text}`)
@@ -236,6 +237,17 @@ export function context(answer: string): string {
               `Bridge smoothly: "Understood on [Topic A]. Shifting gears to your work with [Project B / Technology C]..."`,
             ].join('\n')
           : '',
+    denied
+      ? [
+          'THE CANDIDATE HAS JUST TOLD YOU THAT YOU MISHEARD THEM.',
+          'Whatever premise the last question rested on, it was never said. Drop it',
+          'completely — do not repeat it, do not ask them to explain it, do not ask',
+          'them to confirm it. Asking again is how a panel spends three turns on a',
+          'thing that never existed while the candidate keeps denying it.',
+          'Ask instead about something they have plainly said earlier in the',
+          'transcript, or about their resume.',
+        ].join('\n')
+      : '',
     m.scenario
       ? [
           `ROLE-PLAY RUNNING (answer ${m.scenario.turns + 1} of ${SCENARIO_LENGTH}), opened by ${m.scenario.openedBy}:`,
@@ -325,6 +337,20 @@ function coerce(id: PanelistId, raw: Partial<Draft> | undefined): Draft | undefi
   // Drop only the panelist that failed; runPanel fills that one from keywords.
   if (!raw?.reply) {
     console.warn(`  ${id} returned no usable draft — keywords for this one only`);
+    return undefined;
+  }
+
+  // A reply that asks nothing is not a turn, it is a comment.
+  //
+  // The prompt has forbidden this in capitals for a while and the model still
+  // produced "Let's see how this bot actually impacts the end user" — which is
+  // almost word for word the example the prompt gives as forbidden. The
+  // candidate answered it with "I didn't talk about what, ma'am", because there
+  // was no question to answer. Prompts ask; this decides.
+  //
+  // The closing turn is exempt: a goodbye is not supposed to be a question.
+  if (!String(raw.reply).includes('?') && !model.shouldConclude()) {
+    console.warn(`  ${id} replied without asking anything — keywords for this one only`);
     return undefined;
   }
   return {
