@@ -3,7 +3,7 @@
 // The floor goes to a panelist who actually has a question.
 //
 // The model sometimes answers for one panelist and not the others — the log
-// line is "product returned no usable draft — keywords for this one only". Those
+// line is "product returned no usable bid — keywords for this one only". Those
 // panelists fall back to the keyword scorer, and that scorer has a 0.95 spike
 // for an answer with no customer impact in it. A real LLM draft scoring 0.5
 // loses to it.
@@ -16,30 +16,30 @@
 import assert from 'node:assert';
 import { PANEL } from '@kyro/shared';
 
-// A fake provider that answers for `technical` only, exactly as the real one did.
+// A fake provider that bids for two panelists and skips the third, exactly as
+// the real one does when a turn comes back partly filled in.
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 
-const ONLY_TECHNICAL = JSON.stringify({
-  technical: {
-    score: 0.5,
-    reason: 'wants the implementation detail',
-    intent: 'probe',
-    quality: 0.5,
-    reply: 'What backs that queue, and what happens when it fills up?',
+const SKIPS_PRODUCT = JSON.stringify({
+  bids: {
+    technical: { score: 0.5, reason: 'wants the implementation detail', intent: 'probe', quality: 0.5 },
+    // product is missing. coerceBid() drops it and the keyword scorer fills in,
+    // which is where the 0.95 spike comes from.
+    hr: { score: 0.3, reason: 'no ownership yet', intent: 'followup', quality: 0.4 },
   },
-  // The two the model left without a reply. coerce() drops these.
-  product: { score: 0.4, reason: 'no user impact given', intent: 'challenge', quality: 0.4 },
-  hr: { score: 0.3, reason: 'no ownership yet', intent: 'followup', quality: 0.4 },
+  floor: 'technical',
+  reply: 'What backs that queue, and what happens when it fills up?',
 });
 
 const provider = http.createServer((req, res) => {
   req.resume();
   req.on('end', () => {
     res.writeHead(200, { 'content-type': 'application/json' });
-    res.end(JSON.stringify({ choices: [{ message: { content: ONLY_TECHNICAL } }] }));
+    res.end(JSON.stringify({ choices: [{ message: { content: SKIPS_PRODUCT } }] }));
   });
 });
+
 await new Promise<void>(r => provider.listen(0, '127.0.0.1', r));
 process.env.LLM_BASE_URL = `http://127.0.0.1:${(provider.address() as AddressInfo).port}/v1`;
 process.env.LLM_MODEL = 'draft-check';
@@ -55,7 +55,7 @@ model.setProfile({ name: 'Yash', role: 'Full-Stack Engineer', level: 'Intern' })
 // 0.95 on the keyword scorer, which is how it used to steal the floor.
 const decision = await runPanel('So I am using a map queue and table dataset models, and MongoDB for unstructured data.');
 
-assert.equal(decision.winner, 'technical', 'the floor goes to the panelist the model actually wrote for');
+assert.equal(decision.winner, 'technical', 'the floor goes where the model put it, not to the keyword spike');
 assert.equal(
   decision.reply,
   'What backs that queue, and what happens when it fills up?',
@@ -72,6 +72,6 @@ assert.ok(canned.score >= 0.9, 'and still bids high — the spike is real, it ju
 
 provider.close();
 
-console.log('draft  a panelist with no question from the model does not take the floor');
+console.log('draft  a keyword spike does not steal the floor the model named');
 console.log('       all three still bid, so nobody disappears from the room');
 console.log('\nself-check passed');

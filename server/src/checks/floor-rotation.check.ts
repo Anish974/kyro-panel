@@ -33,12 +33,16 @@ import { PANEL, type PanelistId } from '@kyro/shared';
 
 // The shape production actually returns on a technical answer.
 const LOPSIDED = JSON.stringify({
-  technical: { score: 0.9, reason: 'implementation detail to chase', intent: 'probe', quality: 0.5,
-               reply: 'What backed that structure, and how did you key it?' },
-  product: { score: 0.3, reason: 'no user impact yet', intent: 'challenge', quality: 0.4,
-             reply: 'Who felt this, and how did you know?' },
-  hr: { score: 0.3, reason: 'ownership unclear', intent: 'followup', quality: 0.4,
-        reply: 'Which part of this was yours end to end?' },
+  bids: {
+    technical: { score: 0.9, reason: 'implementation detail to chase', intent: 'probe', quality: 0.5 },
+    product: { score: 0.3, reason: 'no user impact yet', intent: 'challenge', quality: 0.4 },
+    hr: { score: 0.3, reason: 'ownership unclear', intent: 'followup', quality: 0.4 },
+  },
+  // Every turn, the same panelist. A model that ignores the eligible set it
+  // was given is the case this has to survive: rotation is enforced in code,
+  // not asked for in the prompt.
+  floor: 'technical',
+  reply: 'What backed that structure, and how did you key it?',
 });
 
 const provider = http.createServer((req, res) => {
@@ -72,7 +76,21 @@ const ANSWERS = [
 ];
 
 const spoke: PanelistId[] = [];
-for (const answer of ANSWERS) spoke.push((await runPanel(answer)).winner);
+const said: string[] = [];
+for (const answer of ANSWERS) {
+  const decision = await runPanel(answer);
+  spoke.push(decision.winner);
+  said.push(decision.reply);
+}
+
+// The model writes ONE question now, for the panelist it named. Every turn it
+// is overruled here is a turn somebody else has to speak, and what they say
+// comes off the keyword list — so the list has to be worth hearing. A silent
+// or non-question turn is the price of getting this wrong.
+for (const [i, reply] of said.entries()) {
+  assert.ok(reply.trim().length > 10, `turn ${i + 1} left the candidate with nothing`);
+  assert.ok(reply.includes('?'), `turn ${i + 1} said "${reply}" — that asks nothing`);
+}
 
 // The guarantee: nobody holds the floor three times running.
 let run = 1;

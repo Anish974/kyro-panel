@@ -16,6 +16,11 @@ export const CUSTOMER_GAP = 'impact never quantified — no number, no user name
 // More than one line each, rotated by turn: a panelist who falls back twice in
 // one interview must not ask the same sentence twice. The candidate hears the
 // repeat long before they notice the LLM hiccuped.
+// Every line here ends in a question mark, because usableReply() rejects a
+// drafted reply that asks nothing and these are what it falls back TO. Two of
+// them were statements — "Describe a disagreement you had on a project" — and
+// the rule only ever applied to the model, so the one path that skips the
+// model was the one path that could still say nothing.
 const FALLBACK_REPLIES: Record<PanelistId, readonly string[]> = {
   technical: [
     'Tell me about the most technically demanding thing you have built — what made it hard?',
@@ -29,23 +34,30 @@ const FALLBACK_REPLIES: Record<PanelistId, readonly string[]> = {
   ],
   hr: [
     'Tell me about something you owned end to end — what were you personally on the hook for?',
-    'Describe a disagreement you had on a project, and how it ended.',
+    'What is a disagreement you had on a project, and how did it end?',
     'When a deadline started slipping, what did you actually do about it?',
   ],
 };
 
 
-interface Draft {
+/**
+ * One panelist's bid. All three return one every turn — the room draws a tile
+ * per panelist from these, and verdicts.ts counts who actually asked anything.
+ */
+interface Bidding {
   score: number;
   reason: string;
   intent: Bid['intent'];
-  reply: string;
   /** 0-1: how strong that answer was on this panelist's own axis. */
   quality: number;
+}
+
+/** A bid plus a question. Only the panelist who takes the floor needs one. */
+interface Draft extends Bidding {
+  reply: string;
   /** Set only when this panelist wants to open a role-play. */
   scenario?: string;
 }
-
 /** Two turns before the close, the panel starts steering toward it. */
 const lateStageTurn = (): number => model.concludeAtTurn() - 2;
 
@@ -164,7 +176,13 @@ function profileBlock(): string {
  * Exported for the self-check — the prompt is the product here, so a regression
  * that drops the candidate's name or the resume fence has to fail a test.
  */
-export function context(answer: string): string {
+/**
+ * Who may take the floor this turn. Defaults to everyone, which is what the
+ * self-checks want and what an opening turn gets anyway — runPanel passes the
+ * real set, because a panelist who cannot speak must not be asked for a
+ * question nobody will hear.
+ */
+export function context(answer: string, eligible: PanelistId[] = PANEL.map(p => p.id)): string {
   const m = model.getModel();
   const level = m.profile?.level || 'Intermediate (2-6 years)';
   const currentRole = m.profile?.role || 'software engineer';
@@ -264,22 +282,32 @@ export function context(answer: string): string {
           ].join('\n')
         : '',
     '',
-    'Decide how badly you want to speak next, then write what you would say.',
+    '',
+    `Only these panelists may take the floor this turn: ${eligible.join(', ')}.`,
+    'The other one still bids — their score and reason are shown in the room — but',
+    'the floor cannot go to them, so do not write their question.',
+    '',
+    'All three bid. Whichever ELIGIBLE panelist you score highest takes the floor,',
+    'and you write only that one question.',
     'Reply with JSON only:',
+    '{"bids": {"technical": {...}, "product": {...}, "hr": {...}},',
+    ` "floor": ${eligible.map(id => `"${id}"`).join(' | ')},`,
+    ' "reply": "what the panelist on the floor says, max 2 sentences, ending in a question mark"' +
+      (canOpen ? ',' : ''),
+    canOpen ? ' "scenario": "one-line premise — ONLY if the panelist on the floor is opening a role-play"' : '',
+    '}',
+    '',
+    'Every bid is:',
     '{"score": 0.0-1.0, "reason": "under 10 words, why you want the floor",',
-    ' "intent": "probe"|"challenge"|"followup"|"handoff", "reply": "what you say, max 2 sentences",',
+    ' "intent": "probe"|"challenge"|"followup"|"handoff",',
     // Left unanchored, every panelist rates everything about 0.5 and the
     // difficulty never moves. Give the scale fixed points.
     ' "quality": how strong that answer was on YOUR axis — 0.2 evasive or "I don\'t' +
       ' know", 0.5 correct but thin, 0.8 a strong senior answer with specifics,' +
-      ' 1.0 could not be answered better' +
-      (canOpen ? ',' : ''),
-    canOpen ? ' "scenario": "one-line premise — ONLY if you are opening a role-play"' : '',
-    '}',
+      ' 1.0 could not be answered better}',
     '',
     'Score low if another panelist is better placed, or if you just spoke.',
-    'If the candidate said nothing intelligible, score low and ask them to repeat.',
-  ]
+    'If the candidate said nothing intelligible, score low and ask them to repeat.',  ]
     .filter(Boolean)
     .join('\n');
 }
@@ -324,33 +352,19 @@ CRITICAL RULES:
 - PROBING SHALLOW / VAGUE / BRIEF ANSWERS: When the candidate gives a one-word, generic, or evasive answer (e.g. "Use structure. And JSON format", "Critical action", "MongoDB", "No continue"), DO NOT just accept it or change the subject arbitrarily. Drill in: challenge them to explain what they actually meant, clarify the trade-off, or ask for concrete implementation details. If they say they didn't work on that part or want to pass, smoothly acknowledge and pivot to another core pillar of ${currentRole}.
 - Score each panelist INDEPENDENTLY (0.0 to 1.0) based on how relevant their domain is to the candidate's last answer and how well they can pivot to uncover new ground.
 - Replies must be punchy (1 to 2 sentences max) and spoken directly to the candidate — no preamble, no generic compliments, no stage directions.
-- ALWAYS return all three panelists with every field filled in, "reply" included — the two who are bidding low still write what they WOULD say. A panelist you leave out, or leave without a reply, is dropped from the panel for this turn and the room goes quiet on their tile.
+- ALWAYS return a bid for all three panelists — score, reason, intent and quality for every one of them. The room draws a tile per panelist from these, and a panelist you leave out disappears from the panel for that turn.
+- Write exactly ONE reply: the question asked by the eligible panelist you scored highest, named in "floor". The other two write nothing — their question would never be heard, and every word of it is silence the candidate sits through.
 
-Answer with one JSON object keyed by panelist:
-{"technical": {...}, "product": {...}, "hr": {...}}`;
+Answer with one JSON object:
+{"bids": {"technical": {...}, "product": {...}, "hr": {...}}, "floor": "<panelist id>", "reply": "<that panelist's question>"}`;
 }
-
-function coerce(id: PanelistId, raw: Partial<Draft> | undefined): Draft | undefined {
+function coerceBid(id: PanelistId, raw: Partial<Bidding> | undefined): Bidding | undefined {
   // One panelist coming back malformed used to throw, which threw away the two
-  // good drafts alongside it and dropped the WHOLE panel onto the canned
-  // fallback lines — the candidate then heard the same sentence twice running.
-  // Drop only the panelist that failed; runPanel fills that one from keywords.
-  if (!raw?.reply) {
-    console.warn(`  ${id} returned no usable draft — keywords for this one only`);
-    return undefined;
-  }
-
-  // A reply that asks nothing is not a turn, it is a comment.
-  //
-  // The prompt has forbidden this in capitals for a while and the model still
-  // produced "Let's see how this bot actually impacts the end user" — which is
-  // almost word for word the example the prompt gives as forbidden. The
-  // candidate answered it with "I didn't talk about what, ma'am", because there
-  // was no question to answer. Prompts ask; this decides.
-  //
-  // The closing turn is exempt: a goodbye is not supposed to be a question.
-  if (!String(raw.reply).includes('?') && !model.shouldConclude()) {
-    console.warn(`  ${id} replied without asking anything — keywords for this one only`);
+  // good bids alongside it and dropped the WHOLE panel onto the canned fallback
+  // lines — the candidate then heard the same sentence twice running. Drop only
+  // the panelist that failed; runPanel fills that one from keywords.
+  if (!raw || raw.score === undefined || raw.score === null) {
+    console.warn(`  ${id} returned no usable bid — keywords for this one only`);
     return undefined;
   }
   return {
@@ -359,39 +373,97 @@ function coerce(id: PanelistId, raw: Partial<Draft> | undefined): Draft | undefi
     intent: (['probe', 'challenge', 'followup', 'handoff'] as const).includes(raw.intent as never)
       ? (raw.intent as Bid['intent'])
       : 'probe',
-    reply: String(raw.reply).slice(0, 400),
     // `Number(undefined)` is NaN, and `NaN ?? 0.5` is still NaN — ?? only
     // catches null and undefined. An unguarded NaN here poisons the average
     // and the difficulty silently never moves.
     quality: Number.isFinite(Number(raw.quality))
       ? Math.max(0, Math.min(1, Number(raw.quality)))
       : 0.5,
-    scenario: raw.scenario ? String(raw.scenario).slice(0, 300) : undefined,
   };
 }
 
-type PanelDrafts = Partial<Record<PanelistId, Partial<Draft>>>;
+/**
+ * The question the panelist on the floor asks, or null if it is not one.
+ *
+ * A reply that asks nothing is not a turn, it is a comment.
+ *
+ * The prompt has forbidden this in capitals for a while and the model still
+ * produced "Let's see how this bot actually impacts the end user" — which is
+ * almost word for word the example the prompt gives as forbidden. The candidate
+ * answered it with "I didn't talk about what, ma'am", because there was no
+ * question to answer. Prompts ask; this decides.
+ *
+ * The closing turn is exempt: a goodbye is not supposed to be a question.
+ */
+function usableReply(raw: unknown): string | null {
+  const reply = String(raw ?? '').trim();
+  if (!reply) return null;
+  if (!reply.includes('?') && !model.shouldConclude()) {
+    console.warn('  the floor was given a reply that asks nothing — keywords instead');
+    return null;
+  }
+  // A stray character after the question mark gets spoken. The live model
+  // produced "…what problem did it solve for them during your internship?v",
+  // and TTS reads that trailing v out loud to the candidate. Only a short,
+  // space-free tail is dropped, so a real second sentence survives untouched.
+  return reply.replace(/\?\s*[^\s?]{1,3}$/, '?').slice(0, 400);
+}
+
+/** The raw shape one call comes back in, before any of it is trusted. */
+interface PanelResponse {
+  bids?: Partial<Record<PanelistId, Partial<Bidding>>>;
+  floor?: string;
+  reply?: string;
+  scenario?: string;
+}
+
+/** The same thing after coercion: three bids, a floor, and its one question. */
+interface PanelDraft {
+  bids: Partial<Record<PanelistId, Bidding>>;
+  floor: PanelistId | null;
+  reply: string | null;
+  scenario?: string;
+}
 
 /**
- * All three panelists, one round trip. Throws only if the call itself fails or
- * the JSON is unparsable — a single missing panelist comes back undefined so
- * the other two survive.
+ * All three bids and the winner's question, in one round trip.
+ *
+ * It used to ask for three questions and throw two away. They are never spoken
+ * and never shown — the room is sent scores, reasons and intents, not drafts —
+ * so two thirds of the hardest tokens in the response existed to be discarded.
+ *
+ * Measured against the live model that was 90 of 246 output tokens, and output
+ * tokens are what the candidate sits through: a turn costs about a second of
+ * fixed latency (network and time-to-first-token, which no prompt change moves
+ * — 99 input tokens and 4,939 both land within 200ms of each other) plus about
+ * 3.5ms for every token generated. Asking for the one reply that gets used
+ * takes ~315ms out of every silence in the interview.
+ *
+ * Throws only if the call itself fails or the JSON is unparsable — a single
+ * missing panelist comes back undefined so the other two survive.
  */
-async function draftPanel(answer: string): Promise<Partial<Record<PanelistId, Draft>>> {
+async function draftPanel(answer: string, eligible: PanelistId[]): Promise<PanelDraft> {
   const prof = model.getModel().profile;
   const prompt = getPanelPrompt(prof?.role, prof?.level);
-  // 500, not 1200. Three drafts measure about 210 output tokens, and output
-  // tokens ARE the latency — the model emits them one at a time while the room
-  // sits in silence. The old ceiling let a chatty turn run six times longer
-  // than the answer needs, and truncation is not the risk it looks like: a cut
-  // JSON fails to parse and the keyword fallback speaks, which is what a
-  // 1200-token ramble was going to cause anyway, only later.
-  const raw = parseJson<PanelDrafts>(await ask(prompt, context(answer), 500));
+  // 500, not 1200. A budget six times the size of the answer is a licence to
+  // ramble at the candidate's expense, and truncation is not the risk it looks
+  // like: a cut JSON fails to parse and the keyword fallback speaks, which is
+  // what the ramble was going to cause anyway, only later.
+  const raw = parseJson<PanelResponse>(await ask(prompt, context(answer, eligible), 500));
   if (!raw) throw new Error('panel returned no parsable JSON');
+
+  const bids = raw.bids ?? {};
+  const floor = PANEL.some(p => p.id === raw.floor) ? (raw.floor as PanelistId) : null;
+
   return {
-    technical: coerce('technical', raw.technical),
-    product: coerce('product', raw.product),
-    hr: coerce('hr', raw.hr),
+    bids: {
+      technical: coerceBid('technical', bids.technical),
+      product: coerceBid('product', bids.product),
+      hr: coerceBid('hr', bids.hr),
+    },
+    floor,
+    reply: floor ? usableReply(raw.reply) : null,
+    scenario: raw.scenario ? String(raw.scenario).slice(0, 300) : undefined,
   };
 }
 
@@ -400,7 +472,7 @@ async function draftPanel(answer: string): Promise<Partial<Record<PanelistId, Dr
 // goes down mid-write?" straight after "hi, I'm Anish"). These follow an
 // introduction instead.
 const OPENING_REPLIES: Record<PanelistId, string> = {
-  technical: 'Pick the hardest system you named there and tell me what it actually had to survive.',
+  technical: 'Of everything you just named, which system was hardest — and what did it have to survive?',
   product: 'Of everything you just listed, which piece did a real user notice — and how did you know?',
   hr: 'Out of all that, which part was yours to own end to end?',
 };
@@ -445,19 +517,50 @@ export async function runPanel(answer: string): Promise<TurnDecision> {
   const mentionsCustomer = SIGNALS.product.test(answer);
   const gapIsNew = technical && !mentionsCustomer && !model.hasGap(CUSTOMER_GAP);
 
-  let panel: Partial<Record<PanelistId, Draft>> | null = null;
+  // Who may take the floor, worked out BEFORE the call rather than after it.
+  //
+  // Every input is the transcript, which the answer just added does not change,
+  // so this was always knowable early — it simply was not asked early. Knowing
+  // it first is what lets the model be told who may speak, and therefore what
+  // lets it write one question instead of three.
+  //
+  // The rule itself: the "just spoke" penalty below subtracts 0.3, which rotates
+  // the floor only when the bids are close. They are not always close — on a
+  // deeply technical answer the technical bid lands near 0.9 and the others near
+  // 0.3, so 0.6 still wins, and wins again, and again. One real interview went
+  // ten turns with Arjun asking eight of them and Ananya asking none, and Ananya
+  // still wrote a verdict scoring the candidate 1.0 for "impact and
+  // problem-solving entirely absent" on an axis she never put a question to.
+  //
+  // A penalty is a preference. This is the guarantee: two in a row, then yield
+  // to anyone else who can speak.
+  const hogging = new Set(
+    PANEL.map(p => p.id).filter(id => consecutiveTurns(id) >= floorLimit() || overHalf(id)),
+  );
+  const allowed = PANEL.map(p => p.id).filter(id => !hogging.has(id));
+  // Everyone hogging at once cannot happen with three panelists and a limit of
+  // two, but a floor with nobody on it would be a silent turn, so it is spelled
+  // out rather than assumed.
+  const eligible = allowed.length ? allowed : PANEL.map(p => p.id);
+
+  let panel: PanelDraft | null = null;
   if (LLM_ENABLED) {
     try {
-      panel = await draftPanel(answer);
+      panel = await draftPanel(answer, eligible);
     } catch (err) {
       // A slow or malformed call must not take the interview down with it.
       console.warn('panel fell back to keywords:', (err as Error).message);
     }
   }
 
-  const drafts = PANEL.map(
-    p => [p.id, panel?.[p.id] ?? draftWithKeywords(p.id, answer, gapIsNew)] as const,
-  );
+  // A keyword draft stands behind every panelist either way: it carries the bid
+  // for anyone the model skipped, and the question for a floor the model did not
+  // write a usable one for.
+  const drafts = PANEL.map(p => {
+    const keywords = draftWithKeywords(p.id, answer, gapIsNew);
+    const bid = panel?.bids[p.id];
+    return [p.id, bid ? { ...keywords, ...bid } : keywords] as const;
+  });
   const byId = new Map(drafts);
 
   const bids: Bid[] = drafts
@@ -471,41 +574,16 @@ export async function runPanel(answer: string): Promise<TurnDecision> {
     }))
     .sort((a, b) => b.score - a.score);
 
-  // The floor goes to a panelist who has something of their own to say, if any
-  // of them do.
-  //
-  // A panelist the model returned without a `reply` falls back to the keyword
-  // scorer — and that scorer has a 0.95 spike for an answer with no customer
-  // impact in it, which outbids a real LLM draft scoring 0.5. So on a turn where
-  // the model answered for one panelist and not the others, the one WITHOUT a
-  // question won the floor and read a line off the canned fallback list. That is
-  // what a candidate heard in production while two usable questions sat unused.
-  //
-  // Only applies when the model gave us something. With no LLM at all every
-  // draft is a keyword draft and the highest bid wins, exactly as before.
-  const drafted = new Set(PANEL.map(p => p.id).filter(id => panel?.[id]));
-
-  // And it does not go to whoever has been holding it.
-  //
-  // The "just spoke" penalty above subtracts 0.3, which rotates the floor only
-  // when the bids are close. They are not always close: on a deeply technical
-  // answer the technical bid lands near 0.9 and the others near 0.3, so 0.6
-  // still wins, and wins again, and again. One real interview went ten turns
-  // with Arjun asking eight of them and Ananya asking none — and Ananya still
-  // wrote a verdict, scoring the candidate 1.0 for "impact and problem-solving
-  // entirely absent" on an axis she never once put a question to.
-  //
-  // A penalty is a preference. This is the guarantee: two in a row, then yield
-  // to anyone else who can speak.
-  const hogging = new Set(
-    PANEL.map(p => p.id).filter(id => consecutiveTurns(id) >= floorLimit() || overHalf(id)),
-  );
-  const eligible = bids.filter(b => !hogging.has(b.panelist));
-  const pool = eligible.length ? eligible : bids;
-
-  const winner =
-    (drafted.size ? pool.find(b => drafted.has(b.panelist)) : undefined)?.panelist ??
-    pool[0].panelist;
+  // The model names the floor, because it is the one that read the answer — and
+  // it was told who is eligible, so its choice is normally already legal. An
+  // illegal one is overruled rather than trusted: rotation is the guarantee, and
+  // a model that ignores it would hand one panelist the whole interview again.
+  const named = panel?.floor && eligible.includes(panel.floor) ? panel.floor : null;
+  if (panel?.floor && !named) {
+    console.warn(`  the model put the floor on ${panel.floor}, who may not speak this turn`);
+  }
+  const pool = bids.filter(b => eligible.includes(b.panelist));
+  const winner = named ?? (pool[0] ?? bids[0]).panelist;
 
   if (technical) {
     model.nudgeSkill('technicalDepth', 0.8);
@@ -526,15 +604,20 @@ export async function runPanel(answer: string): Promise<TurnDecision> {
   console.log(`  quality ${quality.toFixed(2)} -> difficulty L${model.getModel().difficulty}`);
 
   // A role-play ends on a count, not on the panel's mood — otherwise it either
-  // never closes or gets abandoned halfway.
+  // never closes or gets abandoned halfway. It opens only when the panelist who
+  // proposed it is the one actually speaking.
   if (model.scenario()) {
     model.advanceScenario();
     if (model.scenario()!.turns >= SCENARIO_LENGTH) model.closeScenario();
-  } else if (byId.get(winner)!.scenario) {
-    model.openScenario(byId.get(winner)!.scenario!, winner);
+  } else if (panel?.scenario && winner === named) {
+    model.openScenario(panel.scenario, winner);
   }
 
-  const reply = byId.get(winner)!.reply;
+  // The model wrote one question, for the panelist it put on the floor. If that
+  // is who speaks, they say it. If rotation overruled the choice, or the reply
+  // asked nothing, whoever does speak falls back to their own keyword line —
+  // which is why every panelist still has one.
+  const reply = (winner === named && panel?.reply) || byId.get(winner)!.reply;
   model.addTurn({ speaker: winner, text: reply });
 
   return { bids, winner, reply, interruptable: true };

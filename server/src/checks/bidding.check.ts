@@ -4,7 +4,7 @@
 // bidding logic is wrong — not the test.
 
 import assert from 'node:assert';
-import { CUSTOMER_GAP, runPanel } from '../panel/bidding.js';
+import { CUSTOMER_GAP, context, runPanel } from '../panel/bidding.js';
 import * as model from '../panel/model.js';
 
 model.reset();
@@ -35,6 +35,33 @@ assert.ok(thirdProduct < 0.95, `no spike when customer impact is covered, got ${
 
 // 4. Every panelist gets a bid, every turn
 assert.equal(first.bids.length, 3, 'all three panelists must bid');
+
+// 5. The prompt asks for three bids and ONE question.
+//
+// This is the shape the panel's latency rests on. Three drafted questions used
+// to come back and two were thrown away — never spoken, never shown — which
+// measured 90 of 246 output tokens against the live model, and output tokens
+// are what the candidate waits through at about 3.5ms each. A revert here is
+// silent: the panel would still work, just slower every single turn, so the
+// shape is pinned rather than trusted.
+const prompt = context('We sharded the writes by tenant id.', ['product', 'hr']);
+
+assert.ok(
+  prompt.includes('Only these panelists may take the floor this turn: product, hr.'),
+  'the eligible set has to reach the prompt, or the model writes for a panelist who cannot speak',
+);
+assert.ok(
+  prompt.includes('"floor": "product" | "hr"'),
+  'and the floor it may choose is limited to that set',
+);
+assert.ok(
+  prompt.includes('you write only that one question'),
+  'one question, not three — two of three were always discarded',
+);
+assert.ok(
+  prompt.includes('{"bids": {"technical": {...}, "product": {...}, "hr": {...}}'),
+  'all three still bid, because the room draws a tile per panelist from them',
+);
 
 console.log('bids  ', byId);
 console.log('turn 1', first.winner, '|', first.bids[0].reason);
