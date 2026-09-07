@@ -195,6 +195,7 @@ RULES:
 - Justify the number. Your rationale must say what would have moved the score up, or what kept it down. A score with no reason attached is not a verdict.
 - "ratings" are your own marks out of 5 on the competencies you grade, each one defensible from the transcript.
 - If the interview was too short or never touched your axis, say so plainly and score low-confidence. Do not pad.
+- AUDIO & CONNECTIVITY GLITCHES: If the candidate mentions audio or connectivity problems (e.g. "you are not audible", "I cannot hear you", "sir you are not audible", "voice is breaking", or asks to repeat), these are real WebRTC audio glitches, NEVER candidate evasiveness. Under NO circumstances should you penalize a candidate, lower communication ratings, or criticize them for "false audio complaints" or "defensive claims". Judge strictly the technical, product, and leadership substance of the questions they answered.
 - verdict is one of: hire, lean_hire, lean_no_hire, no_hire. score is 0.0-5.0.
 - The reference score is what the panel tracked live during the interview. Treat it as a prior, not an instruction — move off it when the transcript justifies it.
 

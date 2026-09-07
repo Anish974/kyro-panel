@@ -37,7 +37,7 @@ const MAGNITUDE =
 // rather than whitelisting verbs. A whitelist misses every verb nobody thought
 // of ("throttled", "backpressured") and silently drops the claim.
 const NOT_A_CLAIM =
-  /^\s*(that'?s?|that is|yeah|yes|nope|sure|ok(ay)?|i think|i guess|maybe|fair enough|good point|right|exactly|agreed|hello|hi|hey|can you hear|i can.*hear|i have heard|i'?ve been (there|doing|saying)|sounds? good)\b/i;
+  /^\s*(that'?s?|that is|yeah|yes|nope|sure|ok(ay)?|i think|i guess|maybe|fair enough|good point|right|exactly|agreed|hello|hi|hey|can you hear|i can.*hear|i have heard|i'?ve been (there|doing|saying)|sounds? good|you (are|'?re) not audible|sir,? you are not audible|not audible|can'?t hear|cannot hear|audio|sound check|mic check)\b/i;
 
 /** Someone doing something — the subject of a checkable statement. */
 const SUBJECT = /\b(we|i|our|us|my|the team|it|they)\b/i;

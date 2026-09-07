@@ -65,13 +65,43 @@ export async function joinAsCandidate(
   activeClient = client;
 
   try {
+    // Handle browser autoplay restrictions so remote interviewer voice is never muted
+    AgoraRTC.onAudioAutoplayFailed = () => {
+      console.warn('[agora] Remote audio autoplay failed; will resume on next user interaction');
+      const resume = () => {
+        client.remoteUsers.forEach(u => {
+          if (u.hasAudio && u.audioTrack && !u.audioTrack.isPlaying) {
+            u.audioTrack.play();
+          }
+        });
+        window.removeEventListener('click', resume);
+        window.removeEventListener('keydown', resume);
+        window.removeEventListener('touchstart', resume);
+      };
+      window.addEventListener('click', resume, { once: true });
+      window.addEventListener('keydown', resume, { once: true });
+      window.addEventListener('touchstart', resume, { once: true });
+    };
+
     client.on('user-published', async (user, mediaType) => {
       console.log(`[agora] Remote user published: UID ${user.uid}, mediaType: ${mediaType}`);
       await client.subscribe(user, mediaType);
       if (mediaType === 'audio') {
         console.log(`[agora] Playing remote audio track from UID ${user.uid}`);
-        user.audioTrack?.play();
+        try {
+          user.audioTrack?.setVolume(100);
+          user.audioTrack?.play();
+        } catch (err) {
+          console.warn('[agora] Error playing remote audio track:', err);
+        }
         onRemoteAudio?.(user.uid);
+      }
+    });
+
+    client.on('user-unpublished', (user, mediaType) => {
+      console.log(`[agora] Remote user unpublished: UID ${user.uid}, mediaType: ${mediaType}`);
+      if (mediaType === 'audio') {
+        user.audioTrack?.stop();
       }
     });
 

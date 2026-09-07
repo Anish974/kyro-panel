@@ -24,6 +24,12 @@ for (const t of [
   'testing',
   'testing 1 2',
   'hello, is anyone there?',
+  'Sir, you are not audible, sir. Hello.',
+  "So you're not audible. Sir,",
+  'you are not audible',
+  'I cannot hear you',
+  'cannot hear anything',
+  'no sound',
 ]) {
   assert.equal(classify(t), 'audio-check', `"${t}" is logistics, not an answer`);
 }
@@ -106,6 +112,10 @@ const question = 'Walk me through the write contention you hit on that ledger.';
 assert.ok(
   replyTo('clarify', question).includes(question),
   'a repeat request gets the question back verbatim',
+);
+assert.ok(
+  replyTo('audio-check', question).includes(question),
+  'an audio check mid-interview repeats the last question',
 );
 assert.match(
   replyTo('clarify', null),

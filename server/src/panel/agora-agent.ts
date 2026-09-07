@@ -232,33 +232,22 @@ export function buildJoinBody(opts: {
         },
       },
 
-      // Covers the second or so the panel spends deciding who speaks, so the
-      // room does not sound like it hung.
+      // Filler words are disabled.
       //
-      // A filler plays in whatever TTS voice is currently set, and that is the
-      // PREVIOUS turn's winner — the next voice is named in a metadata chunk we
-      // cannot send until the panel has decided. So a filler is always liable to
-      // be in the wrong person's voice, and that is accepted: three people in a
-      // room, one of them murmurs.
+      // In Agora Conversational AI + MiniMax T2A V2, filler words start TTS
+      // synthesis in whatever voice was active in the PREVIOUS turn (or default).
+      // Because MiniMax does not dynamically switch voice mid-stream, when the
+      // new winner's metadata arrives, the entire question gets spoken in the
+      // filler's voice (causing male interviewers to speak in female voices and
+      // vice versa). Furthermore, sending voice_id metadata while a filler is
+      // actively streaming causes Agora/MiniMax WebSocket resets and dropped
+      // audio frames, making interviewers inaudible mid-interview.
       //
-      // What is NOT accepted is the QUESTION being in the wrong voice, and that
-      // is why the phrases below are murmurs only. "Let me think about that for
-      // a second" and "Give me a moment" used to be in this list: the speaker's
-      // own words, claiming the floor, in someone else's voice. A murmur can
-      // belong to anyone. A sentence about what the speaker is doing cannot.
+      // Disabling filler words ensures that the MiniMax TTS session is only
+      // established AFTER the panel has decided the winner, so the winner's
+      // exact voice ID is always used from the very first frame.
       filler_words: {
-        enable: true,
-        trigger: {
-          mode: 'fixed_time',
-          fixed_time_config: { response_wait_ms: 900 },
-        },
-        content: {
-          mode: 'static',
-          static_config: {
-            phrases: ['Mm-hmm.', 'Right.', 'Okay.', 'Interesting.'],
-            selection_rule: 'shuffle',
-          },
-        },
+        enable: false,
       },
     },
 

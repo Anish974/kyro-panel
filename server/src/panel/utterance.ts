@@ -26,7 +26,7 @@ const SHORT = 80;
 
 /** Pure logistics. The panel confirms and hands the floor straight back. */
 const AUDIO_CHECK =
-  /\b(am i audible|can you (hear|listen to) me|do you (hear|read) me|are you (there|able to hear)|is (this|my mic|the mic|it) (on|working|audible)|mic check|sound check|am i (coming through|audible now)|hello,? ?(is )?(anyone|anybody) there)\b/i;
+  /\b(am i audible|(are|is) (you|the panel|anyone) (audible|coming through)|(you are|you're|you guys are|sir you are) (not audible|inaudible|hard to hear|not clear)|not audible|can you (hear|listen to) me|do you (hear|read) me|are you (there|able to hear)|is (this|my mic|the mic|it) (on|working|audible)|mic check|sound check|am i (coming through|audible now)|hello,? ?(is )?(anyone|anybody) there|(can'?t|cannot|unable to) hear (you|anything|sound)|no sound|voice is (breaking|cutting|gone|not audible)|audio is (gone|broken|cutting|not working))\b/i;
 
 /**
  * They are asking for a moment to think.
@@ -130,7 +130,9 @@ export function classify(text: string): UtteranceKind {
  */
 export function replyTo(kind: Exclude<UtteranceKind, 'answer'>, lastQuestion: string | null): string {
   if (kind === 'audio-check') {
-    return 'Yes, we can hear you clearly. Whenever you are ready, go ahead and introduce yourself.';
+    return lastQuestion
+      ? `We can hear you clearly. Let me repeat: ${lastQuestion}`
+      : 'Yes, we can hear you clearly. Whenever you are ready, go ahead and introduce yourself.';
   }
 
   // Short on purpose. They asked for silence to think in, so the worst thing

@@ -72,18 +72,22 @@ assert.ok(
   'the experience level is for the panel prompt, not for reading aloud',
 );
 
-// 7. A filler may be in the wrong voice. It may not claim the floor.
+// 7. Filler words must be disabled.
 //
-// Fillers play in whatever voice is currently set — the previous turn's winner,
-// because the next voice is only named once the panel has decided. A murmur in
-// someone else's voice is fine: three people are in the room. A sentence about
-// what the speaker is doing is not, and two of these used to be exactly that —
-// "Let me think about that for a second" and "Give me a moment" — which is how
-// a candidate heard Arjun open in a woman's voice.
+// In Agora Conversational AI + MiniMax, filler words start TTS in the previous
+// speaker's voice. Because MiniMax does not dynamically hot-swap voices
+// mid-stream, the entire question gets spoken in the filler's voice (male
+// speaking female and vice versa), and dynamic metadata resets drop audio.
 const filler = props.filler_words as unknown as {
   enable?: boolean;
   content?: { static_config?: { phrases?: string[] } };
 } | undefined;
+
+assert.equal(
+  filler?.enable,
+  false,
+  'filler words must be disabled to prevent cross-gender voice swaps and audio dropouts',
+);
 
 for (const phrase of filler?.content?.static_config?.phrases ?? []) {
   assert.ok(
@@ -98,5 +102,6 @@ for (const phrase of filler?.content?.static_config?.phrases ?? []) {
 
 console.log(`voice  agent starts as ${panelistById(GREETER).name} (${startingVoice})`);
 console.log('       greeting introduces all three, and every voice id is distinct');
-console.log('       fillers are murmurs, so a wrong voice never claims the floor');
+console.log('       filler words are disabled so questions are always in the speaker’s own voice');
 console.log('\nself-check passed');
+

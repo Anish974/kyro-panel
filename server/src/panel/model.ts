@@ -126,8 +126,7 @@ export function setProfile(raw: unknown): CandidateProfile | null {
   // fix (resolve all three server-side from the interview row), and it is the
   // same one-line change for all three fields. Closed set until then, so the
   // worst case is one of ours rather than an arbitrary number.
-  const previousDuration = model.durationMin;
-  const duration = asDuration(input.durationMin) ?? previousDuration ?? DEFAULT_DURATION;
+  const duration = asDuration(input.durationMin) ?? DEFAULT_DURATION;
 
   // Reset interview session and clock to 0s for the candidate
   startedAt = Date.now();
