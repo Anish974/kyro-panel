@@ -216,6 +216,12 @@ export function context(answer: string): string {
             'Rohan or the highest bidder should politely wrap up the interview, thank the candidate by name for their time, and state that the panel is concluding to finalize their scorecard.',
             'Do NOT ask another open-ended technical challenge. Keep it a warm, professional closing sentence.',
           ].join('\n')
+        : m.turns >= budget
+          ? [
+              `IN-DEPTH PROBING / TIME REMAINING: The initial turn target (${budget} questions) has been completed, but there is still time remaining in this ${m.durationMin}-minute interview (${Math.max(0, Math.floor((m.durationMin * 60 - m.elapsed) / 60))}m ${Math.max(0, (m.durationMin * 60 - m.elapsed) % 60)}s left).`,
+              'Ask a more in-depth technical follow-up, drill deeper into a previous response, explore edge cases, or test an unprobed area of their experience.',
+              'Do NOT wrap up yet — use the remaining time to evaluate them thoroughly.',
+            ].join('\n')
         : m.turns >= lateStageTurn()
           ? [
               `LATE STAGE: Approaching the ${m.durationMin} minute mark (Question ${lateStageTurn()}-${budget - 1} of ${budget}).`,

@@ -801,7 +801,9 @@ export default function Room({ candidateName, role, level, durationMin, onEnd }:
                   on turn 3 of 10 in a five-minute screen. */}
               <span className="text-[10px] text-[#4B5565] dark:text-[#94A3B8] font-semibold leading-none mt-0.5">
                 {model.turns > 0
-                  ? `Turn ${model.turns}/${model.durationMin}`
+                  ? model.turns > model.durationMin
+                    ? `Turn ${model.turns} (in-depth)`
+                    : `Turn ${model.turns}/${model.durationMin}`
                   : `${model.durationMin}m max`}
               </span>
             </div>

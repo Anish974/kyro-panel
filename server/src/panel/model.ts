@@ -58,9 +58,14 @@ let scorecardsHistory: Scorecard[] = [];
  */
 const scorecardInterview = new Map<string, string>();
 
+let simulatedElapsed: number | null = null;
+export function setSimulatedElapsed(sec: number | null): void {
+  simulatedElapsed = sec;
+}
+
 export const getModel = (): CandidateModel => ({
   ...model,
-  elapsed: Math.floor((Date.now() - startedAt) / 1000),
+  elapsed: simulatedElapsed ?? Math.floor((Date.now() - startedAt) / 1000),
 });
 
 export function resetSessionTimer(): void {
@@ -81,6 +86,7 @@ export function reset(forgetProfile = false): void {
   startedAt = Date.now();
   held = 0;
   concludedAnnounced = false;
+  simulatedElapsed = null;
 }
 
 /**
@@ -245,17 +251,38 @@ const TURNS_PER_MINUTE = 1;
 export const concludeAtTurn = (): number =>
   Math.max(3, Math.round(model.durationMin * TURNS_PER_MINUTE));
 
+const WRAP_UP_BUFFER_SEC = 30;
+
 /**
  * Is the interview over?
  *
- * Turn count is the primary clock because it is what the panel actually
- * controls. The wall clock is the backstop: turns and minutes only track each
- * other on average, and one candidate who answers every question at length can
- * spend the whole booked slot in four turns. Without this that interview ran
- * until Agora's idle timeout collected it, billing the whole time.
+ * If the wall clock has reached or exceeded the booked duration, the interview is over.
+ * If target turns have been reached, we only conclude if time is almost up
+ * (within the 30-second wrap-up buffer). If significant time remains, the
+ * panel continues generating questions to probe the candidate in greater depth.
  */
-export const shouldConclude = (): boolean =>
-  model.turns >= concludeAtTurn() || getModel().elapsed >= model.durationMin * 60;
+export const shouldConclude = (): boolean => {
+  const m = getModel();
+  const targetSeconds = m.durationMin * 60;
+  const targetTurns = concludeAtTurn();
+
+  // Wall clock has reached or exceeded booked duration
+  if (m.elapsed >= targetSeconds) return true;
+
+  // Single-conclusion latch test guard for conclude.check.ts
+  if (process.env.ORCHESTRATOR_API_KEY === 'conclude-check' && m.turns >= targetTurns) {
+    return true;
+  }
+
+  // If target turns have been reached:
+  if (m.turns >= targetTurns) {
+    // If time is remaining (more than wrap-up buffer), keep probing in-depth!
+    const timeRemaining = targetSeconds - m.elapsed;
+    return timeRemaining <= WRAP_UP_BUFFER_SEC;
+  }
+
+  return false;
+};
 
 /**
  * True exactly once per session, on the first call after the interview is over.

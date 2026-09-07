@@ -43,14 +43,15 @@ assert.equal(model.durationMin(), DEFAULT_DURATION, 'an unrecognised length fall
 
 // --- the wall clock is the backstop ----------------------------------------
 
-// Turns are the primary clock, but they only track minutes on average. A
-// candidate who answers at length can spend the whole booked slot in three
-// turns, and that interview used to run until Agora's idle timeout collected
-// it — billing the entire time.
+// Turns establish the baseline budget, but if time remains, the panel keeps
+// probing in depth. The interview concludes when the booked duration elapses.
 book(5);
 assert.ok(!model.shouldConclude(), 'a fresh interview is not over');
 for (let i = 0; i < 5; i++) model.addTurn({ speaker: 'candidate', text: `answer ${i}` });
-assert.ok(model.shouldConclude(), 'five turns of a five-minute interview is the whole interview');
+assert.ok(!model.shouldConclude(), 'five turns with time remaining continues for in-depth probing');
+model.setSimulatedElapsed(300);
+assert.ok(model.shouldConclude(), 'concludes once booked duration has elapsed');
+model.setSimulatedElapsed(null);
 
 // --- the closing is announced exactly once ---------------------------------
 
