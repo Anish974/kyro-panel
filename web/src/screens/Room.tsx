@@ -16,6 +16,7 @@ interface Props {
   role: string;
   level?: string;
   durationMin?: Duration;
+  code?: string;
   onEnd: (actualDurationSec?: number) => void;
 }
 
@@ -58,13 +59,19 @@ const AGENT_STATE_LABEL: Record<AgentState, string | null> = {
   silent: null,
 };
 
+/**
+ * How long past the booked duration the room waits before ending the call
+ * itself. Long enough that the panel's own closing always wins the race.
+ */
+const BACKSTOP_GRACE_SEC = 60;
+
 function formatTimer(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
-export default function Room({ candidateName, role, level, durationMin, onEnd }: Props) {
+export default function Room({ candidateName, role, level, durationMin, code, onEnd }: Props) {
   const { model, bids, speaking: serverSpeaking, caption, heard, connected, concluded } = useSession();
   const [session, setSession] = useState<JoinResult | null>(null);
   const [elapsedSec, setElapsedSec] = useState<number>(0);
@@ -119,6 +126,9 @@ export default function Room({ candidateName, role, level, durationMin, onEnd }:
   const [livePanel, setLivePanel] = useState<string | null>(null);
   const [liveCandidate, setLiveCandidate] = useState<string | null>(null);
   const [agentState, setAgentState] = useState<AgentState>('idle');
+
+  // Guards the three routes out of the room against firing twice.
+  const leavingRef = useRef(false);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const prejoinVideoRef = useRef<HTMLVideoElement | null>(null);
@@ -343,6 +353,7 @@ export default function Room({ candidateName, role, level, durationMin, onEnd }:
           role,
           level,
           ...(durationMin ? { durationMin } : {}),
+          ...(code ? { code } : {}),
         }),
       }).catch(err => console.warn('Candidate sync warning:', err));
 
@@ -365,7 +376,12 @@ export default function Room({ candidateName, role, level, durationMin, onEnd }:
       setSession(result);
 
       // Start the panel agent
-      const res = await fetch('/agent/start', { method: 'POST' });
+      // The code is what authorises this: starting an agent bills by the minute.
+      const res = await fetch('/agent/start', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ code }),
+      });
       if (!res.ok) {
         const body = (await res.json().catch(() => null)) as { error?: string } | null;
         setPanelError(body?.error ?? `The panel could not start (${res.status}).`);
@@ -377,15 +393,50 @@ export default function Room({ candidateName, role, level, durationMin, onEnd }:
     }
   }
 
+  // Three different things end an interview — the closing line finishing, the
+  // backstop below, and the candidate pressing the button — and two of them can
+  // land together. Twice through here is two /scorecard requests, which means a
+  // second LLM write-up billed for a card nobody sees.
   async function handleLeave() {
+    if (leavingRef.current) return;
+    leavingRef.current = true;
     const actualDuration = elapsedSec;
     try {
-      await fetch('/agent/stop', { method: 'POST' });
+      await fetch(`/agent/stop${code ? `?code=${encodeURIComponent(code)}` : ''}`, { method: 'POST' });
     } catch {
       // Best effort
     }
     onEnd(actualDuration);
   }
+
+  /**
+   * Ends the interview when the booked time is up and the server has not said
+   * so itself.
+   *
+   * The server only asks whether the interview is over while it is handling a
+   * candidate turn, so a candidate who simply stops talking never triggers the
+   * close: no `concluded` event, no scorecard, and Agora billing until its own
+   * idle timeout collects the agent. The recruiter booked an assessment and
+   * would get nothing back.
+   *
+   * Generous on purpose. The normal path — panel closes, room waits out the
+   * goodbye — has to win whenever it can, so this only fires well after the
+   * booked duration has already passed.
+   */
+  useEffect(() => {
+    if (!session || !durationMin) return;
+    const id = setTimeout(
+      () => {
+        console.warn('[room] booked time elapsed with no closing from the panel — ending the call');
+        void handleLeave();
+      },
+      (durationMin * 60 + BACKSTOP_GRACE_SEC) * 1000,
+    );
+    return () => clearTimeout(id);
+    // handleLeave is redefined every render; depending on it would restart the
+    // timer on every caption that arrives.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session, durationMin]);
 
   // The panel has said goodbye. Let the closing line finish playing, then end
   // the call the same way the button does — the candidate should not have to
@@ -407,12 +458,13 @@ export default function Room({ candidateName, role, level, durationMin, onEnd }:
   // so a few refreshes during testing quietly cost more than a real interview.
   //
   // sendBeacon is the only request that survives unload; a normal fetch is
-  // cancelled the moment the page goes away. /agent/stop takes no body and no
-  // auth header, which is exactly what beacon can send.
+  // cancelled the moment the page goes away. It cannot set headers and its body
+  // would not be JSON, so the code rides in the query string — which is also
+  // why /agent/stop reads it from there.
   useEffect(() => {
     const stopAgent = () => {
       if (!session) return;
-      navigator.sendBeacon('/agent/stop');
+      navigator.sendBeacon(`/agent/stop${code ? `?code=${encodeURIComponent(code)}` : ''}`);
     };
     // pagehide fires on mobile Safari's bfcache path where unload never does.
     window.addEventListener('pagehide', stopAgent);

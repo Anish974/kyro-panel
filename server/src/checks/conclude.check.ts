@@ -71,12 +71,37 @@ const say = async (n: number) => {
   await res.text();
 };
 
-// Well past the closing turn — this is the window the bug lived in.
-const TURNS = CONCLUDE_AT_TURN + 4;
-for (let n = 1; n <= TURNS; n++) await say(n);
+// Past the turn budget, with the whole booked slot still ahead. The panel is
+// meant to keep probing here rather than close — a candidate who answers ten
+// questions in four minutes of a ten-minute booking has earned deeper
+// questions, not an early goodbye.
+const OVERRUN = CONCLUDE_AT_TURN + 4;
+for (let n = 1; n <= OVERRUN; n++) await say(n);
 await new Promise(r => setTimeout(r, 50));
 
-assert.equal(model.getModel().turns, TURNS, 'every answer must have counted as a turn');
+assert.equal(model.getModel().turns, OVERRUN, 'every answer must have counted as a turn');
+assert.equal(
+  events.filter(e => e.includes('"type":"concluded"')).length,
+  0,
+  'the turn budget alone must not end the interview while the booked time remains',
+);
+
+// Now the booked time runs out. The next answer is the one the panel closes on.
+model.setSimulatedElapsed(model.durationMin() * 60);
+await say(OVERRUN + 1);
+await new Promise(r => setTimeout(r, 50));
+
+assert.equal(
+  events.filter(e => e.includes('"type":"concluded"')).length,
+  1,
+  'the panel closes when the booked duration is spent',
+);
+
+// And it stays closed. The room restarts its leave timer on every one of these,
+// so a second announcement means the call never ends — that is the bug this
+// file exists for, and the clock stays expired from here on.
+for (let n = 0; n < 4; n++) await say(OVERRUN + 2 + n);
+await new Promise(r => setTimeout(r, 50));
 
 const concluded = events.filter(e => e.includes('"type":"concluded"'));
 assert.equal(
@@ -84,15 +109,12 @@ assert.equal(
   1,
   `the panel concludes once, not ${concluded.length} times — the room cancels its own leave timer on each repeat`,
 );
-
-// And it happens on the closing turn, not at some arbitrary point after it.
-const before = events.slice(0, events.indexOf(concluded[0]));
-const turnsBefore = before.filter(e => e.includes('"type":"bids"')).length;
-assert.equal(turnsBefore, CONCLUDE_AT_TURN, `it must land on turn ${CONCLUDE_AT_TURN}, not later`);
+model.setSimulatedElapsed(null);
 
 control.abort();
 server.close();
 
-console.log(`conclude  the panel says goodbye once, on turn ${CONCLUDE_AT_TURN}`);
-console.log(`          still once after ${TURNS} turns, so the room's leave timer survives`);
+console.log('conclude  the turn budget alone does not close the interview');
+console.log('          the booked duration does, exactly once');
+console.log(`          still once after ${OVERRUN + 5} turns, so the room's leave timer survives`);
 console.log('\nself-check passed');

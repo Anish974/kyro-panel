@@ -3,11 +3,14 @@ import type { SessionEvent } from '@kyro/shared';
 import {
   getModel,
   getScorecardsHistory,
+  interview as sessionInterview,
+  ownsSession,
   profile,
   reset,
   saveScorecardToHistory,
   setProfile,
 } from '../panel/model.js';
+import { find as findInterview } from '../panel/interviews.js';
 import { buildScorecard } from '../panel/scorecard.js';
 import { recruiterId, requireRecruiter } from './auth.js';
 
@@ -68,13 +71,38 @@ router.get('/state', (_req, res) => res.json(getModel()));
 //
 // ponytail: last write wins, one candidate at a time. Key it by session when
 // the server stops holding a single interview.
-router.post('/candidate', (req, res) => {
-  const saved = setProfile(req.body);
+router.post('/candidate', async (req, res) => {
+  // The code is the one thing here that is checked rather than trusted. What it
+  // resolves to — the role, the bar, the booked length, whether this counts as
+  // hiring data — replaces whatever the body claimed about them.
+  //
+  // Required, because this route RESETS the session. Open, it was a way to
+  // destroy an interview in progress from nothing but the hostname: one POST
+  // wiped the transcript, the claims and the turn count, detached the session
+  // from the interview it belonged to, and left the scorecard to be written
+  // from an empty model and filed against nobody. The panel kept listening and
+  // remembered none of it.
+  //
+  // This is not a sign-in. A mock candidate never logs in either — the server
+  // hands their browser a code the moment they press start, and that is the
+  // code they present here.
+  const code = typeof req.body?.code === 'string' ? req.body.code.trim() : '';
+  if (!code) {
+    return res.status(400).json({ error: 'an interview code is required' });
+  }
+  const interview = await findInterview(code);
+  if (!interview) {
+    return res.status(404).json({ error: 'no interview for that code' });
+  }
+
+  const saved = setProfile(req.body, interview);
   if (!saved) {
     return res.status(400).json({ error: 'name and role are required' });
   }
   console.log(
     `[candidate] ${saved.name} — ${saved.role} (${saved.level || 'Intermediate'})` +
+    ` | ${getModel().durationMin}min` +
+    (interview ? ` | ${interview.mock ? 'mock' : 'assessment'} ${interview.code}` : ' | no invite code') +
     (saved.resumeText ? ` | resume ${saved.resumeText.length} chars` : ' | no resume'),
   );
   broadcast({ type: 'state', model: getModel() });
@@ -93,18 +121,36 @@ router.post('/reset', (req, res) => {
 // verdicts from the model as it stands and push them to anyone watching.
 // The stored profile wins over the query string — it is what the panel heard.
 router.get('/scorecard', async (req, res) => {
+  const current = sessionInterview();
+
+  // Reading a verdict costs an LLM call and returns someone's assessment, so
+  // the caller has to be the room that ran it. Open, this answered anyone who
+  // had the hostname.
+  if (current && !ownsSession(req.query.code)) {
+    return res.status(403).json({ error: 'that code does not match the interview in progress' });
+  }
+
   const saved = profile();
   const customDuration = req.query.duration !== undefined ? Number(req.query.duration) : undefined;
+
+  // `mock` is read off the interview, never off the request.
+  //
+  // It used to be `req.query.mock === '1'`, and the portal hides mocks — so a
+  // candidate who did not like how their assessment went could append &mock=1
+  // on the way out and the recruiter would never see the scorecard at all. The
+  // company decides what is practice, at the point they schedule it.
+  const mock = current ? current.mock : req.query.mock === '1';
+
   const scorecard = await buildScorecard(
     saved?.name ?? String(req.query.name ?? 'Candidate'),
     saved?.role ?? String(req.query.role || 'Senior Backend Engineer'),
     saved?.level ?? (req.query.level ? String(req.query.level) : undefined),
     customDuration,
-    req.query.mock === '1',
+    mock,
   );
-  // The room passes the invite code it joined with, which is what ties this
-  // scorecard to the recruiter who scheduled it. A mock sends none.
-  await saveScorecardToHistory(scorecard, req.query.code ? String(req.query.code) : null);
+  // Likewise the link to the recruiter: taken from the interview this session
+  // was opened against, not from a query string anyone can write.
+  await saveScorecardToHistory(scorecard, current ? current.code : null);
   broadcast({ type: 'scorecard', scorecard });
   res.json(scorecard);
 });

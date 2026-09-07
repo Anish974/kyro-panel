@@ -13,6 +13,15 @@ export interface Candidate {
    * what paces the panel, so the server has to be told before the agent joins.
    */
   durationMin: Duration;
+  /**
+   * The invite code this interview was opened with.
+   *
+   * The candidate's only credential. The server resolves the role, the bar, the
+   * booked length and whether the result is hiring data from this rather than
+   * from anything else posted alongside it, and /agent/start and /scorecard
+   * both refuse a caller who cannot present it.
+   */
+  code: string;
   /** Plain text pulled out of the uploaded resume, if one was attached. */
   resumeText?: string;
 }
@@ -96,6 +105,7 @@ export default function Login({ invite, onLogin, onBack }: Props) {
       role: invite.role,
       level: invite.level,
       durationMin: invite.durationMin,
+      code: invite.code,
       ...(resumeText ? { resumeText } : {}),
     });
   };

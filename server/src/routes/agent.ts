@@ -1,6 +1,6 @@
 import { Router, type Request } from 'express';
 import { AgentConfigError, GREETER, greeting, running, startAgent, stopAgent } from '../panel/agora-agent.js';
-import { profile, resetSessionTimer } from '../panel/model.js';
+import { interview as sessionInterview, ownsSession, profile, resetSessionTimer } from '../panel/model.js';
 import { broadcast } from './events.js';
 
 // Lets the room start and stop the AI panel itself, so an interview needs a
@@ -9,15 +9,17 @@ import { broadcast } from './events.js';
 //
 // SECURITY. This endpoint spends money — each call creates an Agora agent that
 // bills by the minute — and the browser has no shared secret to present, so it
-// cannot sit behind requireSecret. Two things bound it instead:
+// cannot sit behind requireSecret. Three things bound it:
 //
-//   1. A candidate must have signed in. No profile, no agent.
-//   2. One agent at a time, enforced in agora-agent.ts. A caller can start one,
+//   1. The caller must present the invite code the session was opened against.
+//      That code is the candidate's only credential, and it is checked against
+//      what the server itself resolved, not against anything else in the body.
+//   2. A candidate must have signed in. No profile, no agent.
+//   3. One agent at a time, enforced in agora-agent.ts. A caller can start one,
 //      not a thousand, and the second call gets a 409 until the first stops.
 //
-// That is a bound on the damage, not authentication. A public deployment that
-// matters should put a real gate in front of this — a short-lived join code
-// issued at sign-in is the smallest thing that would do it.
+// Before the first of those, anyone holding the hostname could spend Agora
+// minutes on demand.
 
 const router = Router();
 
@@ -57,6 +59,11 @@ router.post('/agent/start', async (req, res) => {
     });
   }
 
+  // Only the room that opened this interview may put a billable agent in it.
+  if (sessionInterview() && !ownsSession(presentedCode(req))) {
+    return res.status(403).json({ error: 'that code does not match the interview in progress' });
+  }
+
   const existing = running();
   if (existing) {
     return res.status(409).json({ error: 'An agent is already in the channel.', ...existing });
@@ -86,7 +93,21 @@ router.post('/agent/start', async (req, res) => {
   }
 });
 
-router.post('/agent/stop', async (_req, res) => {
+// Read from the query string as well as the body, because the one call that
+// matters most cannot send a body at all: the browser stops the agent on
+// unload through sendBeacon, and that is what keeps a closed tab from leaving
+// a billable agent running until Agora's idle timeout collects it.
+const presentedCode = (req: Request): unknown =>
+  req.query.code ?? (req.body as { code?: unknown } | undefined)?.code;
+
+router.post('/agent/stop', async (req, res) => {
+  // Stopping is the safe direction — an unauthorised stop costs nothing and
+  // saves money — but it still ends somebody's interview, so it takes the same
+  // code as starting one.
+  if (sessionInterview() && !ownsSession(presentedCode(req))) {
+    return res.status(403).json({ error: 'that code does not match the interview in progress' });
+  }
+
   try {
     const result = await stopAgent();
     console.log(`[agent] ${result.detail}`);

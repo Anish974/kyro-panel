@@ -10,6 +10,7 @@ import {
   type PanelistId,
   type Scenario,
   type Duration,
+  type Interview,
   type Scorecard,
   type TranscriptTurn,
 } from '@kyro/shared';
@@ -42,6 +43,18 @@ let startedAt = Date.now();
  */
 let held = 0;
 let concludedAnnounced = false;
+
+/**
+ * The interview this session belongs to, resolved server-side from the code the
+ * candidate joined with.
+ *
+ * This is the session's identity, and everything that used to be taken on trust
+ * from the browser now comes off it: the role, the bar, the booked length, and
+ * whether the result is hiring data. It is also the credential — /agent/start
+ * and /scorecard both check the caller knows this code before they will spend
+ * money or write a verdict.
+ */
+let sessionInterview: Interview | null = null;
 
 // Completed scorecards. Postgres when DATABASE_URL is set — this is the half of
 // the app that has to outlive the process, because a recruiter reads it days
@@ -94,7 +107,7 @@ export function reset(forgetProfile = false): void {
  * Coerce to string, strip control characters (they break the SSE framing and
  * the prompt alike) and cap every field before it reaches an LLM prompt.
  */
-export function setProfile(raw: unknown): CandidateProfile | null {
+export function setProfile(raw: unknown, interviewRow: Interview | null = null): CandidateProfile | null {
   if (!raw || typeof raw !== 'object') return null;
   const input = raw as Record<string, unknown>;
 
@@ -111,22 +124,30 @@ export function setProfile(raw: unknown): CandidateProfile | null {
     clean(value, max).replace(/\s+/g, ' ').trim();
 
   const name = line(input.name, PROFILE_LIMITS.name);
-  const role = line(input.role, PROFILE_LIMITS.role);
+
+  // The bar comes off the interview row when there is one, and only from the
+  // body when there is not.
+  //
+  // These three used to be read straight out of the POST, which handed the
+  // person being graded the dial that sets how hard the grading is: level
+  // drives difficulty and every prompt, and the booked length drives the turn
+  // budget, every confidence ceiling, and how long Agora is allowed to bill.
+  // The interview row is what the company actually scheduled, so it wins.
+  const role = interviewRow
+    ? line(interviewRow.role, PROFILE_LIMITS.role)
+    : line(input.role, PROFILE_LIMITS.role);
   if (!name || !role) return null;
 
-  const level = line(input.level, PROFILE_LIMITS.level) || 'Intermediate (2-6 years)';
+  const level =
+    (interviewRow
+      ? line(interviewRow.level, PROFILE_LIMITS.level)
+      : line(input.level, PROFILE_LIMITS.level)) || 'Intermediate (2-6 years)';
   const email = line(input.email, PROFILE_LIMITS.email);
   const resumeText = clean(input.resumeText, PROFILE_LIMITS.resumeText).replace(/\n{3,}/g, '\n\n');
 
-  // How long this interview was booked for. Arrives from the invite the
-  // candidate opened, through the login screen, exactly like role and level.
-  //
-  // ponytail: browser-supplied, like role and level already are — a tampered
-  // post could book itself a shorter or longer panel. The invite code is the
-  // fix (resolve all three server-side from the interview row), and it is the
-  // same one-line change for all three fields. Closed set until then, so the
-  // worst case is one of ours rather than an arbitrary number.
-  const duration = asDuration(input.durationMin) ?? DEFAULT_DURATION;
+  const duration = interviewRow
+    ? interviewRow.durationMin
+    : asDuration(input.durationMin) ?? DEFAULT_DURATION;
 
   // Reset interview session and clock to 0s for the candidate
   startedAt = Date.now();
@@ -134,6 +155,7 @@ export function setProfile(raw: unknown): CandidateProfile | null {
   concludedAnnounced = false;
   model = emptyModel(`s-${Date.now()}`, null);
   model.durationMin = duration;
+  sessionInterview = interviewRow;
 
   model.profile = {
     name,
@@ -158,6 +180,22 @@ export function setProfile(raw: unknown): CandidateProfile | null {
 }
 
 export const profile = (): CandidateProfile | null => model.profile;
+
+/** The interview this session was opened against, or null if it had no code. */
+export const interview = (): Interview | null => sessionInterview;
+
+/**
+ * Does the caller know which interview is in the room?
+ *
+ * The code is the only credential a candidate's browser holds, and it is what
+ * separates "the person in this interview" from "anyone who found the
+ * hostname". A session with no interview behind it is unguarded, which is what
+ * every session used to be.
+ */
+export function ownsSession(code: unknown): boolean {
+  if (!sessionInterview) return false;
+  return typeof code === 'string' && code.trim().toUpperCase() === sessionInterview.code;
+}
 
 export function addTurn(turn: Omit<TranscriptTurn, 't'>): void {
   // ASR sends a long answer as several growing turns (see continuation.ts).
@@ -268,10 +306,6 @@ export const shouldConclude = (): boolean => {
   // Wall clock has reached or exceeded booked duration
   if (m.elapsed >= targetSeconds) return true;
 
-  // Single-conclusion latch test guard for conclude.check.ts
-  if (process.env.ORCHESTRATOR_API_KEY === 'conclude-check' && m.turns >= targetTurns) {
-    return true;
-  }
 
   // If target turns have been reached:
   if (m.turns >= targetTurns) {

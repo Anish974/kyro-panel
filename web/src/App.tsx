@@ -93,8 +93,11 @@ export default function App() {
       role: candidate.role,
       level: candidate.level || 'Intermediate (2-6 years)',
       duration: String(durationParam),
-      ...(invite?.mock ? { mock: '1' } : {}),
-      ...(invite && !invite.mock ? { code: invite.code } : {}),
+      // Always the code, never a `mock` flag. The server reads whether this is
+      // practice off the interview the session was opened against — sent from
+      // here, a candidate could mark a real assessment as a mock on the way out
+      // and it would never reach the recruiter's portal.
+      ...(candidate.code ? { code: candidate.code } : {}),
     }).toString();
 
     try {
@@ -275,6 +278,7 @@ export default function App() {
           role={candidate.role}
           level={candidate.level}
           durationMin={candidate.durationMin}
+          code={candidate.code}
           onEnd={endInterview}
         />
       );

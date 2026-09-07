@@ -211,7 +211,8 @@ That is the point — it is the only thing keeping two developers in sync.
 | Interview length — 5, 10 or 15 minutes, paced and scored to the booking | done |
 | Interviews and scorecards in Postgres, RLS closed to the anon key | done |
 | Recruiter sign-in; every company sees only its own candidates | done |
-| Invite code enforced on `/agent/start` and `/scorecard` | not yet |
+| Invite code enforced on `/agent/start` and `/scorecard` | done |
+| Role, bar and length read from the interview row, never from the browser | done |
 | Shared secret on every write | done |
 | `/token` bound to the configured channel and non-reserved uids | done |
 | Join + AI disclosure screen, device check | not yet |
