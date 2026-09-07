@@ -20,10 +20,22 @@
 const normalise = (text: string): string => text.toLowerCase().replace(/\s+/g, ' ').trim();
 
 /**
- * Below this, a shared opening is a coincidence rather than a continuation:
- * "Yes, we did" and "Yes, we used Redis" are two answers, not one growing one.
+ * Below this, a shared opening is too short to mean anything.
+ *
+ * Twenty was too high. A candidate answered "So then paid users" — eighteen
+ * characters — was cut off there, finished the sentence four seconds later as
+ * "So then paid users during the onboarding process only, they were given a
+ * tag…", and because eighteen is under twenty that finished sentence read as a
+ * brand new answer. She was interrupted mid-thought and then charged a turn for
+ * finishing it, and the panel asked about the half it had already heard.
+ *
+ * The pair this number was set for does not need it: "Yes, we did" is not a
+ * PREFIX of "Yes, we used Redis", so continues() rejects that on its own. The
+ * floor only has to rule out two answers that genuinely open with the same
+ * words, and fifteen characters of exact agreement is already more coincidence
+ * than English usually produces.
  */
-const MIN_PREFIX = 20;
+const MIN_PREFIX = 15;
 
 /**
  * True when `later` is `earlier` plus more words — the same utterance, caught

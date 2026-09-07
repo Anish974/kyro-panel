@@ -45,6 +45,21 @@ let held = 0;
 let concludedAnnounced = false;
 
 /**
+ * Turns in a row the candidate has said nothing at all.
+ *
+ * Agora posts a turn on silence as well as on speech, and every one of those
+ * got the same sentence back — "Sorry, I didn't catch that, could you say it
+ * again?" — for as long as the silence lasted. A candidate who has run out of
+ * things to say on a question is not helped by being asked to repeat something
+ * they never said, and one who needs a moment to think is being interrupted to
+ * be told they were not heard.
+ *
+ * Counting them is what lets the panel do what a person does: hand the question
+ * back, then offer to move on, then actually move on.
+ */
+let silentTurns = 0;
+
+/**
  * The candidate has just told us we misheard them.
  *
  * Consumed by the next turn's prompt and then cleared. Without it the denial
@@ -110,6 +125,7 @@ export function reset(forgetProfile = false): void {
   held = 0;
   concludedAnnounced = false;
   premiseDenied = false;
+  silentTurns = 0;
   simulatedElapsed = null;
 }
 
@@ -165,6 +181,7 @@ export function setProfile(raw: unknown, interviewRow: Interview | null = null):
   held = 0;
   concludedAnnounced = false;
   premiseDenied = false;
+  silentTurns = 0;
   model = emptyModel(`s-${Date.now()}`, null);
   model.durationMin = duration;
   sessionInterview = interviewRow;
@@ -368,6 +385,16 @@ export function takePremiseDenied(): boolean {
 /** They finished. The next continuation starts counting from nothing. */
 export function releaseHold(): void {
   held = 0;
+}
+
+/** One more turn of nothing at all. Returns how many have run together. */
+export function noteSilence(): number {
+  return ++silentTurns;
+}
+
+/** They said something. Whatever the silence was, it is over. */
+export function breakSilence(): void {
+  silentTurns = 0;
 }
 
 export const durationMin = (): Duration => model.durationMin;

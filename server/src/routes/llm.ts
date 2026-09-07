@@ -1,11 +1,13 @@
 import { Router, type Response } from 'express';
 import { panelistById, speakingTimeMs, type Panelist } from '@kyro/shared';
-import { runPanel } from '../panel/bidding.js';
+import { questionWithoutAnswer, runPanel } from '../panel/bidding.js';
 import { ingest } from '../panel/ledger.js';
 import {
   addTurn,
   announceConclusion,
+  breakSilence,
   getModel,
+  noteSilence,
   notePremiseDenied,
   releaseHold,
   shouldConclude,
@@ -47,12 +49,61 @@ router.post('/chat/completions', async (req, res) => {
   console.log(`[llm] received /chat/completions turn from Agora | candidate heard: "${answer}"`);
 
   // Agora fires a turn on silence too. Running the whole panel on an empty
-  // string burns three LLM calls to produce a non-sequitur, so answer it here.
+  // string burns an LLM call to produce a non-sequitur, so answer it here.
+  //
+  // Every one of these used to get the same sentence, however many came in a
+  // row: "Sorry, I didn't catch that — could you say it again?". Said to a
+  // candidate who is thinking, it interrupts them to report a problem that does
+  // not exist. Said to one who has run out of things to say, it asks them to
+  // repeat something they never said, and then asks again — and the only way
+  // out was Agora's ninety-second idle timeout taking the whole panel with it.
+  //
+  // A person does three things instead, in order, and so does this.
   if (!answer) {
+    const silences = noteSilence();
     const asker = getModel().lastSpeaker ?? 'technical';
-    console.log(`[llm] empty answer, asking candidate to repeat`);
-    return stream(res, panelistById(asker), "Sorry, I didn't catch that — could you say it again?", true);
+    const lastQuestion =
+      [...getModel().transcript].reverse().find(t => t.speaker !== 'candidate')?.text ?? null;
+    console.log(`[llm] silence ${silences} in a row`);
+
+    // First: hand the question back. They may simply not have started yet.
+    if (silences === 1) {
+      return stream(
+        res,
+        panelistById(asker),
+        lastQuestion
+          ? `Take your time. To repeat: ${lastQuestion}`
+          : 'Take your time — whenever you are ready, go ahead.',
+        true,
+      );
+    }
+
+    // Second: ask. A candidate who is stuck should not have to announce it, and
+    // one who only needs another moment can say so.
+    if (silences === 2) {
+      return stream(
+        res,
+        panelistById(asker),
+        'No rush at all. Would you like another moment, or shall we move on to the next question?',
+        true,
+      );
+    }
+
+    // Third: move on. Sitting on a question nobody is going to answer spends
+    // the interview on silence, and the candidate still has to be assessed on
+    // something.
+    const next = questionWithoutAnswer();
+    broadcast({ type: 'state', model: getModel() });
+    return stream(
+      res,
+      panelistById(next.winner),
+      `Let us leave that one and come back if there is time. ${next.reply}`,
+      true,
+    );
   }
+
+  // They said something, so whatever the silence was, it is over.
+  breakSilence();
 
   // Show what we heard before the panel spends a second thinking about it.
   // Without this the room looks deaf while the LLM call is in flight.

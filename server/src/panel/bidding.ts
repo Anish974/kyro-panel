@@ -402,11 +402,19 @@ function usableReply(raw: unknown): string | null {
     console.warn('  the floor was given a reply that asks nothing — keywords instead');
     return null;
   }
-  // A stray character after the question mark gets spoken. The live model
-  // produced "…what problem did it solve for them during your internship?v",
-  // and TTS reads that trailing v out loud to the candidate. Only a short,
-  // space-free tail is dropped, so a real second sentence survives untouched.
-  return reply.replace(/\?\s*[^\s?]{1,3}$/, '?').slice(0, 400);
+  // Junk wedged against a question mark gets spoken. The live model produced
+  // "…during your internship?v" and "…how did it help the users?ing?", and TTS
+  // reads both the v and the ing out loud to the candidate. A short run of
+  // characters with no space in it, sitting between a question mark and either
+  // the end or another question mark, is never a word the panelist meant.
+  //
+  // Anchored on "no whitespace" so a real second sentence survives untouched:
+  // "What broke? Walk me through the fix." has a space after the mark.
+  return reply
+    .replace(/\?[^\s?]{1,4}(?=\?|$)/g, '?')
+    .replace(/\?{2,}/g, '?')
+    .trim()
+    .slice(0, 400);
 }
 
 /** The raw shape one call comes back in, before any of it is trusted. */
@@ -513,6 +521,25 @@ function draftWithKeywords(id: PanelistId, answer: string, gapIsNew: boolean): D
     // Keywords cannot judge an answer, so they must not move the difficulty.
     quality: 0.5,
   };
+}
+
+/**
+ * A question to move on with when the candidate has said nothing at all.
+ *
+ * There is no answer to bid on, so the keyword scorer writes it, and the floor
+ * goes to whoever is not already holding it. It counts as a panelist turn —
+ * the candidate now has a real question in front of them — but never as a
+ * candidate turn, because they did not take one.
+ */
+export function questionWithoutAnswer(): { winner: PanelistId; reply: string } {
+  const hogging = new Set(
+    PANEL.map(p => p.id).filter(id => consecutiveTurns(id) >= floorLimit() || overHalf(id)),
+  );
+  const open = PANEL.map(p => p.id).filter(id => !hogging.has(id) && id !== model.lastSpeaker());
+  const winner = open[0] ?? PANEL.map(p => p.id).find(id => id !== model.lastSpeaker()) ?? PANEL[0].id;
+  const reply = draftWithKeywords(winner, '', false).reply;
+  model.addTurn({ speaker: winner, text: reply });
+  return { winner, reply };
 }
 
 /** Run the panel on one candidate answer and decide who speaks next. */

@@ -36,6 +36,15 @@ const AUDIO_CHECK =
  * "let me think" scores near zero on every axis and burns a question. A human
  * panel says "take your time" and waits.
  */
+/**
+ * The longest an utterance can be and still be nothing but a request for time.
+ *
+ * Every phrasing in THINKING is under thirty characters on its own. Past forty
+ * there is a sentence attached, and a sentence attached to "let me think" is
+ * the candidate thinking out loud — which is an answer.
+ */
+const THINKING_MAX = 40;
+
 const THINKING =
   /\b(let me think|give me a (second|moment|minute)|hold on|one (second|moment|minute)|i need a (second|moment|minute)|let me (gather|collect) my thoughts|thinking(\s+about (it|that))?|bear with me|just a (sec|second|moment))\b/i;
 
@@ -171,7 +180,11 @@ export function classify(text: string): UtteranceKind {
   // Clarify before thinking: "give me a second" is a pause, but "could you say
   // that again, give me a second" is really a request to repeat.
   if (CLARIFY.test(t)) return 'clarify';
-  if (THINKING.test(t)) return 'thinking';
+  // Thinking phrases are short by nature, and the cap is what stops one from
+  // swallowing the answer that follows it. "Sorry, I was thinking. We stored the
+  // tag as a column on the users table." is an answer that happens to open with
+  // an apology, and it was being waved off with "Take your time."
+  if (t.length <= THINKING_MAX && THINKING.test(t)) return 'thinking';
 
   // After the named phrasings, catch the shape itself: a short question the
   // candidate put to the panel. Handing the question back costs a sentence;

@@ -70,6 +70,18 @@ for (const t of [
 
 // "Take your time" and nothing else — the candidate asked for silence, so the
 // worst thing the panel can do is fill it with words.
+// A pause with an answer attached is an answer. The phrase is short by nature,
+// so anything long enough to carry a sentence is the candidate thinking out
+// loud — and "Sorry, I was thinking. We stored the tag as a column on the users
+// table." was being waved off with "Take your time" instead of graded.
+for (const t of [
+  'Sorry, I was thinking. We stored the tag as a column on the users table.',
+  'Let me think — we keyed it by tenant id so the writes stopped colliding.',
+  'Give me a second. Actually no, we used a separate table for the unpaid users.',
+]) {
+  assert.equal(classify(t), 'answer', `"${t}" is an answer that opens with a pause`);
+}
+
 assert.match(replyTo('thinking', null), /take your time/i, 'a pause is granted, not questioned');
 assert.ok(replyTo('thinking', 'Some question?').length < 40, 'and granted briefly');
 
