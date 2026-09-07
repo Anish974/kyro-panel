@@ -226,40 +226,26 @@ export function buildJoinBody(opts: {
         },
       },
 
-      // The panel takes ~1350ms to decide who speaks and draft the reply
-      // (docs/decisions.md). That is a real silence the candidate sits in.
-      // Agora fills it from its own side, so the wait costs nothing extra and
-      // the room stops sounding like it hung.
+      // Filler words are OFF, and they have to stay off while the voice is
+      // chosen the way it is.
       //
-      // Fires at 900ms, comfortably before the reply lands, so the filler is
-      // already playing when it arrives rather than colliding with it.
+      // They covered the second or so the panel spends deciding who speaks, and
+      // the room did sound less dead for it. But a filler plays in whatever TTS
+      // voice is currently set, and that is the PREVIOUS turn's winner — the
+      // next voice is named in a metadata chunk we have not sent yet, because we
+      // do not know who is speaking until the panel has decided.
       //
-      // The filler is spoken in whatever TTS voice is currently set — the
-      // PREVIOUS turn's winner, because we only name the next voice in the
-      // metadata chunk we have not sent yet. In a three-person panel that reads
-      // correctly: one interviewer murmurs while another takes the floor. Keep
-      // the phrases neutral enough that any of the three could have said them.
-      filler_words: {
-        enable: true,
-        trigger: {
-          mode: 'fixed_time',
-          fixed_time_config: { response_wait_ms: 900 },
-        },
-        content: {
-          mode: 'static',
-          static_config: {
-            phrases: [
-              'Mm-hmm.',
-              'Right.',
-              'Hmm, okay.',
-              'Let me think about that for a second.',
-              'Interesting.',
-              'Give me a moment.',
-            ],
-            selection_rule: 'shuffle',
-          },
-        },
-      },
+      // The old note here called that "one interviewer murmurs while another
+      // takes the floor". It is not what a candidate hears. Two of the six
+      // phrases were "Let me think about that for a second" and "Give me a
+      // moment" — the speaker's own words, in the wrong person's voice. Ananya
+      // answers, then Arjun wins the next turn, and Arjun opens in a woman's
+      // voice. Reported from a real interview as exactly that.
+      //
+      // To bring these back, the voice has to be settled before the wait rather
+      // than after it — pick the winner from the bid alone, send the metadata
+      // chunk immediately, and stream the reply behind it.
+      filler_words: { enable: false },
     },
 
     // Turns on the Signaling side channel. The engine then publishes live

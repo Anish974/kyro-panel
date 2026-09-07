@@ -72,6 +72,24 @@ assert.ok(
   'the experience level is for the panel prompt, not for reading aloud',
 );
 
+// 7. Nothing may speak in a voice the panel has not just named.
+//
+// Filler words are the case that bit. They play in whatever voice is currently
+// set — the previous turn's winner — because the next voice is only named in a
+// metadata chunk sent once the panel has decided. Two of the phrases were "Let
+// me think about that for a second" and "Give me a moment": the speaker's own
+// words, delivered in the wrong person's voice. A candidate heard Arjun open in
+// a woman's voice.
+//
+// They can come back when the voice is settled BEFORE the wait rather than
+// after it. Until then this is the assertion that keeps them off.
+const filler = props.filler_words as unknown as { enable?: boolean } | undefined;
+assert.ok(
+  !filler?.enable,
+  'filler words play in the previous speaker\'s voice — leave them off until the voice is chosen before the wait',
+);
+
 console.log(`voice  agent starts as ${panelistById(GREETER).name} (${startingVoice})`);
 console.log('       greeting introduces all three, and every voice id is distinct');
+console.log('       nothing speaks before the panel has named the voice');
 console.log('\nself-check passed');
