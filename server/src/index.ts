@@ -102,7 +102,16 @@ const webDist = path.resolve(__dirname, '../../web/dist');
 const servingWeb = fs.existsSync(webDist);
 if (servingWeb) app.use(express.static(webDist));
 
-app.listen(PORT, () => {
+// Bound explicitly to 0.0.0.0, which is what the host's health check connects
+// to over IPv4.
+//
+// Without a host argument Node binds the IPv6 unspecified address and relies on
+// dual-stack to pick up IPv4 as well. That works right up until it does not:
+// the same commit deployed cleanly, then failed its health check on a redeploy
+// twenty minutes later with "Timed Out waiting for internal health check", the
+// process alive and printing this banner the whole time. Nothing to do with the
+// code — the checker simply could not reach the socket.
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`kyro server  http://localhost:${PORT}`);
   console.log(`  GET  /health (or /ping)     health check & keep-alive`);
   console.log(`  GET  /token?channel=&uid=   RTC token`);
