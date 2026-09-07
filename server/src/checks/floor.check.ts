@@ -101,11 +101,37 @@ assert.equal(
 const panelTurns = model.getModel().transcript.filter(t => t.speaker !== 'candidate').length;
 assert.equal(panelTurns, 1, 'one paragraph, one panelist, one question');
 
+// ------------------------------------------- but silence is not forever
+
+// Uncapped, the hold went badly the other way. A real answer arrived as six
+// growing finals, every one after the first was swallowed, and the transcript
+// ends with the candidate saying "Hello? Hello?" into a room that had stopped
+// answering. These are those finals, verbatim.
+const GROWING = [
+  GROWN + ' Like telemetry,',
+  GROWN + ' Like telemetry, logs,',
+  GROWN + ' Like telemetry, logs, Hello?',
+  GROWN + ' Like telemetry, logs, Hello? Hello?',
+];
+
+const replies: string[] = [];
+for (const text of GROWING) replies.push(await said(text));
+
+assert.ok(
+  replies.some(r => r.length > 0),
+  'a candidate who keeps talking must eventually be answered, not left in silence',
+);
+assert.ok(
+  replies.filter(r => r.length > 0).length <= 2,
+  'but the panel still must not answer every fragment',
+);
+
 const lastSaid = model.getModel().transcript.filter(t => t.speaker !== 'candidate').pop()!.text;
 
 server.close();
 
 console.log('floor  half a sentence is not an answer, and does not cost a turn');
 console.log('       a growing ASR final is the same answer, not a new one');
+console.log('       but a candidate who keeps talking is answered, not left in silence');
 console.log(`       one paragraph got one question back (last: "${lastSaid.slice(0, 40)}…")`);
 console.log('\nself-check passed');

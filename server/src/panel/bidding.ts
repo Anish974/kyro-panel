@@ -364,7 +364,22 @@ export async function runPanel(answer: string): Promise<TurnDecision> {
     }))
     .sort((a, b) => b.score - a.score);
 
-  const winner = bids[0].panelist;
+  // The floor goes to a panelist who has something of their own to say, if any
+  // of them do.
+  //
+  // A panelist the model returned without a `reply` falls back to the keyword
+  // scorer — and that scorer has a 0.95 spike for an answer with no customer
+  // impact in it, which outbids a real LLM draft scoring 0.5. So on a turn where
+  // the model answered for one panelist and not the others, the one WITHOUT a
+  // question won the floor and read a line off the canned fallback list. That is
+  // what a candidate heard in production while two usable questions sat unused.
+  //
+  // Only applies when the model gave us something. With no LLM at all every
+  // draft is a keyword draft and the highest bid wins, exactly as before.
+  const drafted = new Set(PANEL.map(p => p.id).filter(id => panel?.[id]));
+  const winner =
+    (drafted.size ? bids.find(b => drafted.has(b.panelist)) : undefined)?.panelist ??
+    bids[0].panelist;
 
   if (technical) {
     model.nudgeSkill('technicalDepth', 0.8);

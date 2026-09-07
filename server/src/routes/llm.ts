@@ -16,6 +16,22 @@ import { broadcast } from './events.js';
 
 const router = Router();
 
+/**
+ * How many growing ASR finals in a row the panel will sit through before it
+ * answers anyway.
+ *
+ * Two is enough to cover a candidate drawing breath mid-sentence, and short
+ * enough that nobody is left talking into a dead room. There is no signal for
+ * "they have finished" — Agora finalises on a pause, not on a full stop — so
+ * this is a ceiling on how wrong the guess can be, not a way of getting it
+ * right. Widening `silence_duration_ms` in agora-agent.ts is what actually
+ * reduces how often the guess is needed.
+ */
+const HOLD_LIMIT = 2;
+
+/** ponytail: one interview per process, like the model it guards. */
+let held = 0;
+
 interface ChatMessage { role: string; content: string }
 
 router.post('/chat/completions', async (req, res) => {
@@ -59,14 +75,21 @@ router.post('/chat/completions', async (req, res) => {
   // every one of them: that is three different panelists asking three questions
   // about one paragraph, and three of the ten turns spent on it.
   //
-  // The candidate is still talking. Record the fuller text and say nothing.
+  // The candidate is still talking, so the panel holds the floor — but only for
+  // so long. Left uncapped this went badly the other way: a candidate's answer
+  // arrived as six growing finals, every one after the first was swallowed, and
+  // the room stayed silent long enough that the transcript ends with them
+  // saying "Hello? Hello?". Silence is the right answer to an interruption and
+  // the wrong answer to a question.
   const previous = [...getModel().transcript].reverse().find(t => t.speaker === 'candidate');
-  if (previous && continues(previous.text, answer)) {
+  if (previous && continues(previous.text, answer) && held < HOLD_LIMIT) {
+    held++;
     ingest(answer);
     addTurn({ speaker: 'candidate', text: answer });
-    console.log('[llm] continuation — candidate still talking, holding the floor');
+    console.log(`[llm] continuation ${held}/${HOLD_LIMIT} — candidate still talking, holding the floor`);
     return silence(res);
   }
+  held = 0;
 
   // Ledger first: the panel should be able to bid on a fresh contradiction.
   const claims = ingest(answer);

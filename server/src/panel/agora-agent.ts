@@ -162,6 +162,32 @@ export function buildJoinBody(opts: {
       enable_string_uid: false,
       idle_timeout: IDLE_TIMEOUT,
 
+      // How long the candidate may pause before Agora calls the answer finished.
+      //
+      // Left on the default this was far too eager. One real interview arrived
+      // as six separate "finals" for a single answer, splitting on the commas:
+      //
+      //   "...I'm just I'm using MongoDB"
+      //   "...unstructured data. Like telemetry,"
+      //   "...logs,"
+      //
+      // Each of those is a turn posted to the orchestrator, and the panel is
+      // then choosing between interrupting a sentence and saying nothing at all.
+      // Neither is right, because the question was wrong: the candidate had not
+      // finished. Widening the pause is what fixes it at the source.
+      //
+      // 1100ms is a breath, not a silence. Below about 800 a comma ends the
+      // turn; much above 1200 and the panel starts to feel slow to answer.
+      turn_detection: {
+        mode: 'default',
+        config: {
+          end_of_speech: {
+            mode: 'vad',
+            vad_config: { silence_duration_ms: 1100 },
+          },
+        },
+      },
+
       asr: {
         credential_mode: 'managed',
         vendor: 'deepgram',
