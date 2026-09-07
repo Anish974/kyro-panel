@@ -20,9 +20,17 @@ const SPARE_KEY = process.env.LLM_API_KEY_FALLBACK ?? '';
 /** False when no key is configured — the panel then falls back to keywords. */
 export const LLM_ENABLED = Boolean(BASE && MODEL && KEY);
 
-// Allow enough budget for multi-panelist JSON generation so the panel never
-// prematurely falls back to canned keyword templates under network latency.
-const TIMEOUT_MS = 14000;
+/**
+ * How long the panel will wait for the model before it speaks from keywords.
+ *
+ * This is a ceiling on dead air, not a budget to spend: three drafts are about
+ * 210 output tokens, which flash-lite finishes in under two seconds, so a call
+ * still running at nine has hit a throttle and is not coming back in time. The
+ * candidate has then been sitting in silence for nine seconds and the honest
+ * move is a canned question, immediately, rather than five more seconds of
+ * nothing followed by the same canned question.
+ */
+const TIMEOUT_MS = 9000;
 
 /** Out of quota, or the provider itself is having a moment. Worth a second key. */
 const worthRetrying = (status: number): boolean => status === 429 || status >= 500;
@@ -44,6 +52,7 @@ export async function ask(system: string, user: string, maxTokens = 220): Promis
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
 
+  const startedAt = Date.now();
   let res = await send(KEY);
 
   // Straight to the spare rather than waiting first: a 429 comes back
@@ -56,7 +65,20 @@ export async function ask(system: string, user: string, maxTokens = 220): Promis
   }
 
   if (!res.ok) throw new Error(`LLM ${res.status}: ${(await res.text()).slice(0, 200)}`);
-  const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+  const data = (await res.json()) as {
+    choices?: { message?: { content?: string } }[];
+    usage?: { prompt_tokens?: number; completion_tokens?: number };
+  };
+
+  // The one number that says whether the panel is slow because the model is
+  // slow, or because of everything else in the turn. Printed every turn: a
+  // throttled free tier shows up here as seconds, and nowhere else.
+  const ms = Date.now() - startedAt;
+  console.log(
+    `[llm] ${ms}ms | in ${data.usage?.prompt_tokens ?? '?'} out ${data.usage?.completion_tokens ?? '?'} tokens` +
+    (ms > 4000 ? '  <- slow, the candidate heard silence for this long' : ''),
+  );
+
   return data.choices?.[0]?.message?.content ?? '';
 }
 

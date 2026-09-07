@@ -380,7 +380,13 @@ type PanelDrafts = Partial<Record<PanelistId, Partial<Draft>>>;
 async function draftPanel(answer: string): Promise<Partial<Record<PanelistId, Draft>>> {
   const prof = model.getModel().profile;
   const prompt = getPanelPrompt(prof?.role, prof?.level);
-  const raw = parseJson<PanelDrafts>(await ask(prompt, context(answer), 1200));
+  // 500, not 1200. Three drafts measure about 210 output tokens, and output
+  // tokens ARE the latency — the model emits them one at a time while the room
+  // sits in silence. The old ceiling let a chatty turn run six times longer
+  // than the answer needs, and truncation is not the risk it looks like: a cut
+  // JSON fails to parse and the keyword fallback speaks, which is what a
+  // 1200-token ramble was going to cause anyway, only later.
+  const raw = parseJson<PanelDrafts>(await ask(prompt, context(answer), 500));
   if (!raw) throw new Error('panel returned no parsable JSON');
   return {
     technical: coerce('technical', raw.technical),
