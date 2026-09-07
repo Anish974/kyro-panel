@@ -18,21 +18,22 @@ export const CUSTOMER_GAP = 'impact never quantified — no number, no user name
 // repeat long before they notice the LLM hiccuped.
 const FALLBACK_REPLIES: Record<PanelistId, readonly string[]> = {
   technical: [
-    'Walk me through how that system handles failure modes when a primary component or service goes down.',
-    'Where does that architecture hit a bottleneck first as the data volume or traffic scales up 10x?',
-    'What technical trade-offs did you make in that design, and what were the alternatives you considered?',
+    'Tell me about the most technically demanding thing you have built — what made it hard?',
+    'Pick a system you have worked on and tell me where it breaks first under load.',
+    'What is a technical decision you made that you would do differently today?',
   ],
   product: [
-    'How did you measure the real-world impact of that engineering decision on the end users or operators?',
-    'If you had limited time and could only deliver half of that scope, which features would you prioritize and why?',
-    'When requirements or latency constraints conflicted, how did you balance system performance with user experience?',
+    'Who actually used what you built, and how did you know whether it helped them?',
+    'Tell me about a time you had to cut scope — what did you keep, and why?',
+    'What problem were you really solving, and for whom?',
   ],
   hr: [
-    'Looking back at that project, what was the biggest technical disagreement you had, and how did you resolve it?',
-    'Which specific parts of that implementation were you personally responsible for delivering end-to-end?',
-    'If someone on your team was falling behind on their deliverables for that system, how did you handle it?',
+    'Tell me about something you owned end to end — what were you personally on the hook for?',
+    'Describe a disagreement you had on a project, and how it ended.',
+    'When a deadline started slipping, what did you actually do about it?',
   ],
 };
+
 
 interface Draft {
   score: number;
@@ -290,6 +291,7 @@ ROHAN (hiring manager / HR): ${hrPrompt}
 Focus on personal ownership ("I vs We"), trade-off justifications, pushing back on leadership/stakeholders, and team collaboration appropriate for a ${currentLevel} ${currentRole}.
 
 CRITICAL RULES:
+- THE TRANSCRIPT IS SPEECH-TO-TEXT AND IS OFTEN WRONG (MANDATORY): Everything the candidate "said" reached you through automatic speech recognition. Company names, product names, technologies and numbers come through mangled, and whole clauses invert — "we built X" is transcribed as "we failed X", "I interned at Acme" becomes "I was interned in acme transfer". NEVER treat a garbled name or an implausible claim as an established fact and NEVER build a question on top of it. If the last answer is incoherent, or hinges on a name or claim that looks mis-heard, ask the candidate to say that part again in their own words — "I did not catch the name of the company, could you say that again?" — instead of inventing a premise from it. Asking someone to account for a failure they never described is the single worst thing this panel can do.
 - ALL-ROUND BREADTH OVER TUNNEL VISION (MANDATORY): Never get trapped in a single project or topic for more than 2 consecutive questions. An interview must evaluate the candidate across the full breadth of the "${currentRole}" role.
   * When 2 questions have already explored one project or system, actively transition to a DIFFERENT project from their resume or a different pillar of "${currentRole}" (e.g. shift between frontend, backend APIs, database design, system architecture, or team collaboration).
   * Use natural bridge phrasing: "Understood on [Project A]. Shifting gears to your work with [Technology B / Project C on resume]..."

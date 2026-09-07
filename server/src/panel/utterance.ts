@@ -41,7 +41,23 @@ const THINKING =
 
 /** They want something repeated or explained before they can answer. */
 const CLARIFY =
-  /\b(can you (repeat|say that again)|could you (repeat|say that again|clarify|rephrase)|say (that|it) again|come again|sorry,? what|what was (that|the question)|repeat the question|i did ?n[o']?t (catch|hear|get) that|pardon)\b/i;
+  /\b((can|could|should|may) (you|i) (please )?repeat|can you say that again|could you (say that again|clarify|rephrase)|say (that|it) again|repeat (that|it|the question)|come again|sorry,? what|what was (that|the question)|i did ?n[o']?t (catch|hear|get) that|pardon)\b/i;
+
+/**
+ * A short utterance that opens like a question and ends like one.
+ *
+ * The candidate asking the panel something is not an answer, and the phrasings
+ * are endless — a real interview produced "Can I repeat?" and "What is the
+ * Vietnam transfer?" within a minute of each other, and both were graded as
+ * answers. The second is the worse case: the candidate was querying a name that
+ * speech-to-text had mangled out of their own words, and the panel spent a turn
+ * treating that confusion as a claim about their career.
+ *
+ * Anchored on an opening interrogative so it cannot swallow a terse real answer
+ * — "So, microservices?" is not a question the candidate is asking us.
+ */
+const BARE_QUESTION =
+  /^(what|who|whom|which|where|when|why|how|can|could|should|would|shall|may|is|are|was|were|do|does|did|sorry|pardon|excuse)\b[^?]{0,70}\?\s*$/i;
 
 /**
  * The whole utterance is a greeting or a sound check and nothing else.
@@ -114,6 +130,11 @@ export function classify(text: string): UtteranceKind {
   // that again, give me a second" is really a request to repeat.
   if (CLARIFY.test(t)) return 'clarify';
   if (THINKING.test(t)) return 'thinking';
+
+  // After the named phrasings, catch the shape itself: a short question the
+  // candidate put to the panel. Handing the question back costs a sentence;
+  // grading it costs them a turn and earns them a non-sequitur.
+  if (BARE_QUESTION.test(t)) return 'clarify';
 
   // Last, so a recognised phrase wins first: "is my mic on" ends on a dangling
   // word but is logistics, not an unfinished thought.
