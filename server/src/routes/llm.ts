@@ -64,6 +64,30 @@ router.post('/chat/completions', async (req, res) => {
   // addTurn) out of it entirely, so the candidate's real introduction is still
   // turn 1 when it arrives.
   const kind = classify(answer);
+
+  // The candidate asked to stop, so the interview stops. It used to be graded
+  // as an answer, which means the panel replied to "let's end the interview"
+  // with another question — six of them, across the last fifty seconds of a
+  // session the candidate spent trying to leave.
+  //
+  // The room takes it from here: 'concluded' is what starts its leave timer and
+  // its scorecard fetch, so an early stop closes down the same path a
+  // full-length one does. Latched like every other conclusion, because the room
+  // restarts that timer each time it hears one.
+  if (kind === 'end') {
+    const reply = replyTo('end', null);
+    console.log('[llm] candidate asked to end the interview — closing');
+    stream(res, panelistById('hr'), reply, false);
+    if (announceConclusion()) {
+      broadcast({
+        type: 'concluded',
+        reason: 'The candidate asked to end the interview.',
+        speakMs: speakingTime(reply),
+      });
+    }
+    return;
+  }
+
   if (kind !== 'answer') {
     const model = getModel();
     const asker = model.lastSpeaker ?? 'technical';

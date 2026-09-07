@@ -11,7 +11,7 @@
 // straight into the resume. The candidate had not said a word about themselves
 // yet and was already being asked about data skew across Spark executors.
 
-export type UtteranceKind = 'audio-check' | 'clarify' | 'thinking' | 'correction' | 'answer';
+export type UtteranceKind = 'audio-check' | 'clarify' | 'thinking' | 'correction' | 'end' | 'answer';
 
 /**
  * Only a SHORT utterance can be an audio check.
@@ -26,7 +26,7 @@ const SHORT = 80;
 
 /** Pure logistics. The panel confirms and hands the floor straight back. */
 const AUDIO_CHECK =
-  /\b(am i audible|(are|is) (you|the panel|anyone) (audible|coming through)|(you are|you're|you guys are|sir you are) (not audible|inaudible|hard to hear|not clear)|not audible|can you (hear|listen to) me|do you (hear|read) me|are you (there|able to hear)|is (this|my mic|the mic|it) (on|working|audible)|mic check|sound check|am i (coming through|audible now)|hello,? ?(is )?(anyone|anybody) there|(can'?t|cannot|unable to) hear (you|anything|sound)|no sound|voice is (breaking|cutting|gone|not audible)|audio is (gone|broken|cutting|not working))\b/i;
+  /\b(am i audible|(are|is) (you|the panel|anyone) (audible|coming through)|(you are|you're|you guys are|sir you are) (not audible|inaudible|hard to hear|not clear)|not audible|can you (hear|listen to) me|do you (hear|read) me|are you (there|able to hear)|is (this|my mic|the mic|it) (on|working|audible)|mic check|sound check|am i (coming through|audible now)|hello,? ?(is )?(anyone|anybody) there|(can'?t|cannot|unable to) hear (you|anything|sound)|no sound|i'?m audible|i am audible|(you|u) (are|'?re) (breaking up|cutting out|muffled)|((your|the|my) )?(audio|voice|sound|mic|microphone|connection)s? ?(is|are|keeps?)? ?(fluttering|flickering|breaking|cutting|choppy|lagging|laggy|robotic|muffled|distorted|glitching|stuttering|unclear|not clear|bad|poor|gone|broken|not working|not audible))\b/i;
 
 /**
  * They are asking for a moment to think.
@@ -55,6 +55,23 @@ const THINKING =
  */
 const CORRECTION =
   /\b(i (did ?n[o']?t|never) (say|said|talk about|mention|meant?)|(that'?s|thats) not what i (said|meant)|i (said|meant) something else|you (misheard|mis-heard|got that wrong)|no,? i (did ?n[o']?t|never))\b/i;
+
+/**
+ * The candidate asking for the interview to stop.
+ *
+ * There was no way to say this. One candidate asked five ways over fifty
+ * seconds — "let's end the interview right now", "no, no, let's end", "no, no,
+ * end", "I said stop" — and every one of them was graded as an answer, so the
+ * panel replied with another question each time, including one asking whether
+ * it should hand back to the hiring manager to wrap up the admin steps. The
+ * interview only stopped when the candidate closed the tab.
+ *
+ * Honoured on the first ask, with no "are you sure": asking a person who has
+ * said stop to confirm it is what produced the loop. The room's normal close
+ * still writes the scorecard from whatever was said.
+ */
+const END =
+  /^\s*(no[\s.,!?]*)*(stop|end|cancel|quit)[\s.,!?]*$|\b((let'?s|lets|let us|can we|could we|i want to|i wanna|i'?d like to|i would like to|please|shall we) (end|stop|finish|cancel|quit|leave|exit|wrap (this |it )?up)|(end|stop|cancel|quit|leave|exit) (the |this )?(interview|call|session|meeting|round)|i (said|say) (stop|end)|i'?m (leaving|dropping off|logging off)|end it (here|now)|stop it (here|now)|stop here|(that'?s|thats) enough|hang up|disconnect me|no more questions)\b/i;
 
 /** They want something repeated or explained before they can answer. */
 const CLARIFY =
@@ -85,7 +102,7 @@ const BARE_QUESTION =
  * single syllable.
  */
 const BARE_CHECK =
-  /^\s*(hi|hey|hello|yo|namaste|good (morning|afternoon|evening)|testing|test|mic test|audio test|check)([\s.,!?]|\b(one|two|three|1|2|3)\b)*$/i;
+  /^\s*((hi|hey|hello|yo|namaste|good (morning|afternoon|evening)|testing|test|mic test|audio test|check|wait|one|two|three|1|2|3)[\s.,!?]*)+$/i;
 
 /**
  * The whole utterance is the candidate saying "go on".
@@ -140,6 +157,10 @@ export function classify(text: string): UtteranceKind {
 
   if (AUDIO_CHECK.test(t) || BARE_CHECK.test(t)) return 'audio-check';
 
+  // They have asked to stop. Nothing else about the utterance matters, and
+  // nothing below this line gets to talk them out of it.
+  if (END.test(t)) return 'end';
+
   // "Okay, sir." is the candidate waiting, not answering. Handing the question
   // back is what a panel does — and it costs neither a turn nor an LLM call.
   // Before everything else: if they are telling us we misheard them, nothing
@@ -175,6 +196,12 @@ export function replyTo(kind: Exclude<UtteranceKind, 'answer'>, lastQuestion: st
   // it is how a panel asks about the same imaginary bot a third time.
   if (kind === 'correction') {
     return 'Apologies — I misheard you there. Let us leave that; carry on from what you were actually describing.';
+  }
+
+  // No confirming question back. "Do you want us to stop?" is how the panel
+  // spent four more turns on a candidate who had already said stop twice.
+  if (kind === 'end') {
+    return 'Understood — we will stop the interview here. Thank you for your time, and all the best.';
   }
 
   if (kind === 'audio-check') {
