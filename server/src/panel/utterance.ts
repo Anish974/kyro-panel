@@ -54,6 +54,25 @@ const CLARIFY =
 const BARE_CHECK =
   /^\s*(hi|hey|hello|yo|namaste|good (morning|afternoon|evening)|testing|test|mic test|audio test|check)([\s.,!?]|\b(one|two|three|1|2|3)\b)*$/i;
 
+/**
+ * A short utterance that stops on a word an English sentence cannot end on.
+ *
+ * ASR finalises on a pause, not on a sentence, so a candidate drawing breath
+ * mid-thought arrives as "Okay. So" and then "Okay. So I'm on a". Both were
+ * read as answers: each burned one of the ten turns and each got its own
+ * question back, which is how one candidate was asked two things before
+ * finishing a sentence.
+ *
+ * Conjunctions, articles, prepositions and possessives only. Words like "it",
+ * "that" and "we" were in this list once and should not be — "No, we never
+ * measured it" is a finished answer, and a short one is exactly when the panel
+ * must not mistake brevity for a fragment.
+ */
+const DANGLING = /\b(and|so|but|or|because|the|a|an|to|of|for|with|in|on|at|i'?m|i'?ve|my)$/i;
+
+/** A finished sentence, however short. ASR punctuates; a cut-off turn does not. */
+const TERMINATED = /[.?!]\s*$/;
+
 export function classify(text: string): UtteranceKind {
   const t = text.trim();
   if (!t) return 'answer'; // The empty case is handled before this, in the route.
@@ -66,6 +85,11 @@ export function classify(text: string): UtteranceKind {
   // that again, give me a second" is really a request to repeat.
   if (CLARIFY.test(t)) return 'clarify';
   if (THINKING.test(t)) return 'thinking';
+
+  // Last, so a recognised phrase wins first: "is my mic on" ends on a dangling
+  // word but is logistics, not an unfinished thought.
+  if (!TERMINATED.test(t) && DANGLING.test(t)) return 'thinking';
+
   return 'answer';
 }
 

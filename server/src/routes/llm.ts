@@ -2,7 +2,8 @@ import { Router, type Response } from 'express';
 import { panelistById, type Panelist } from '@kyro/shared';
 import { CONCLUDE_AT_TURN, runPanel } from '../panel/bidding.js';
 import { ingest } from '../panel/ledger.js';
-import { getModel } from '../panel/model.js';
+import { addTurn, getModel } from '../panel/model.js';
+import { continues } from '../panel/continuation.js';
 import { classify, replyTo } from '../panel/utterance.js';
 import { broadcast } from './events.js';
 
@@ -52,6 +53,21 @@ router.post('/chat/completions', async (req, res) => {
     return stream(res, panelistById(asker), replyTo(kind, lastQuestion), true);
   }
 
+  // Agora posts a turn per ASR final, and a long answer arrives as several
+  // growing finals — each carrying the whole utterance so far. addTurn already
+  // merges those into one transcript entry, but the panel had still run on
+  // every one of them: that is three different panelists asking three questions
+  // about one paragraph, and three of the ten turns spent on it.
+  //
+  // The candidate is still talking. Record the fuller text and say nothing.
+  const previous = [...getModel().transcript].reverse().find(t => t.speaker === 'candidate');
+  if (previous && continues(previous.text, answer)) {
+    ingest(answer);
+    addTurn({ speaker: 'candidate', text: answer });
+    console.log('[llm] continuation — candidate still talking, holding the floor');
+    return silence(res);
+  }
+
   // Ledger first: the panel should be able to bid on a fresh contradiction.
   const claims = ingest(answer);
   const decision = await runPanel(answer);
@@ -95,6 +111,27 @@ router.post('/chat/completions', async (req, res) => {
 /** Rough speaking time. ~150 words a minute, plus a beat of silence after. */
 const speakingTime = (text: string): number =>
   Math.min(20_000, Math.round((text.split(/\s+/).length / 150) * 60_000) + 2_500);
+
+/**
+ * A well-formed completion carrying no words, so Agora speaks nothing.
+ *
+ * Agora expects an answer to every turn it posts. This is how the panel
+ * declines to take one without leaving the request hanging.
+ */
+function silence(res: Response): void {
+  res.writeHead(200, {
+    'content-type': 'text/event-stream',
+    'cache-control': 'no-cache',
+    connection: 'keep-alive',
+  });
+  res.write(`data: ${JSON.stringify({
+    id: `kyro-${Date.now()}`,
+    object: 'chat.completion.chunk',
+    choices: [{ index: 0, delta: {}, finish_reason: 'stop' }],
+  })}\n\n`);
+  res.write('data: [DONE]\n\n');
+  res.end();
+}
 
 /** The SSE shape Agora expects, with the speaking panelist's voice attached. */
 function stream(res: Response, speaker: Panelist, reply: string, interruptable: boolean): void {
