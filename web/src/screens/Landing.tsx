@@ -93,37 +93,59 @@ export default function Landing({ onCompany, onCandidate }: Props) {
         </div>
       </header>
 
-      {/* Main Content Area */}
-      <main className="flex-1 max-w-[1140px] w-full mx-auto px-6 py-12 flex flex-col gap-20">
-        {/* Hero Section */}
-        <section className="text-center pt-8 pb-4">
-          <h1 className="font-display text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[1.08] text-gray-950 dark:text-white max-w-4xl mx-auto">
+      {/* Hero Section - Compact Viewport with Top Headline, Middle Video Box, and Bottom CTA */}
+      <section className="relative min-h-[calc(100vh-73px)] flex flex-col justify-between items-center px-6 py-4 sm:py-6 max-w-[1140px] w-full mx-auto">
+        {/* Top: Headline */}
+        <div className="text-center pt-1 max-w-3xl mx-auto">
+          <h1 className="font-display text-2xl sm:text-3xl md:text-4xl lg:text-[40px] font-extrabold tracking-tight leading-tight text-gray-950 dark:text-white">
             Three AI interviewers.
             <br />
             <span className="bg-gradient-to-r from-gray-900 via-gray-700 to-indigo-600 dark:from-white dark:via-gray-200 dark:to-indigo-400 bg-clip-text text-transparent">
               One voice call. Real deliberation.
             </span>
           </h1>
+        </div>
 
-          <div className="mt-8 flex flex-col sm:flex-row gap-3.5 justify-center items-center">
+        {/* Middle: Video Showcase Box */}
+        <div className="w-full max-w-3xl lg:max-w-[860px] my-auto flex justify-center py-2">
+          <div className="w-full max-h-[42vh] sm:max-h-[48vh] aspect-video rounded-2xl sm:rounded-3xl overflow-hidden border border-[#EBE6DF] dark:border-[#222631] shadow-xl bg-black/5 dark:bg-black/40 relative">
+            <video
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="w-full h-full object-cover scale-[1.12] origin-top-left"
+            >
+              <source src="/hero-bg.mp4" type="video/mp4" />
+            </video>
+          </div>
+        </div>
+
+        {/* Bottom: Action Buttons and Subtitle */}
+        <div className="flex flex-col items-center gap-2.5 pb-2 w-full">
+          <div className="flex flex-col sm:flex-row gap-3 justify-center items-center w-full sm:w-auto">
             <button
               onClick={onCandidate}
-              className="w-full sm:w-auto h-12 px-8 rounded-xl bg-[#181A20] dark:bg-white text-white dark:text-[#0F1115] font-bold text-sm hover:bg-black dark:hover:bg-gray-100 transition-all cursor-pointer shadow-sm hover:shadow-md"
+              className="w-full sm:w-auto h-11 px-7 rounded-xl bg-[#181A20] dark:bg-white text-white dark:text-[#0F1115] font-bold text-sm hover:bg-black dark:hover:bg-gray-100 transition-all cursor-pointer shadow-sm hover:shadow-md"
             >
               Start as Candidate
             </button>
             <button
               onClick={onCompany}
-              className="w-full sm:w-auto h-12 px-8 rounded-xl bg-white dark:bg-[#161920] border border-[#EBE6DF] dark:border-[#222631] font-bold text-sm text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-[#1E232D] transition-all cursor-pointer shadow-2xs"
+              className="w-full sm:w-auto h-11 px-7 rounded-xl bg-white dark:bg-[#161920] border border-[#EBE6DF] dark:border-[#222631] font-bold text-sm text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-[#1E232D] transition-all cursor-pointer shadow-2xs"
             >
               Recruiter &amp; Company Portal
             </button>
           </div>
 
-          <p className="mt-4 text-xs text-gray-500 dark:text-gray-400">
+          <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
             Have an invite link from an employer? Open that link directly to access your scheduled interview.
           </p>
-        </section>
+        </div>
+      </section>
+
+      {/* Main Content Area */}
+      <main className="flex-1 max-w-[1140px] w-full mx-auto px-6 py-16 flex flex-col gap-20">
 
         {/* Dual Audience Section: Built for Candidates & Hiring Teams */}
         <section className="flex flex-col gap-6">
