@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { COMPETENCIES, PANEL, type CompetencyId, type PanelistId, type Scorecard, panelistById } from '@kyro/shared';
 import { AVATARS, CLAIM, VERDICT } from '../lib/labels.js';
 import ThemeToggle from '../components/ThemeToggle.js';
@@ -14,8 +15,51 @@ function mmss(sec?: number) {
   return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 }
 
+/**
+ * The transcript as plain text, for copying out of the page.
+ *
+ * Carries a header because a transcript with no name, role or date on it is
+ * hard to place once it has been pasted into a ticket or a chat, which is the
+ * only reason anyone copies one.
+ */
+function asPlainText(scorecard: Scorecard): string {
+  const when = scorecard.timestamp ? new Date(scorecard.timestamp).toLocaleString() : '';
+  const who = (speaker: string) =>
+    speaker === 'candidate' ? scorecard.candidateName : panelistById(speaker as PanelistId).name;
+
+  return [
+    `${scorecard.candidateName} — ${scorecard.role}${scorecard.level ? ` (${scorecard.level})` : ''}`,
+    `${when}${when ? ' · ' : ''}${mmss(scorecard.durationSec)} · ${scorecard.turns ?? 0} turns`,
+    '',
+    ...(scorecard.transcript ?? []).map(t => `${mmss(t.t)}  ${who(t.speaker)}: ${t.text}`),
+  ].join('\n');
+}
+
 export default function Scorecard({ scorecard, onBack }: Props) {
   const competencies = Object.keys(COMPETENCIES) as CompetencyId[];
+  const [copied, setCopied] = useState(false);
+
+  async function copyTranscript() {
+    try {
+      await navigator.clipboard.writeText(asPlainText(scorecard));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard access is refused outside a secure context and in some
+      // embedded browsers. Downloading gets the same text out either way.
+      downloadTranscript();
+    }
+  }
+
+  function downloadTranscript() {
+    const blob = new Blob([asPlainText(scorecard)], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${scorecard.candidateName.replace(/[^\w]+/g, '-').toLowerCase()}-transcript.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
   return (
     <div className="h-full overflow-y-auto bg-[#FAF9F6] dark:bg-[#0F1115] text-[#181A20] dark:text-[#F9FAFB] font-sans select-none transition-colors duration-200">
@@ -249,9 +293,24 @@ export default function Scorecard({ scorecard, onBack }: Props) {
           <section className="flex flex-col gap-4">
             <div className="flex items-baseline justify-between">
               <h2 className="text-lg font-extrabold text-gray-950 dark:text-white font-display">Full Transcript</h2>
-              <span className="text-xs font-semibold text-gray-400 dark:text-gray-500">
-                {scorecard.transcript.length} turns
-              </span>
+
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-gray-400 dark:text-gray-500 mr-1">
+                  {scorecard.transcript.length} turns
+                </span>
+                <button
+                  onClick={() => void copyTranscript()}
+                  className="h-8 px-3 rounded-lg border border-[#EBE6DF] dark:border-[#222631] bg-white dark:bg-[#161920] hover:bg-gray-50 dark:hover:bg-[#1E232D] text-xs font-bold text-gray-800 dark:text-gray-200 transition-colors cursor-pointer"
+                >
+                  {copied ? 'Copied' : 'Copy'}
+                </button>
+                <button
+                  onClick={downloadTranscript}
+                  className="h-8 px-3 rounded-lg border border-[#EBE6DF] dark:border-[#222631] bg-white dark:bg-[#161920] hover:bg-gray-50 dark:hover:bg-[#1E232D] text-xs font-bold text-gray-800 dark:text-gray-200 transition-colors cursor-pointer"
+                >
+                  Download
+                </button>
+              </div>
             </div>
 
             <div className="rounded-2xl border border-[#EBE6DF] dark:border-[#222631] bg-white dark:bg-[#161920] divide-y divide-[#EBE6DF] dark:divide-[#222631] overflow-hidden">
