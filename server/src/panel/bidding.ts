@@ -57,6 +57,44 @@ export const CONCLUDE_AT_TURN = 10;
 /** One turn earlier the panel starts steering toward the close. */
 const LATE_STAGE_TURN = CONCLUDE_AT_TURN - 2;
 
+/**
+ * How many questions in a row one panelist may ask before the floor moves.
+ *
+ * Two lets a panelist follow up on their own question, which is what an
+ * interviewer does. A third is a monologue — and every turn one of them takes
+ * is a turn the other two never get, which they are then asked to write a
+ * verdict from.
+ */
+const FLOOR_LIMIT = 2;
+
+/**
+ * Before a share rule kicks in, so a panelist who opens strongly is not fought
+ * off the floor on the second question of the interview.
+ */
+const SHARE_AFTER_TURNS = 3;
+
+/** Turns this panelist has taken back to back, counting from the latest. */
+function consecutiveTurns(id: PanelistId): number {
+  const spoken = model.getModel().transcript.filter(t => t.speaker !== 'candidate');
+  let n = 0;
+  for (let i = spoken.length - 1; i >= 0 && spoken[i].speaker === id; i--) n++;
+  return n;
+}
+
+/**
+ * Has this panelist already taken more than half the interview?
+ *
+ * The consecutive cap alone still left six of eight turns with one panelist —
+ * it only breaks up a run, so a two-on one-off pattern sails past it. A panel
+ * where one person asks three quarters of the questions is not a panel, and the
+ * other two are then asked to write verdicts from it.
+ */
+function overHalf(id: PanelistId): boolean {
+  const spoken = model.getModel().transcript.filter(t => t.speaker !== 'candidate');
+  if (spoken.length < SHARE_AFTER_TURNS) return false;
+  return spoken.filter(t => t.speaker === id).length > spoken.length / 2;
+}
+
 /** A role-play runs for this many candidate answers, then the panel moves on. */
 const SCENARIO_LENGTH = 3;
 
@@ -377,9 +415,28 @@ export async function runPanel(answer: string): Promise<TurnDecision> {
   // Only applies when the model gave us something. With no LLM at all every
   // draft is a keyword draft and the highest bid wins, exactly as before.
   const drafted = new Set(PANEL.map(p => p.id).filter(id => panel?.[id]));
+
+  // And it does not go to whoever has been holding it.
+  //
+  // The "just spoke" penalty above subtracts 0.3, which rotates the floor only
+  // when the bids are close. They are not always close: on a deeply technical
+  // answer the technical bid lands near 0.9 and the others near 0.3, so 0.6
+  // still wins, and wins again, and again. One real interview went ten turns
+  // with Arjun asking eight of them and Ananya asking none — and Ananya still
+  // wrote a verdict, scoring the candidate 1.0 for "impact and problem-solving
+  // entirely absent" on an axis she never once put a question to.
+  //
+  // A penalty is a preference. This is the guarantee: two in a row, then yield
+  // to anyone else who can speak.
+  const hogging = new Set(
+    PANEL.map(p => p.id).filter(id => consecutiveTurns(id) >= FLOOR_LIMIT || overHalf(id)),
+  );
+  const eligible = bids.filter(b => !hogging.has(b.panelist));
+  const pool = eligible.length ? eligible : bids;
+
   const winner =
-    (drafted.size ? bids.find(b => drafted.has(b.panelist)) : undefined)?.panelist ??
-    bids[0].panelist;
+    (drafted.size ? pool.find(b => drafted.has(b.panelist)) : undefined)?.panelist ??
+    pool[0].panelist;
 
   if (technical) {
     model.nudgeSkill('technicalDepth', 0.8);

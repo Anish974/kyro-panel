@@ -63,6 +63,23 @@ function coerceRatings(
 
 type RawVerdicts = Partial<Record<PanelistId, RawVerdict>>;
 
+/**
+ * How many questions each panelist actually put to the candidate.
+ *
+ * The bidding is supposed to move the floor around. When it does not, one
+ * panelist can take eight of ten turns and another can take none — and the one
+ * who took none was still writing "impact and problem-solving were entirely
+ * absent" and scoring 1.0, on an axis they never once asked about. That is not
+ * a finding about the candidate.
+ */
+function questionsAsked(): Record<PanelistId, number> {
+  const asked = Object.fromEntries(PANEL.map(p => [p.id, 0])) as Record<PanelistId, number>;
+  for (const turn of getModel().transcript) {
+    if (turn.speaker !== 'candidate') asked[turn.speaker] += 1;
+  }
+  return asked;
+}
+
 /** Everything the candidate actually said, with the time it was said. */
 function candidateLines(): { text: string; t: number }[] {
   return getModel().transcript.filter(t => t.speaker === 'candidate' && t.text.trim() !== '');
@@ -114,7 +131,12 @@ function confidenceCeiling(): number {
   return 0.4;
 }
 
-function coerce(fallback: PanelistVerdict, raw: RawVerdict | undefined, lines: { text: string; t: number }[]): PanelistVerdict {
+function coerce(
+  fallback: PanelistVerdict,
+  raw: RawVerdict | undefined,
+  lines: { text: string; t: number }[],
+  asked: number,
+): PanelistVerdict {
   if (!raw?.rationale) return fallback;
 
   const evidence = verifyEvidence(raw.evidence, lines);
@@ -132,9 +154,14 @@ function coerce(fallback: PanelistVerdict, raw: RawVerdict | undefined, lines: {
     // claims about itself. Asked to self-rate, it returned 0.95 off four
     // answers — no panelist is that sure after four questions, and on a hiring
     // document an overstated confidence is worse than a low one.
-    confidence: evidence.length
-      ? Math.max(0, Math.min(confidenceCeiling(), Number(raw.confidence) || fallback.confidence))
-      : Math.min(fallback.confidence, 0.4),
+    // A panelist who never asked anything cannot be confident about an answer
+    // they never heard. The prompt asks them to say so; this makes the number
+    // say so too, whatever they wrote.
+    confidence: asked === 0
+      ? Math.min(fallback.confidence, 0.2)
+      : evidence.length
+        ? Math.max(0, Math.min(confidenceCeiling(), Number(raw.confidence) || fallback.confidence))
+        : Math.min(fallback.confidence, 0.4),
     rationale: String(raw.rationale).slice(0, 600),
     ratings: coerceRatings(raw.ratings, fallback.ratings),
     evidence: evidence.length ? evidence : fallback.evidence,
@@ -175,6 +202,7 @@ function transcriptBlock(): string {
 
 function referenceBlock(fallbacks: PanelistVerdict[], durationSec: number): string {
   const m = getModel();
+  const asked = questionsAsked();
   const skills = (Object.keys(COMPETENCIES) as CompetencyId[])
     .map(c => `${COMPETENCIES[c]} ${m.skills[c].toFixed(2)}`)
     .join(', ');
@@ -191,6 +219,11 @@ function referenceBlock(fallbacks: PanelistVerdict[], durationSec: number): stri
     `Competency scores the panel tracked live (0-1): ${skills}`,
     `Gaps the panel noted: ${m.gaps.length ? m.gaps.join('; ') : 'none'}`,
     `Reference scores out of 5: ${fallbacks.map(f => `${f.panelist} ${f.score}`).join(', ')}`,
+    '',
+    `Questions each of you actually asked: ${PANEL.map(p => `${p.id} ${asked[p.id]}`).join(', ')}.`,
+    'If you asked none, you did not test your axis. Say that plainly and score it',
+    'low-confidence. Do not mark the candidate down for failing to volunteer what',
+    'nobody asked them for.',
   ].join('\n');
 }
 
@@ -211,7 +244,8 @@ export async function writeVerdicts(fallbacks: PanelistVerdict[], durationSec: n
     if (!raw) throw new Error('no parsable JSON');
 
     const byId = new Map(fallbacks.map(f => [f.panelist, f]));
-    return PANEL.map(p => coerce(byId.get(p.id)!, raw[p.id], lines));
+    const asked = questionsAsked();
+    return PANEL.map(p => coerce(byId.get(p.id)!, raw[p.id], lines, asked[p.id]));
   } catch (err) {
     // A failed write-up must not cost the hiring team the scorecard. The
     // arithmetic verdicts are thinner, not wrong.
