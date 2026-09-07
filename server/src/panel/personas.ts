@@ -1,5 +1,28 @@
 import type { PanelistId } from '@kyro/shared';
 
+function rolePillars(role: string): string {
+  const r = role.toLowerCase();
+  if (/platform|infra|devops|sre|cloud|system/i.test(r)) {
+    return 'Focus on core Platform & Infrastructure pillars: cloud architecture (AWS/GCP), containerization (Docker/Kubernetes), CI/CD, Linux systems, server scaling, networking, monitoring/uptime, and database hosting. Do NOT drill into frontend UI or browser rendering.';
+  }
+  if (/data engineer|analytics engineer|big data/i.test(r)) {
+    return 'Focus on core Data Engineering pillars: data pipelines (ETL/ELT), stream/batch processing (Kafka/Spark), data warehousing, schema design, database performance, query optimization, and data modeling.';
+  }
+  if (/frontend|ui|web/i.test(r)) {
+    return 'Focus on core Frontend pillars: component design, client-side state management, web performance, browser rendering, responsive design, bundle optimization, and user interaction.';
+  }
+  if (/mobile|android|ios/i.test(r)) {
+    return 'Focus on core Mobile pillars: mobile architecture, offline caching, memory/battery efficiency, background services, UI smoothness, and app release lifecycle.';
+  }
+  if (/manager|lead|director/i.test(r)) {
+    return 'Focus on core Engineering Management pillars: project delivery, sprint coordination, mentoring, handling technical debt, cross-functional alignment, and engineering trade-offs.';
+  }
+  if (/machine learning|ml|ai|data scientist/i.test(r)) {
+    return 'Focus on core ML & AI pillars: model training, data preprocessing, feature engineering, evaluation metrics, inference latency, and MLOps/model deployment.';
+  }
+  return 'Cover multiple core pillars: backend APIs, database design, system architecture, caching, concurrency, and end-to-end reliability.';
+}
+
 /** What each interviewer is looking for. Dynamically adapts to the candidate's target role and experience level. */
 export function getSystemPrompt(
   panelist: PanelistId,
@@ -10,7 +33,8 @@ export function getSystemPrompt(
     case 'technical':
       return `You are Arjun Mehta, a technical architect interviewing a ${level} candidate for the ${role} role.
 You care about design quality, failure modes, implementation depth, and whether the system actually works under production constraints.
-Cover multiple areas of the ${role} stack (e.g. frontend, APIs, databases, architecture). Do not drill indefinitely into a single project—after 2 questions on one system, pivot to another technology or project from their background.
+${rolePillars(role)}
+Do not drill indefinitely into a single project—after 2 questions on one system, pivot to another technology or project from their background.
 Calibrate your questions strictly to their level (${level}):
 - Intern: Ask about fundamental coding principles, basic data structures, learning curiosity, and coursework/academic project decisions.
 - Beginner (0-2 years): Ask about clean code, component/API implementation, debugging methods, and practical feature building.
@@ -35,7 +59,7 @@ Ask one question at a time. Two sentences maximum.`;
 /** Default system prompts for offline checks and fallbacks. */
 /** What makes each panelist want the floor. */
 export const SIGNALS: Record<PanelistId, RegExp> = {
-  technical: /\b(redis|queue|shard|latenc|database|cache|async|architect|scale|throughput|index|api|replica|partition|frontend|render|hook|component|state|query|schema|pipeline|model)\w*/i,
+  technical: /\b(docker|k8s|kubernetes|aws|gcp|cloud|deploy|container|cluster|server|linux|network|monitor|telemetry|log|metrics|infra|terraform|nginx|gateway|proxy|redis|queue|shard|latenc|database|cache|async|architect|scale|throughput|index|api|replica|partition|frontend|render|hook|component|state|query|schema|pipeline|model)\w*/i,
   product: /\b(customer|user|buyer|revenue|checkout|business|impact|conversion|churn|price|adoption|analytics|metric|roadmap|sla)\w*/i,
   hr: /\b(team|conflict|disagree|lead|mentor|deadline|pushback|own|decid|stakeholder|manager|culture|communicat|feedback)\w*/i,
 };

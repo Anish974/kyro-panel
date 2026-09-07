@@ -21,8 +21,8 @@ const SPARE_KEY = process.env.LLM_API_KEY_FALLBACK ?? '';
 export const LLM_ENABLED = Boolean(BASE && MODEL && KEY);
 
 // Allow enough budget for multi-panelist JSON generation so the panel never
-// prematurely falls back to canned keyword templates.
-const TIMEOUT_MS = 8000;
+// prematurely falls back to canned keyword templates under network latency.
+const TIMEOUT_MS = 14000;
 
 /** Out of quota, or the provider itself is having a moment. Worth a second key. */
 const worthRetrying = (status: number): boolean => status === 429 || status >= 500;
