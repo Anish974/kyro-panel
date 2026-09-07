@@ -117,9 +117,11 @@ export async function buildScorecard(
 ): Promise<Scorecard> {
   const model = getModel();
   const currentLevel = level || model.profile?.level || 'Intermediate (2-6 years)';
-  const durationSec = typeof customDuration === 'number' && customDuration >= 0
-    ? customDuration
-    : model.elapsed;
+  // A zero-length interview is not a measurement, it is a room that did not
+  // know how long it had been open. The room's own clock wins when it has one;
+  // otherwise the session's, which has been running since the candidate joined.
+  const durationSec =
+    typeof customDuration === 'number' && customDuration > 0 ? customDuration : model.elapsed;
 
   // Written after the duration is settled, so the panel's write-up and the
   // number on the card agree about how long the interview actually ran.

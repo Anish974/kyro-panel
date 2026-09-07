@@ -350,3 +350,16 @@ export function emptyModel(sessionId: string, profile: CandidateProfile | null =
     durationMin: DEFAULT_DURATION,
   };
 }
+
+/**
+ * Roughly how long a reply takes to say out loud, in milliseconds.
+ *
+ * ~150 words a minute, plus a beat of silence after. Shared because two places
+ * need the same guess and neither can know the truth: the server tells the room
+ * how long to wait before ending the call on the closing line, and the room uses
+ * it to stop claiming a panelist is still speaking. Agora never reports when the
+ * audio finished, so an estimate is all there is — and one that drifts between
+ * two files is worse than one that is merely approximate.
+ */
+export const speakingTimeMs = (text: string): number =>
+  Math.min(20_000, Math.round((text.split(/\s+/).length / 150) * 60_000) + 2_500);

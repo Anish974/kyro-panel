@@ -87,12 +87,17 @@ export default function App() {
     if (!candidate) return;
     setScorecardError(null);
     setDeliberating(true);
-    const durationParam = typeof actualDurationSec === 'number' ? actualDurationSec : 0;
+    // No number means we do not know, and the server's own clock is a better
+    // answer than a made-up one. Sent as 0 it was not a fallback at all — the
+    // server takes any duration it is given over its own, so "unknown" was
+    // being written onto the card as a hard zero.
+    const knownDuration =
+      typeof actualDurationSec === 'number' && actualDurationSec > 0 ? actualDurationSec : null;
     const query = new URLSearchParams({
       name: candidate.name,
       role: candidate.role,
       level: candidate.level || 'Intermediate (2-6 years)',
-      duration: String(durationParam),
+      ...(knownDuration === null ? {} : { duration: String(knownDuration) }),
       // Always the code, never a `mock` flag. The server reads whether this is
       // practice off the interview the session was opened against — sent from
       // here, a candidate could mark a real assessment as a mock on the way out

@@ -76,15 +76,32 @@ export default function Room({ candidateName, role, level, durationMin, code, on
   const [session, setSession] = useState<JoinResult | null>(null);
   const [elapsedSec, setElapsedSec] = useState<number>(0);
 
+  /**
+   * When the candidate joined, as a wall clock reading.
+   *
+   * The length of the interview used to be a counter incremented once a second
+   * and read out of whichever render closed the call. Two things were wrong
+   * with that. The backstop effect below captures handleLeave from the render
+   * that set `session` — where the counter is still 0 — so an interview the
+   * panel never closed itself was written up as lasting 00:00. And a background
+   * tab has its intervals throttled, so even the live number ran short.
+   *
+   * A timestamp has neither problem: a ref is never a stale copy, and
+   * subtracting two clock readings cannot be throttled.
+   */
+  const joinedAt = useRef<number | null>(null);
+  const sinceJoin = (): number =>
+    joinedAt.current ? Math.round((Date.now() - joinedAt.current) / 1000) : 0;
+
   // Live timer ticking up while interview session is connected
   useEffect(() => {
     if (!session) {
+      joinedAt.current = null;
       setElapsedSec(0);
       return;
     }
-    const timer = setInterval(() => {
-      setElapsedSec(prev => prev + 1);
-    }, 1000);
+    joinedAt.current = Date.now();
+    const timer = setInterval(() => setElapsedSec(sinceJoin()), 1000);
     return () => clearInterval(timer);
   }, [session]);
 
@@ -400,7 +417,7 @@ export default function Room({ candidateName, role, level, durationMin, code, on
   async function handleLeave() {
     if (leavingRef.current) return;
     leavingRef.current = true;
-    const actualDuration = elapsedSec;
+    const actualDuration = sinceJoin();
     try {
       await fetch(`/agent/stop${code ? `?code=${encodeURIComponent(code)}` : ''}`, { method: 'POST' });
     } catch {

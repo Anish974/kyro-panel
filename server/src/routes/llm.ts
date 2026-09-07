@@ -1,5 +1,5 @@
 import { Router, type Response } from 'express';
-import { panelistById, type Panelist } from '@kyro/shared';
+import { panelistById, speakingTimeMs, type Panelist } from '@kyro/shared';
 import { runPanel } from '../panel/bidding.js';
 import { ingest } from '../panel/ledger.js';
 import {
@@ -82,7 +82,7 @@ router.post('/chat/completions', async (req, res) => {
       broadcast({
         type: 'concluded',
         reason: 'The candidate asked to end the interview.',
-        speakMs: speakingTime(reply),
+        speakMs: speakingTimeMs(reply),
       });
     }
     return;
@@ -174,14 +174,11 @@ router.post('/chat/completions', async (req, res) => {
     broadcast({
       type: 'concluded',
       reason: 'The panel has finished the interview.',
-      speakMs: speakingTime(decision.reply),
+      speakMs: speakingTimeMs(decision.reply),
     });
   }
 });
 
-/** Rough speaking time. ~150 words a minute, plus a beat of silence after. */
-const speakingTime = (text: string): number =>
-  Math.min(20_000, Math.round((text.split(/\s+/).length / 150) * 60_000) + 2_500);
 
 /**
  * A well-formed completion carrying no words, so Agora speaks nothing.

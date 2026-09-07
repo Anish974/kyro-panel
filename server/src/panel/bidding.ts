@@ -452,7 +452,14 @@ async function draftPanel(answer: string, eligible: PanelistId[]): Promise<Panel
   const raw = parseJson<PanelResponse>(await ask(prompt, context(answer, eligible), 500));
   if (!raw) throw new Error('panel returned no parsable JSON');
 
-  const bids = raw.bids ?? {};
+  // The envelope is new. Before it, the whole response WAS the three panelists,
+  // and a model that drifts back to that shape would otherwise hand us nothing
+  // usable — every bid missing, so every bid from keywords, so a canned line
+  // read out to the candidate. Read the old shape as the bids it is. There is no
+  // reply in it, so the floor still falls through to a keyword question, which
+  // is a question rather than a shrug.
+  const flat = raw as Partial<Record<PanelistId, Partial<Bidding>>>;
+  const bids = raw.bids ?? (PANEL.some(x => flat[x.id]) ? flat : {});
   const floor = PANEL.some(p => p.id === raw.floor) ? (raw.floor as PanelistId) : null;
 
   return {

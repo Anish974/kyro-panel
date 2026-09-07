@@ -1,5 +1,12 @@
-import { useEffect, useState } from 'react';
-import { emptyModel, type Bid, type CandidateModel, type PanelistId, type SessionEvent } from '@kyro/shared';
+import { useEffect, useRef, useState } from 'react';
+import {
+  emptyModel,
+  speakingTimeMs,
+  type Bid,
+  type CandidateModel,
+  type PanelistId,
+  type SessionEvent,
+} from '@kyro/shared';
 
 /** Live session state, pushed from the server over SSE. One-way. */
 export function useSession() {
@@ -16,6 +23,9 @@ export function useSession() {
    */
   const [concluded, setConcluded] = useState<{ reason: string; speakMs: number } | null>(null);
 
+  /** Brings the speaking tile down once the estimated reply has been said. */
+  const stopSpeaking = useRef<number | null>(null);
+
   useEffect(() => {
     const es = new EventSource('/events');
     es.onopen = () => setConnected(true);
@@ -28,10 +38,33 @@ export function useSession() {
         case 'speaking':
           setSpeaking(ev.panelist);
           if (ev.text) setCaption({ speaker: ev.panelist ?? 'panel', text: ev.text });
+          // Nothing ever set this back. `speaking` went up on every reply and
+          // came down on nothing, so a panelist who spoke once read
+          // "Speaking…" for the rest of the interview — including while the
+          // candidate was answering them. A candidate watching that tile has
+          // no way to tell a question that was never heard from one that was —
+          // the tile claims a voice either way, which is what a candidate was
+          // looking at when they reported the panel speaking into silence.
+          //
+          // Agora never tells us when the audio finished, so the estimate the
+          // server already uses to time the closing line is what brings it
+          // down. A candidate who starts talking brings it down sooner, below.
+          if (stopSpeaking.current) clearTimeout(stopSpeaking.current);
+          stopSpeaking.current = window.setTimeout(
+            () => setSpeaking(null),
+            speakingTimeMs(ev.text ?? ''),
+          );
           break;
         case 'caption':
-          if (ev.speaker === 'candidate') setHeard(ev.text);
-          else setCaption({ speaker: ev.speaker, text: ev.text });
+          if (ev.speaker === 'candidate') {
+            setHeard(ev.text);
+            // They are talking, so the panel is not. This is the signal that
+            // does not depend on an estimate being right.
+            if (stopSpeaking.current) clearTimeout(stopSpeaking.current);
+            setSpeaking(null);
+          } else {
+            setCaption({ speaker: ev.speaker, text: ev.text });
+          }
           break;
         // The scenario also arrives on 'state', but that lands after the reply
         // is already streaming — this one shows up with the question itself.

@@ -84,9 +84,36 @@ for (const v of empty.verdicts) {
   assert.ok(v.confidence <= 0.4, `${v.panelist} is too confident with no evidence: ${v.confidence}`);
 }
 
+// --- a room that lost count must not write the interview down as 00:00 ------
+//
+// The room sends its own clock with the request, and the server takes it over
+// its own. That is right when the room knows: it started the timer when the
+// candidate joined, and the session clock started earlier, at the profile POST.
+//
+// It sent 0 when it did NOT know. The backstop that ends an interview the panel
+// never closed captures its handler from the render that opened the session,
+// where the counter is still zero, so a real six-minute interview arrived here
+// as duration=0 and was written up as 00:00 next to four turns of transcript.
+// The room no longer counts that way, and a zero is no longer taken as an
+// answer here either — two independent fixes, because either one alone leaves
+// a recruiter reading a card that says the assessment took no time at all.
+model.reset();
+model.setSimulatedElapsed(372);
+const lostCount = await buildScorecard('Anish Patankar', 'Data Engineer', 'Intern', 0);
+assert.equal(
+  lostCount.durationSec,
+  372,
+  'a duration of 0 is a room that lost count, not an interview that took no time',
+);
+
+const known = await buildScorecard('Anish Patankar', 'Data Engineer', 'Intern', 300);
+assert.equal(known.durationSec, 300, 'a real number from the room still wins over the session clock');
+model.setSimulatedElapsed(null);
+
 for (const v of card.verdicts) {
   console.log(v.panelist.padEnd(10), v.verdict.padEnd(13), v.score, '| evidence', v.evidence.length);
 }
 console.log('dissent', card.dissent);
 console.log('         the full transcript is on the card, in order, with timings');
+console.log('         and a room that lost count does not write the card down as 00:00');
 console.log('\nself-check passed');
