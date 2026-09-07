@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { PANEL, panelistById, type PanelistId } from '@kyro/shared';
+import { PANEL, panelistById, type PanelistId, type Duration } from '@kyro/shared';
 import { useSession } from '../lib/useSession.js';
 import { joinAsCandidate, leave, type JoinResult } from '../lib/agora.js';
 import { AVATARS } from '../lib/labels.js';
@@ -15,6 +15,7 @@ interface Props {
   /** What the candidate is interviewing for, chosen on the login screen. */
   role: string;
   level?: string;
+  durationMin?: Duration;
   onEnd: (actualDurationSec?: number) => void;
 }
 
@@ -63,7 +64,7 @@ function formatTimer(seconds: number): string {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
-export default function Room({ candidateName, role, level, onEnd }: Props) {
+export default function Room({ candidateName, role, level, durationMin, onEnd }: Props) {
   const { model, bids, speaking: serverSpeaking, caption, heard, connected, concluded } = useSession();
   const [session, setSession] = useState<JoinResult | null>(null);
   const [elapsedSec, setElapsedSec] = useState<number>(0);
@@ -337,7 +338,12 @@ export default function Room({ candidateName, role, level, onEnd }: Props) {
       await fetch('/candidate', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ name: candidateName, role, level }),
+        body: JSON.stringify({
+          name: candidateName,
+          role,
+          level,
+          ...(durationMin ? { durationMin } : {}),
+        }),
       }).catch(err => console.warn('Candidate sync warning:', err));
 
       const result = await joinAsCandidate(CHANNEL, undefined, {

@@ -274,6 +274,7 @@ export default function App() {
           candidateName={candidate.name}
           role={candidate.role}
           level={candidate.level}
+          durationMin={candidate.durationMin}
           onEnd={endInterview}
         />
       );
