@@ -77,7 +77,12 @@ router.post('/chat/completions', async (req, res) => {
   //
   // Told after the reply is on the wire, with an estimate of how long it takes
   // to say, so the room can let the closing finish before it ends the call.
-  if (getModel().turns >= CONCLUDE_AT_TURN) {
+  //
+  // Exactly ON the turn, not from it onwards. `>=` fired this on every turn
+  // after the tenth, and the room restarts its leave timer on each one — so the
+  // call never ended and the panel said goodbye five times in a row. turns only
+  // ever moves by one, so equality crosses here once.
+  if (getModel().turns === CONCLUDE_AT_TURN) {
     console.log(`[llm] turn ${getModel().turns} — panel has closed the interview`);
     broadcast({
       type: 'concluded',

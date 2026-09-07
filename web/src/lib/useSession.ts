@@ -36,7 +36,10 @@ export function useSession() {
         // The scenario also arrives on 'state', but that lands after the reply
         // is already streaming — this one shows up with the question itself.
         case 'scenario': setModel(m => ({ ...m, scenario: ev.scenario })); break;
-        case 'concluded': setConcluded({ reason: ev.reason, speakMs: ev.speakMs }); break;
+        // First one wins. The room starts its leave timer off this value, and
+        // a second event would replace the object, re-run that effect, and
+        // cancel the timer that was about to end the call.
+        case 'concluded': setConcluded(c => c ?? { reason: ev.reason, speakMs: ev.speakMs }); break;
       }
     };
     return () => es.close();
