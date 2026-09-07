@@ -5,6 +5,18 @@ const BASE = (process.env.LLM_BASE_URL ?? '').replace(/\/$/, '');
 const MODEL = process.env.LLM_MODEL ?? '';
 const KEY = process.env.LLM_API_KEY ?? '';
 
+/**
+ * A second key, on a second account, for when the first one is out of quota.
+ *
+ * Free-tier quota is per account, so a spare key is the only retry that helps:
+ * waiting and asking the same account again gets the same 429. This is not
+ * belt-and-braces — a real interview lost a turn to it, and what the candidate
+ * heard was one of the canned keyword lines while they sat waiting.
+ *
+ * Optional. Without it the panel behaves exactly as before.
+ */
+const SPARE_KEY = process.env.LLM_API_KEY_FALLBACK ?? '';
+
 /** False when no key is configured — the panel then falls back to keywords. */
 export const LLM_ENABLED = Boolean(BASE && MODEL && KEY);
 
@@ -12,21 +24,36 @@ export const LLM_ENABLED = Boolean(BASE && MODEL && KEY);
 // prematurely falls back to canned keyword templates.
 const TIMEOUT_MS = 8000;
 
+/** Out of quota, or the provider itself is having a moment. Worth a second key. */
+const worthRetrying = (status: number): boolean => status === 429 || status >= 500;
+
 export async function ask(system: string, user: string, maxTokens = 220): Promise<string> {
-  const res = await fetch(`${BASE}/chat/completions`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', authorization: `Bearer ${KEY}` },
-    body: JSON.stringify({
-      model: MODEL,
-      messages: [
-        { role: 'system', content: system },
-        { role: 'user', content: user },
-      ],
-      max_tokens: maxTokens,
-      temperature: 0.7,
-    }),
-    signal: AbortSignal.timeout(TIMEOUT_MS),
-  });
+  const send = (key: string) =>
+    fetch(`${BASE}/chat/completions`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
+      body: JSON.stringify({
+        model: MODEL,
+        messages: [
+          { role: 'system', content: system },
+          { role: 'user', content: user },
+        ],
+        max_tokens: maxTokens,
+        temperature: 0.7,
+      }),
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+
+  let res = await send(KEY);
+
+  // Straight to the spare rather than waiting first: a 429 comes back
+  // immediately and the other account has its own quota, so there is nothing to
+  // wait out. A timeout is not retried at all — the candidate has already been
+  // sitting in silence for the full budget, and a second one doubles it.
+  if (worthRetrying(res.status) && SPARE_KEY) {
+    console.warn(`[llm] ${res.status} on the primary key — trying the spare`);
+    res = await send(SPARE_KEY);
+  }
 
   if (!res.ok) throw new Error(`LLM ${res.status}: ${(await res.text()).slice(0, 200)}`);
   const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };

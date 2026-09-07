@@ -64,6 +64,12 @@ services:
         sync: false
       - key: LLM_API_KEY
         sync: false
+      # A second Gemini key on a second account. Free-tier quota is per account,
+      # so this is the only retry that changes the outcome when the first one is
+      # spent — waiting and asking the same account again gets the same 429.
+      # Optional: without it the panel behaves exactly as before.
+      - key: LLM_API_KEY_FALLBACK
+        sync: false
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_ANON_KEY
