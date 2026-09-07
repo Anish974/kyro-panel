@@ -87,18 +87,18 @@ export default function CandidateEntry({ onReady, onBack }: Props) {
     }`;
 
   return (
-    <div className="min-h-screen bg-[#FAF9F6] dark:bg-[#0F1115] text-[#181A20] dark:text-[#F9FAFB] flex flex-col justify-center items-center px-4 py-12 relative transition-colors duration-200">
-      <div className="absolute top-6 right-6">
+    <div className="min-h-screen bg-[#FAF9F6] dark:bg-[#0F1115] text-[#181A20] dark:text-[#F9FAFB] flex flex-col justify-center items-center px-4 py-8 sm:py-12 relative transition-colors duration-200">
+      <div className="absolute top-4 sm:top-6 right-4 sm:right-6">
         <ThemeToggle />
       </div>
 
-      <div className="w-full max-w-md mb-8 text-center flex flex-col items-center">
-        <img src="/favicon.png" alt="Kyro Panel Logo" className="w-16 h-16 rounded-2xl mb-4 object-contain drop-shadow-xs" />
-        <h1 className="font-display text-4xl font-extrabold tracking-tight text-[#181A20] dark:text-[#F9FAFB]">Kyro Panel</h1>
-        <p className="mt-2 text-base text-[#4B5565] dark:text-[#94A3B8]">Join an interview, or practise for one</p>
+      <div className="w-full max-w-md mb-6 sm:mb-8 text-center flex flex-col items-center">
+        <img src="/favicon.png" alt="Kyro Panel Logo" className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl mb-3 sm:mb-4 object-contain drop-shadow-xs" />
+        <h1 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight text-[#181A20] dark:text-[#F9FAFB]">Kyro Panel</h1>
+        <p className="mt-1.5 sm:mt-2 text-sm sm:text-base text-[#4B5565] dark:text-[#94A3B8]">Join an interview, or practise for one</p>
       </div>
 
-      <div className="w-full max-w-md bg-white dark:bg-[#161920] rounded-2xl border border-[#EBE6DF] dark:border-[#222631] shadow-sm p-8">
+      <div className="w-full max-w-md bg-white dark:bg-[#161920] rounded-2xl border border-[#EBE6DF] dark:border-[#222631] shadow-sm p-5 sm:p-8">
         <div className="flex gap-2 mb-6">
           <button type="button" onClick={() => { setTab('invite'); setError(''); }} className={tabClass(tab === 'invite')}>
             I have an invite

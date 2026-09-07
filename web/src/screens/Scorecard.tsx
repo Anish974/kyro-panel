@@ -64,23 +64,23 @@ export default function Scorecard({ scorecard, onBack }: Props) {
   return (
     <div className="h-full overflow-y-auto bg-[#FAF9F6] dark:bg-[#0F1115] text-[#181A20] dark:text-[#F9FAFB] font-sans select-none transition-colors duration-200">
       {/* Header */}
-      <header className="h-[72px] sticky top-0 z-10 border-b border-[#EBE6DF] dark:border-[#222631] bg-white dark:bg-[#161920] px-6 sm:px-10 flex items-center justify-between shadow-xs">
-        <div className="flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-2xl bg-white dark:bg-[#1E232D] border border-[#EBE6DF] dark:border-[#2D333F] flex items-center justify-center shadow-2xs overflow-hidden p-1.5">
+      <header className="h-16 sm:h-[72px] sticky top-0 z-10 border-b border-[#EBE6DF] dark:border-[#222631] bg-white dark:bg-[#161920] px-3.5 sm:px-10 flex items-center justify-between shadow-xs">
+        <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-white dark:bg-[#1E232D] border border-[#EBE6DF] dark:border-[#2D333F] flex items-center justify-center shadow-2xs overflow-hidden p-1 shrink-0">
             <img src="/favicon.png" alt="Kyro Panel Logo" className="w-full h-full object-contain" />
           </div>
-          <span className="font-display font-extrabold text-lg md:text-xl text-gray-900 dark:text-white">Kyro Panel</span>
-          <span className="w-px h-6 bg-[#EBE6DF] dark:bg-[#222631] mx-1.5" />
-          <span className="text-xs md:text-sm font-bold text-gray-700 dark:text-gray-300 bg-[#F4F1EA] dark:bg-[#1E232D] px-3 py-1 rounded-xl border border-[#E6DAC8] dark:border-[#2D333F]">
+          <span className="font-display font-extrabold text-base sm:text-xl text-gray-900 dark:text-white shrink-0">Kyro Panel</span>
+          <span className="w-px h-5 sm:h-6 bg-[#EBE6DF] dark:bg-[#222631] mx-0.5 sm:mx-1.5 shrink-0" />
+          <span className="text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 bg-[#F4F1EA] dark:bg-[#1E232D] px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-lg sm:rounded-xl border border-[#E6DAC8] dark:border-[#2D333F] truncate max-w-[120px] sm:max-w-none">
             {scorecard.candidateName}
           </span>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <ThemeToggle />
           <button
             onClick={onBack}
-            className="h-10 px-5 rounded-xl border border-[#EBE6DF] dark:border-[#222631] bg-white dark:bg-[#161920] hover:bg-gray-50 dark:hover:bg-[#1E232D] text-xs md:text-sm font-bold text-gray-800 dark:text-gray-200 transition-colors shadow-2xs cursor-pointer"
+            className="h-8.5 sm:h-10 px-3 sm:px-5 rounded-lg sm:rounded-xl border border-[#EBE6DF] dark:border-[#222631] bg-white dark:bg-[#161920] hover:bg-gray-50 dark:hover:bg-[#1E232D] text-xs sm:text-sm font-bold text-gray-800 dark:text-gray-200 transition-colors shadow-2xs cursor-pointer"
           >
             ← Return
           </button>
@@ -88,55 +88,55 @@ export default function Scorecard({ scorecard, onBack }: Props) {
       </header>
 
       {/* Main Container */}
-      <div className="max-w-[1160px] mx-auto px-6 sm:px-8 py-10 flex flex-col gap-8">
+      <div className="max-w-[1160px] mx-auto px-3.5 sm:px-8 py-6 sm:py-10 flex flex-col gap-6 sm:gap-8">
         {/* Top Summary Header */}
-        <section className="bg-white dark:bg-[#161920] rounded-3xl p-8 md:p-10 border border-[#EBE6DF] dark:border-[#222631] shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-8">
-          <div className="flex flex-col gap-2.5">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-extrabold tracking-widest text-[#A48D78] dark:text-[#CBB9A4] uppercase font-mono">
+        <section className="bg-white dark:bg-[#161920] rounded-2xl sm:rounded-3xl p-5 sm:p-8 md:p-10 border border-[#EBE6DF] dark:border-[#222631] shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-6 md:gap-8">
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[11px] sm:text-xs font-extrabold tracking-widest text-[#A48D78] dark:text-[#CBB9A4] uppercase font-mono">
                 Assessment Scorecard
               </span>
               {scorecard.level && (
-                <span className="inline-flex items-center text-[11px] font-bold px-2.5 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/60 text-[#2563EB] dark:text-blue-400 border border-blue-200 dark:border-blue-800">
+                <span className="inline-flex items-center text-[10px] sm:text-[11px] font-bold px-2 sm:px-2.5 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/60 text-[#2563EB] dark:text-blue-400 border border-blue-200 dark:border-blue-800">
                   {scorecard.level}
                 </span>
               )}
             </div>
-            <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-gray-950 dark:text-white font-display">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight text-[#181A20] dark:text-[#F9FAFB] font-display">
               {scorecard.role}
             </h1>
-            <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">
+            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 font-medium leading-relaxed">
               Three separate verdicts across {Object.values(COMPETENCIES).slice(0, 3).join(', ').toLowerCase()} and more — kept apart, never averaged.
             </p>
           </div>
 
-          <div className="flex items-center gap-8 border-t md:border-t-0 md:border-l border-[#EBE6DF] dark:border-[#222631] pt-6 md:pt-0 md:pl-8">
+          <div className="grid grid-cols-3 gap-2 sm:gap-8 border-t md:border-t-0 md:border-l border-[#EBE6DF] dark:border-[#222631] pt-4 md:pt-0 md:pl-8">
             {[
               ['DURATION', mmss(scorecard.durationSec)],
               ['QUOTES CITED', String(scorecard.verdicts.reduce((n, v) => n + v.evidence.length, 0))],
               ['CLAIMS TRACKED', String(scorecard.claims.length)],
             ].map(([label, value]) => (
-              <div key={label} className="flex flex-col gap-1">
-                <span className="text-xs font-bold tracking-wider text-gray-400 dark:text-gray-500">{label}</span>
-                <span className="font-mono text-2xl font-extrabold text-gray-900 dark:text-white">{value}</span>
+              <div key={label} className="flex flex-col gap-0.5 sm:gap-1">
+                <span className="text-[10px] sm:text-xs font-bold tracking-wider text-gray-400 dark:text-gray-500">{label}</span>
+                <span className="font-mono text-lg sm:text-2xl font-extrabold text-gray-900 dark:text-white">{value}</span>
               </div>
             ))}
           </div>
         </section>
 
         {scorecard.dissent && (
-          <div className="rounded-2xl border border-amber-200 dark:border-amber-800/60 bg-amber-50/80 dark:bg-amber-950/40 px-6 py-4 flex items-center gap-3.5 shadow-2xs">
-            <span className="text-xs font-bold tracking-wider text-amber-800 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/60 px-2.5 py-1 rounded-lg">
+          <div className="rounded-2xl border border-amber-200 dark:border-amber-800/60 bg-amber-50/80 dark:bg-amber-950/40 p-4 sm:px-6 sm:py-4 flex flex-col sm:flex-row items-start sm:items-center gap-2.5 sm:gap-3.5 shadow-2xs">
+            <span className="text-xs font-bold tracking-wider text-amber-800 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/60 px-2.5 py-1 rounded-lg shrink-0">
               DISSENT
             </span>
-            <span className="text-sm text-amber-950 dark:text-amber-200 font-semibold">
+            <span className="text-xs sm:text-sm text-amber-950 dark:text-amber-200 font-semibold leading-relaxed">
               The AI panel expressed differing perspectives across technical depth vs cross-functional team alignment criteria — preserved without artificial averaging.
             </span>
           </div>
         )}
 
         {/* 3 Verdict Cards */}
-        <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <section className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
           {scorecard.verdicts.map(v => {
             const p = panelistById(v.panelist);
             const style = VERDICT[v.verdict] || VERDICT.lean_hire;
@@ -145,43 +145,39 @@ export default function Scorecard({ scorecard, onBack }: Props) {
             return (
               <div
                 key={v.panelist}
-                className="rounded-3xl border border-[#EBE6DF] dark:border-[#222631] bg-white dark:bg-[#161920] p-6 flex flex-col gap-5 shadow-xs transition-all hover:shadow-md"
+                className="rounded-2xl sm:rounded-3xl border border-[#EBE6DF] dark:border-[#222631] bg-white dark:bg-[#161920] p-4.5 sm:p-6 flex flex-col gap-4 sm:gap-5 shadow-xs transition-all hover:shadow-md"
               >
-                <div className="flex items-center gap-3.5">
+                <div className="flex items-center gap-3 sm:gap-3.5">
                   <img
                     src={AVATARS[v.panelist]}
                     alt={p.name}
-                    className="w-13 h-13 rounded-2xl object-cover border border-[#EBE6DF] dark:border-[#222631] shadow-2xs"
+                    className="w-11 h-11 sm:w-13 sm:h-13 rounded-xl sm:rounded-2xl object-cover border border-[#EBE6DF] dark:border-[#222631] shadow-2xs shrink-0"
                   />
-                  <div className="flex flex-col">
-                    <span className="text-base font-extrabold text-gray-950 dark:text-white">{p.name}</span>
-                    <span className="text-xs text-gray-500 dark:text-gray-400 font-semibold">{p.role}</span>
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-sm sm:text-base font-extrabold text-[#181A20] dark:text-[#F9FAFB] truncate">{p.name}</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400 font-semibold truncate">{p.role}</span>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between pt-1">
+                <div className="flex items-center justify-between pt-0.5">
                   <span
-                    className="text-xs font-extrabold tracking-wider rounded-lg px-3 py-1.5 border"
+                    className="text-xs font-extrabold tracking-wider rounded-lg px-2.5 py-1 sm:px-3 sm:py-1.5 border"
                     style={{ color: style.color, background: style.bg, borderColor: style.border }}
                   >
                     {style.label}
                   </span>
                   <div className="flex items-baseline gap-1 font-mono">
-                    <span className="text-2xl font-bold" style={{ color: style.color }}>
+                    <span className="text-xl sm:text-2xl font-bold" style={{ color: style.color }}>
                       {v.score.toFixed(1)}
                     </span>
                     <span className="text-xs text-gray-400 font-semibold">/ 5.0</span>
                   </div>
                 </div>
 
-                {/* How much of an interview this verdict is actually built on.
-                    The server already caps it — 0.2 for a panelist who never
-                    asked anything, 0.4 with no verified quote, a ceiling set by
-                    the turn count — and none of that was on the page, so every
-                    verdict was drawn with the same authority. */}
+                {/* How much of an interview this verdict is actually built on */}
                 <div className="flex flex-col gap-1.5">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-extrabold tracking-widest text-[#A48D78] dark:text-[#CBB9A4] uppercase">
+                    <span className="text-[11px] sm:text-xs font-extrabold tracking-widest text-[#A48D78] dark:text-[#CBB9A4] uppercase">
                       Confidence
                     </span>
                     <span className="font-mono text-xs font-bold" style={{ color: band.color }}>
@@ -200,10 +196,10 @@ export default function Scorecard({ scorecard, onBack }: Props) {
                   </div>
                 </div>
 
-                <p className="text-sm leading-relaxed text-gray-700 dark:text-gray-300 font-normal">{v.rationale}</p>
+                <p className="text-xs sm:text-sm leading-relaxed text-gray-700 dark:text-gray-300 font-normal">{v.rationale}</p>
 
-                <div className="flex flex-col gap-2.5 pt-3 border-t border-[#FAF9F6] dark:border-[#222631]">
-                  <span className="text-xs font-extrabold tracking-widest text-[#A48D78] dark:text-[#CBB9A4] uppercase">
+                <div className="flex flex-col gap-2 pt-3 border-t border-[#FAF9F6] dark:border-[#222631]">
+                  <span className="text-[11px] sm:text-xs font-extrabold tracking-widest text-[#A48D78] dark:text-[#CBB9A4] uppercase">
                     Cited Evidence
                   </span>
                   {v.evidence.length === 0 ? (
@@ -212,10 +208,10 @@ export default function Scorecard({ scorecard, onBack }: Props) {
                     v.evidence.map(e => (
                       <div
                         key={e.t + e.quote}
-                        className="border-l-3 pl-3 flex flex-col gap-1"
+                        className="border-l-3 pl-2.5 sm:pl-3 flex flex-col gap-0.5"
                         style={{ borderColor: p.color }}
                       >
-                        <span className="font-mono text-xs font-bold text-gray-400 dark:text-gray-500">{mmss(e.t)}</span>
+                        <span className="font-mono text-[11px] sm:text-xs font-bold text-gray-400 dark:text-gray-500">{mmss(e.t)}</span>
                         <span className="text-xs leading-relaxed text-gray-800 dark:text-gray-200 italic">&ldquo;{e.quote}&rdquo;</span>
                       </div>
                     ))
@@ -227,25 +223,25 @@ export default function Scorecard({ scorecard, onBack }: Props) {
         </section>
 
         {/* Competency Matrix Table */}
-        <section className="rounded-3xl border border-[#EBE6DF] dark:border-[#222631] bg-white dark:bg-[#161920] overflow-hidden shadow-xs">
-          <div className="px-8 py-5 border-b border-[#EBE6DF] dark:border-[#222631] flex items-center justify-between bg-[#FAF9F6] dark:bg-[#1E232D]">
+        <section className="rounded-2xl sm:rounded-3xl border border-[#EBE6DF] dark:border-[#222631] bg-white dark:bg-[#161920] overflow-hidden shadow-xs">
+          <div className="px-4 sm:px-8 py-4 sm:py-5 border-b border-[#EBE6DF] dark:border-[#222631] flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-0 bg-[#FAF9F6] dark:bg-[#1E232D]">
             <div>
-              <h3 className="font-display text-base font-extrabold text-gray-900 dark:text-white">Competency Matrix</h3>
+              <h3 className="font-display text-sm sm:text-base font-extrabold text-gray-900 dark:text-white">Competency Matrix</h3>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Breakdown of grading across individual interviewer rubrics</p>
             </div>
-            <span className="text-xs text-gray-400 dark:text-gray-500 font-medium">— denotes out-of-scope</span>
+            <span className="text-[11px] sm:text-xs text-gray-400 dark:text-gray-500 font-medium">— denotes out-of-scope</span>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-left">
+            <table className="w-full text-left min-w-[500px]">
               <thead>
                 <tr className="border-b border-[#EBE6DF] dark:border-[#222631] bg-[#FAF9F6] dark:bg-[#1E232D]">
-                  <th className="px-8 py-3.5 text-xs font-bold tracking-widest text-[#A48D78] dark:text-[#CBB9A4] uppercase">
+                  <th className="px-4 sm:px-8 py-3 sm:py-3.5 text-xs font-bold tracking-widest text-[#A48D78] dark:text-[#CBB9A4] uppercase">
                     COMPETENCY
                   </th>
                   {PANEL.map(p => (
                     <th
                       key={p.id}
-                      className="px-8 py-3.5 text-xs font-bold tracking-widest uppercase text-right"
+                      className="px-4 sm:px-8 py-3 sm:py-3.5 text-xs font-bold tracking-widest uppercase text-right"
                       style={{ color: p.color }}
                     >
                       {p.name.split(' ')[0]}
@@ -256,16 +252,11 @@ export default function Scorecard({ scorecard, onBack }: Props) {
               <tbody className="divide-y divide-gray-100 dark:divide-[#222631]">
                 {competencies.map(c => (
                   <tr key={c} className="hover:bg-gray-50/70 dark:hover:bg-[#1E232D]/70 transition-colors">
-                    <td className="px-8 py-4 text-sm font-semibold text-gray-900 dark:text-gray-200">{COMPETENCIES[c]}</td>
-                    {/* Driven by PANEL and matched on id, exactly like the
-                        header above. Mapping the verdicts array here instead
-                        lined the cells up by position, so one missing or
-                        reordered verdict would file every score under the wrong
-                        interviewer's name without anything looking wrong. */}
+                    <td className="px-4 sm:px-8 py-3 sm:py-4 text-xs sm:text-sm font-semibold text-gray-900 dark:text-gray-200">{COMPETENCIES[c]}</td>
                     {PANEL.map(p => {
                       const rating = scorecard.verdicts.find(v => v.panelist === p.id)?.ratings[c];
                       return (
-                        <td key={p.id} className="px-8 py-4 font-mono text-sm font-bold text-right text-gray-800 dark:text-gray-200">
+                        <td key={p.id} className="px-4 sm:px-8 py-3 sm:py-4 font-mono text-xs sm:text-sm font-bold text-right text-gray-800 dark:text-gray-200">
                           {rating === undefined
                             ? <span className="text-gray-300 dark:text-gray-600 font-normal">&mdash;</span>
                             : rating.toFixed(1)}
@@ -280,36 +271,36 @@ export default function Scorecard({ scorecard, onBack }: Props) {
         </section>
 
         {/* Claims Ledger */}
-        <section className="flex flex-col gap-4 pb-14">
+        <section className="flex flex-col gap-3 sm:gap-4 pb-8 sm:pb-14">
           <div className="flex items-center justify-between">
-            <h3 className="font-display text-base font-extrabold text-gray-900 dark:text-white">Claims &amp; Corroboration Ledger</h3>
+            <h3 className="font-display text-sm sm:text-base font-extrabold text-gray-900 dark:text-white">Claims &amp; Corroboration Ledger</h3>
             <span className="text-xs text-gray-500 dark:text-gray-400 font-semibold">{scorecard.claims.length} claims tracked</span>
           </div>
 
           {scorecard.claims.length === 0 ? (
-            <div className="bg-white dark:bg-[#161920] rounded-2xl p-6 border border-[#EBE6DF] dark:border-[#222631] text-center text-sm text-gray-500 dark:text-gray-400">
+            <div className="bg-white dark:bg-[#161920] rounded-2xl p-5 sm:p-6 border border-[#EBE6DF] dark:border-[#222631] text-center text-xs sm:text-sm text-gray-500 dark:text-gray-400">
               No technical or project claims were flagged during this session.
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4">
               {scorecard.claims.map(claim => {
                 const s = CLAIM[claim.status] ?? CLAIM.open;
                 return (
                   <div
                     key={claim.id}
-                    className="rounded-2xl border bg-white dark:bg-[#161920] p-5 flex flex-col gap-2.5 shadow-2xs"
+                    className="rounded-2xl border bg-white dark:bg-[#161920] p-4 sm:p-5 flex flex-col gap-2 sm:gap-2.5 shadow-2xs"
                     style={{ borderColor: s.border }}
                   >
                     <div className="flex items-center justify-between">
                       <span
-                        className="text-xs font-bold tracking-wider px-2.5 py-1 rounded-md"
+                        className="text-[11px] sm:text-xs font-bold tracking-wider px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md"
                         style={{ color: s.color, background: s.bg }}
                       >
                         {s.label}
                       </span>
                       <span className="font-mono text-xs font-semibold text-gray-400 dark:text-gray-500">{mmss(claim.t)}</span>
                     </div>
-                    <p className="text-sm font-medium text-gray-900 dark:text-gray-200 leading-relaxed">&ldquo;{claim.text}&rdquo;</p>
+                    <p className="text-xs sm:text-sm font-medium text-gray-900 dark:text-gray-200 leading-relaxed">&ldquo;{claim.text}&rdquo;</p>
                     {claim.note && (
                       <p className="text-xs font-semibold" style={{ color: s.color }}>
                         {claim.note}
@@ -322,13 +313,11 @@ export default function Scorecard({ scorecard, onBack }: Props) {
           )}
         </section>
 
-        {/* The conversation itself, last because it is the reference rather than
-            the summary: the verdicts quote two lines each, and a recruiter who
-            disagrees with one needs to be able to read what surrounded it. */}
+        {/* Full Transcript */}
         {scorecard.transcript && scorecard.transcript.length > 0 && (
-          <section className="flex flex-col gap-4">
-            <div className="flex items-baseline justify-between">
-              <h2 className="text-lg font-extrabold text-gray-950 dark:text-white font-display">Full Transcript</h2>
+          <section className="flex flex-col gap-3 sm:gap-4">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <h2 className="text-base sm:text-lg font-extrabold text-[#181A20] dark:text-[#F9FAFB] font-display">Full Transcript</h2>
 
               <div className="flex items-center gap-2">
                 <span className="text-xs font-semibold text-gray-400 dark:text-gray-500 mr-1">
@@ -336,13 +325,13 @@ export default function Scorecard({ scorecard, onBack }: Props) {
                 </span>
                 <button
                   onClick={() => void copyTranscript()}
-                  className="h-8 px-3 rounded-lg border border-[#EBE6DF] dark:border-[#222631] bg-white dark:bg-[#161920] hover:bg-gray-50 dark:hover:bg-[#1E232D] text-xs font-bold text-gray-800 dark:text-gray-200 transition-colors cursor-pointer"
+                  className="h-7.5 sm:h-8 px-2.5 sm:px-3 rounded-lg border border-[#EBE6DF] dark:border-[#222631] bg-white dark:bg-[#161920] hover:bg-gray-50 dark:hover:bg-[#1E232D] text-xs font-bold text-gray-800 dark:text-gray-200 transition-colors cursor-pointer"
                 >
                   {copied ? 'Copied' : 'Copy'}
                 </button>
                 <button
                   onClick={downloadTranscript}
-                  className="h-8 px-3 rounded-lg border border-[#EBE6DF] dark:border-[#222631] bg-white dark:bg-[#161920] hover:bg-gray-50 dark:hover:bg-[#1E232D] text-xs font-bold text-gray-800 dark:text-gray-200 transition-colors cursor-pointer"
+                  className="h-7.5 sm:h-8 px-2.5 sm:px-3 rounded-lg border border-[#EBE6DF] dark:border-[#222631] bg-white dark:bg-[#161920] hover:bg-gray-50 dark:hover:bg-[#1E232D] text-xs font-bold text-gray-800 dark:text-gray-200 transition-colors cursor-pointer"
                 >
                   Download
                 </button>
@@ -353,20 +342,22 @@ export default function Scorecard({ scorecard, onBack }: Props) {
               {scorecard.transcript.map((turn, i) => {
                 const candidate = turn.speaker === 'candidate';
                 return (
-                  <div key={i} className="px-6 py-4 flex gap-4">
-                    <span className="font-mono text-xs font-semibold text-gray-400 dark:text-gray-500 pt-0.5 shrink-0 w-12">
-                      {mmss(turn.t)}
-                    </span>
-                    <span
-                      className={`text-xs font-bold tracking-wide shrink-0 w-24 pt-0.5 ${
-                        candidate
-                          ? 'text-gray-900 dark:text-gray-200'
-                          : 'text-[#A48D78] dark:text-[#CBB9A4]'
-                      }`}
-                    >
-                      {candidate ? scorecard.candidateName.split(' ')[0] : panelistById(turn.speaker as PanelistId).name.split(' ')[0]}
-                    </span>
-                    <p className="text-sm text-gray-800 dark:text-gray-300 leading-relaxed">{turn.text}</p>
+                  <div key={i} className="px-4 sm:px-6 py-3 sm:py-4 flex flex-col sm:flex-row gap-1 sm:gap-4">
+                    <div className="flex items-center gap-2 shrink-0 sm:w-36">
+                      <span className="font-mono text-[11px] sm:text-xs font-semibold text-gray-400 dark:text-gray-500">
+                        {mmss(turn.t)}
+                      </span>
+                      <span
+                        className={`text-xs font-bold tracking-wide ${
+                          candidate
+                            ? 'text-gray-900 dark:text-gray-200'
+                            : 'text-[#A48D78] dark:text-[#CBB9A4]'
+                        }`}
+                      >
+                        {candidate ? scorecard.candidateName.split(' ')[0] : panelistById(turn.speaker as PanelistId).name.split(' ')[0]}
+                      </span>
+                    </div>
+                    <p className="text-xs sm:text-sm text-gray-800 dark:text-gray-300 leading-relaxed">{turn.text}</p>
                   </div>
                 );
               })}

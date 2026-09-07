@@ -89,16 +89,16 @@ export default function ScheduleInterview() {
 
   if (created) {
     return (
-      <section className="bg-white dark:bg-[#161920] rounded-3xl border border-[#EBE6DF] dark:border-[#222631] shadow-xs p-6 sm:p-8">
+      <section className="bg-white dark:bg-[#161920] rounded-2xl sm:rounded-3xl border border-[#EBE6DF] dark:border-[#222631] shadow-xs p-5 sm:p-8">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
-            <h2 className="font-display text-lg font-extrabold text-[#181A20] dark:text-[#F9FAFB] flex items-center gap-2">
+            <h2 className="font-display text-base sm:text-lg font-extrabold text-[#181A20] dark:text-[#F9FAFB] flex items-center gap-2">
               <span>Interview scheduled</span>
               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
                 Active
               </span>
             </h2>
-            <p className="mt-1 text-sm text-[#4B5565] dark:text-[#94A3B8]">
+            <p className="mt-1 text-xs sm:text-sm text-[#4B5565] dark:text-[#94A3B8] leading-relaxed">
               Send this link to <strong className="text-[#181A20] dark:text-white">{created.candidateName}</strong>. It opens the room with{' '}
               <strong className="text-[#181A20] dark:text-white">{created.role}</strong> at <strong className="text-[#181A20] dark:text-white">{created.level}</strong> already set.
             </p>
@@ -155,9 +155,9 @@ export default function ScheduleInterview() {
   }
 
   return (
-    <section className="bg-white dark:bg-[#161920] rounded-3xl border border-[#EBE6DF] dark:border-[#222631] shadow-xs p-6 sm:p-8">
-      <h2 className="font-display text-lg font-extrabold text-[#181A20] dark:text-[#F9FAFB]">Schedule an interview</h2>
-      <p className="mt-1 text-sm text-[#4B5565] dark:text-[#94A3B8]">
+    <section className="bg-white dark:bg-[#161920] rounded-2xl sm:rounded-3xl border border-[#EBE6DF] dark:border-[#222631] shadow-xs p-5 sm:p-8">
+      <h2 className="font-display text-base sm:text-lg font-extrabold text-[#181A20] dark:text-[#F9FAFB]">Schedule an interview</h2>
+      <p className="mt-1 text-xs sm:text-sm text-[#4B5565] dark:text-[#94A3B8]">
         You set the role and the bar. The candidate gets a link and turns up to it.
       </p>
 
@@ -238,7 +238,7 @@ export default function ScheduleInterview() {
           <button
             type="submit"
             disabled={creating}
-            className="h-[46px] px-6 rounded-xl bg-[#2563EB] text-white text-sm font-bold hover:bg-[#1D4ED8] disabled:opacity-60 transition-colors cursor-pointer shadow-xs"
+            className="w-full sm:w-auto h-[46px] px-6 rounded-xl bg-[#2563EB] text-white text-sm font-bold hover:bg-[#1D4ED8] disabled:opacity-60 transition-colors cursor-pointer shadow-xs"
           >
             {creating ? 'Scheduling…' : 'Create invite link'}
           </button>

@@ -84,28 +84,28 @@ export default function CompanyPortal({ onBack, onSelectScorecard, localHistory 
   return (
     <div className="min-h-screen bg-[#FAF9F6] dark:bg-[#0F1115] text-[#181A20] dark:text-[#F9FAFB] font-sans flex flex-col select-none transition-colors duration-200">
       {/* Top Header */}
-      <header className="h-[72px] sticky top-0 z-20 border-b border-[#EBE6DF] dark:border-[#222631] bg-white dark:bg-[#161920] px-6 sm:px-8 flex items-center justify-between shadow-xs">
-        <div className="flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-2xl bg-white dark:bg-[#1E232D] border border-[#EBE6DF] dark:border-[#2D333F] flex items-center justify-center shadow-2xs overflow-hidden p-1.5">
+      <header className="h-16 sm:h-[72px] sticky top-0 z-20 border-b border-[#EBE6DF] dark:border-[#222631] bg-white dark:bg-[#161920] px-3.5 sm:px-8 flex items-center justify-between shadow-xs">
+        <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-white dark:bg-[#1E232D] border border-[#EBE6DF] dark:border-[#2D333F] flex items-center justify-center shadow-2xs overflow-hidden p-1 shrink-0">
             <img src="/favicon.png" alt="Kyro Panel Logo" className="w-full h-full object-contain" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-display font-extrabold text-lg md:text-xl text-gray-950 dark:text-white">Kyro Panel</span>
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-[11px] font-extrabold bg-[#F4F1EA] dark:bg-[#1E232D] text-[#78644E] dark:text-[#CBB9A4] border border-[#E6DAC8] dark:border-[#2D333F]">
-                Company Recruiter Portal
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <span className="font-display font-extrabold text-base sm:text-xl text-gray-950 dark:text-white shrink-0">Kyro Panel</span>
+              <span className="hidden xs:inline-flex items-center px-2 py-0.5 rounded-md text-[10px] sm:text-[11px] font-extrabold bg-[#F4F1EA] dark:bg-[#1E232D] text-[#78644E] dark:text-[#CBB9A4] border border-[#E6DAC8] dark:border-[#2D333F] truncate">
+                Recruiter Portal
               </span>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <ThemeToggle />
           <button
             onClick={onBack}
-            className="h-10 px-4 rounded-xl border border-[#EBE6DF] dark:border-[#222631] bg-white dark:bg-[#161920] hover:bg-gray-50 dark:hover:bg-[#1E232D] text-xs sm:text-sm font-bold text-gray-800 dark:text-gray-200 transition-colors shadow-2xs cursor-pointer flex items-center gap-2"
+            className="h-8.5 sm:h-10 px-3 sm:px-4 rounded-lg sm:rounded-xl border border-[#EBE6DF] dark:border-[#222631] bg-white dark:bg-[#161920] hover:bg-gray-50 dark:hover:bg-[#1E232D] text-xs sm:text-sm font-bold text-gray-800 dark:text-gray-200 transition-colors shadow-2xs cursor-pointer flex items-center gap-1.5"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
             <span>Home</span>
@@ -113,7 +113,7 @@ export default function CompanyPortal({ onBack, onSelectScorecard, localHistory 
 
           <button
             onClick={() => void signOut()}
-            className="h-10 px-4 rounded-xl border border-[#EBE6DF] dark:border-[#222631] bg-white dark:bg-[#161920] hover:bg-gray-50 dark:hover:bg-[#1E232D] text-xs sm:text-sm font-bold text-gray-800 dark:text-gray-200 transition-colors shadow-2xs cursor-pointer"
+            className="h-8.5 sm:h-10 px-3 sm:px-4 rounded-lg sm:rounded-xl border border-[#EBE6DF] dark:border-[#222631] bg-white dark:bg-[#161920] hover:bg-gray-50 dark:hover:bg-[#1E232D] text-xs sm:text-sm font-bold text-gray-800 dark:text-gray-200 transition-colors shadow-2xs cursor-pointer"
           >
             Sign out
           </button>
@@ -121,13 +121,13 @@ export default function CompanyPortal({ onBack, onSelectScorecard, localHistory 
       </header>
 
       {/* Main Content Area */}
-      <div className="max-w-[1240px] w-full mx-auto px-6 sm:px-8 py-8 flex flex-col gap-6">
+      <div className="max-w-[1240px] w-full mx-auto px-3.5 sm:px-8 py-6 sm:py-8 flex flex-col gap-6">
         <ScheduleInterview />
 
         {/* Top Header Banner & Stats */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white dark:bg-[#161920] rounded-3xl p-6 sm:p-8 border border-[#EBE6DF] dark:border-[#222631] shadow-xs">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-5 sm:gap-6 bg-white dark:bg-[#161920] rounded-2xl sm:rounded-3xl p-5 sm:p-8 border border-[#EBE6DF] dark:border-[#222631] shadow-xs">
           <div className="flex flex-col gap-1.5">
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-950 dark:text-white font-display tracking-tight">
+            <h1 className="text-xl sm:text-3xl font-extrabold text-gray-950 dark:text-white font-display tracking-tight">
               Candidate Assessments &amp; Scorecards
             </h1>
             <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 font-medium">
@@ -135,20 +135,18 @@ export default function CompanyPortal({ onBack, onSelectScorecard, localHistory 
             </p>
           </div>
 
-          <div className="flex items-center gap-6 border-t md:border-t-0 md:border-l border-[#EBE6DF] dark:border-[#222631] pt-4 md:pt-0 md:pl-8">
+          <div className="grid grid-cols-3 gap-2 sm:gap-6 border-t md:border-t-0 md:border-l border-[#EBE6DF] dark:border-[#222631] pt-4 md:pt-0 md:pl-8">
             <div className="flex flex-col">
-              <span className="text-[11px] font-extrabold tracking-wider text-gray-400 uppercase font-mono">Total Candidates</span>
-              <span className="text-2xl font-display font-extrabold text-gray-950 dark:text-white mt-0.5">{totalCount}</span>
+              <span className="text-[10px] sm:text-[11px] font-extrabold tracking-wider text-gray-400 uppercase font-mono">Candidates</span>
+              <span className="text-xl sm:text-2xl font-display font-extrabold text-gray-950 dark:text-white mt-0.5">{totalCount}</span>
             </div>
-            <div className="w-px h-8 bg-[#EBE6DF] dark:bg-[#222631]" />
             <div className="flex flex-col">
-              <span className="text-[11px] font-extrabold tracking-wider text-gray-400 uppercase font-mono">Hire Verdicts</span>
-              <span className="text-2xl font-display font-extrabold text-emerald-600 dark:text-emerald-400 mt-0.5">{hireCount}</span>
+              <span className="text-[10px] sm:text-[11px] font-extrabold tracking-wider text-gray-400 uppercase font-mono">Hires</span>
+              <span className="text-xl sm:text-2xl font-display font-extrabold text-emerald-600 dark:text-emerald-400 mt-0.5">{hireCount}</span>
             </div>
-            <div className="w-px h-8 bg-[#EBE6DF] dark:bg-[#222631]" />
             <div className="flex flex-col">
-              <span className="text-[11px] font-extrabold tracking-wider text-gray-400 uppercase font-mono">Avg Tech Score</span>
-              <span className="text-2xl font-display font-extrabold text-[#2563EB] dark:text-blue-400 mt-0.5">{avgTechScore}</span>
+              <span className="text-[10px] sm:text-[11px] font-extrabold tracking-wider text-gray-400 uppercase font-mono">Avg Score</span>
+              <span className="text-xl sm:text-2xl font-display font-extrabold text-[#2563EB] dark:text-blue-400 mt-0.5">{avgTechScore}</span>
             </div>
           </div>
         </div>

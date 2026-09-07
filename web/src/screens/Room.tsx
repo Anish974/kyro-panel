@@ -548,10 +548,10 @@ export default function Room({ candidateName, role, level, durationMin, code, on
     <div className="h-screen max-h-screen w-full flex flex-col bg-[#FAF9F6] dark:bg-[#0F1115] text-gray-900 dark:text-gray-100 select-none overflow-hidden font-sans relative">
       {/* ---------------------------------------------------- GOOGLE MEET PRE-JOIN GREENROOM MODAL */}
       {!session && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 md:p-10 bg-slate-950/75 backdrop-blur-2xl animate-in fade-in duration-300 overflow-y-auto">
-          <div className="w-full max-w-5xl bg-white dark:bg-[#161920] rounded-3xl border border-[#EBE6DF] dark:border-[#222631] shadow-2xl overflow-hidden flex flex-col lg:flex-row my-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 md:p-10 bg-slate-950/75 backdrop-blur-2xl animate-in fade-in duration-300 overflow-y-auto">
+          <div className="w-full max-w-5xl max-h-[92vh] bg-white dark:bg-[#161920] rounded-2xl sm:rounded-3xl border border-[#EBE6DF] dark:border-[#222631] shadow-2xl overflow-y-auto lg:overflow-hidden flex flex-col lg:flex-row my-auto">
             {/* Left: Video Preview & Device Controls */}
-            <div className="flex-1 bg-[#11141C] p-6 sm:p-8 flex flex-col justify-between relative min-h-[340px] sm:min-h-[420px]">
+            <div className="w-full lg:flex-1 bg-[#11141C] p-4 sm:p-6 lg:p-8 flex flex-col justify-between relative min-h-[260px] sm:min-h-[340px] lg:min-h-[420px] shrink-0">
               {/* Video container */}
               <div className="absolute inset-0 z-0 overflow-hidden bg-[#0D1017]">
                 <video
@@ -564,17 +564,17 @@ export default function Room({ candidateName, role, level, durationMin, code, on
                   }`}
                 />
                 {(!cameraOn || cameraPermission !== 'granted') && (
-                  <div className="w-full h-full flex flex-col items-center justify-center gap-4 bg-gradient-to-b from-[#181D28] to-[#0D1017] text-white p-6">
-                    <div className="w-24 h-24 rounded-full bg-blue-600/20 border border-blue-500/30 flex items-center justify-center shadow-xl">
-                      <span className="font-display text-3xl font-extrabold text-blue-400">
+                  <div className="w-full h-full flex flex-col items-center justify-center gap-3 sm:gap-4 bg-gradient-to-b from-[#181D28] to-[#0D1017] text-white p-4 sm:p-6">
+                    <div className="w-16 h-16 sm:w-24 sm:h-24 rounded-full bg-blue-600/20 border border-blue-500/30 flex items-center justify-center shadow-xl">
+                      <span className="font-display text-2xl sm:text-3xl font-extrabold text-blue-400">
                         {candidateName.split(' ').map(n => n[0]).join('')}
                       </span>
                     </div>
                     <div className="text-center">
-                      <h4 className="text-base font-bold text-white">
+                      <h4 className="text-sm sm:text-base font-bold text-white">
                         {!cameraOn ? 'Camera is turned off' : 'Camera preview unavailable'}
                       </h4>
-                      <p className="text-xs text-gray-400 mt-1 max-w-xs">
+                      <p className="text-[11px] sm:text-xs text-gray-400 mt-1 max-w-xs">
                         {!cameraOn
                           ? 'Click the camera button below to turn your video on.'
                           : permissionError || 'Please allow camera and mic permissions in browser.'}
@@ -587,28 +587,28 @@ export default function Room({ candidateName, role, level, durationMin, code, on
 
               {/* Top overlay badge */}
               <div className="relative z-10 flex items-center justify-between">
-                <div className="flex items-center gap-2 bg-black/60 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-white/20 text-white text-xs font-semibold">
+                <div className="flex items-center gap-1.5 sm:gap-2 bg-black/60 backdrop-blur-md px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full border border-white/20 text-white text-[11px] sm:text-xs font-semibold">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                   <span>Device Check</span>
                 </div>
-                <div className="bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/20 text-gray-300 text-xs font-mono">
+                <div className="bg-black/60 backdrop-blur-md px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full border border-white/20 text-gray-300 text-[11px] sm:text-xs font-mono">
                   Kyro Greenroom
                 </div>
               </div>
 
               {/* Bottom overlay: Live Mic Equalizer & Controls */}
-              <div className="relative z-10 flex flex-col gap-4 mt-auto">
+              <div className="relative z-10 flex flex-col gap-3 sm:gap-4 mt-auto">
                 {/* Floating Equalizer / Audio Waveform Meter */}
-                <div className="self-center bg-black/65 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/20 flex items-center gap-3 shadow-lg">
-                  <div className="flex items-center gap-1.5 text-xs font-semibold text-white">
-                    <svg className={`w-4 h-4 ${micOn && prejoinMicVolume > 0 ? 'text-emerald-400' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="self-center bg-black/65 backdrop-blur-md px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl border border-white/20 flex items-center gap-2.5 sm:gap-3 shadow-lg">
+                  <div className="flex items-center gap-1.5 text-[11px] sm:text-xs font-semibold text-white">
+                    <svg className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${micOn && prejoinMicVolume > 0 ? 'text-emerald-400' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                     </svg>
-                    <span>{micOn ? (prejoinMicVolume > 0 ? 'Speaking...' : 'Microphone Ready') : 'Mic Muted'}</span>
+                    <span>{micOn ? (prejoinMicVolume > 0 ? 'Speaking...' : 'Mic Ready') : 'Mic Muted'}</span>
                   </div>
 
                   {/* 7-bar dynamic audio visualizer */}
-                  <div className="flex items-center gap-[3px] h-4">
+                  <div className="flex items-center gap-[2.5px] sm:gap-[3px] h-3.5 sm:h-4">
                     {[1, 2, 3, 4, 5, 6, 7].map(i => {
                       const factor = 1 + ((i * 2) % 4) * 0.3;
                       const barHeight = micOn && prejoinMicVolume > 0
@@ -617,7 +617,7 @@ export default function Room({ candidateName, role, level, durationMin, code, on
                       return (
                         <span
                           key={i}
-                          className={`w-[3px] rounded-full transition-all duration-75 ${
+                          className={`w-[2.5px] sm:w-[3px] rounded-full transition-all duration-75 ${
                             micOn && prejoinMicVolume > 0 ? 'bg-emerald-400' : 'bg-gray-500'
                           }`}
                           style={{ height: `${barHeight}px` }}
@@ -628,23 +628,23 @@ export default function Room({ candidateName, role, level, durationMin, code, on
                 </div>
 
                 {/* Google Meet style round control toggles */}
-                <div className="flex items-center justify-center gap-4">
+                <div className="flex items-center justify-center gap-3 sm:gap-4">
                   {/* Mic Toggle Button */}
                   <button
                     onClick={toggleMic}
                     title={micOn ? 'Turn off microphone' : 'Turn on microphone'}
-                    className={`w-13 h-13 rounded-full flex items-center justify-center transition-all shadow-xl active:scale-95 cursor-pointer ${
+                    className={`w-11 h-11 sm:w-13 sm:h-13 rounded-full flex items-center justify-center transition-all shadow-xl active:scale-95 cursor-pointer ${
                       micOn
                         ? 'bg-white/95 hover:bg-white text-gray-900 ring-2 ring-white/40'
                         : 'bg-red-500 hover:bg-red-600 text-white ring-2 ring-red-400/50'
                     }`}
                   >
                     {micOn ? (
-                      <svg className="w-6 h-6 text-[#2563EB]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-5 h-5 sm:w-6 sm:h-6 text-[#2563EB]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                       </svg>
                     ) : (
-                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                         <line x1="1" y1="1" x2="23" y2="23" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                       </svg>
@@ -655,18 +655,18 @@ export default function Room({ candidateName, role, level, durationMin, code, on
                   <button
                     onClick={toggleCamera}
                     title={cameraOn ? 'Turn off camera' : 'Turn on camera'}
-                    className={`w-13 h-13 rounded-full flex items-center justify-center transition-all shadow-xl active:scale-95 cursor-pointer ${
+                    className={`w-11 h-11 sm:w-13 sm:h-13 rounded-full flex items-center justify-center transition-all shadow-xl active:scale-95 cursor-pointer ${
                       cameraOn
                         ? 'bg-white/95 hover:bg-white text-gray-900 ring-2 ring-white/40'
                         : 'bg-red-500 hover:bg-red-600 text-white ring-2 ring-red-400/50'
                     }`}
                   >
                     {cameraOn ? (
-                      <svg className="w-6 h-6 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-5 h-5 sm:w-6 sm:h-6 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                       </svg>
                     ) : (
-                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                         <line x1="2" y1="2" x2="22" y2="22" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                       </svg>
@@ -677,40 +677,40 @@ export default function Room({ candidateName, role, level, durationMin, code, on
             </div>
 
             {/* Right: Join Info Card */}
-            <div className="w-full lg:w-[420px] p-6 sm:p-8 flex flex-col justify-between bg-white dark:bg-[#161920]">
-              <div className="flex flex-col gap-5">
+            <div className="w-full lg:w-[420px] p-4 sm:p-6 lg:p-8 flex flex-col justify-between bg-white dark:bg-[#161920] shrink-0">
+              <div className="flex flex-col gap-4 sm:gap-5">
                 {/* Brand Tag */}
                 <div className="flex items-center justify-between">
                   <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/60 border border-blue-200/80 dark:border-blue-800/60 text-xs font-bold text-[#2563EB] dark:text-blue-400">
                     <span className="w-2 h-2 rounded-full bg-[#2563EB] animate-pulse" />
                     Kyro Panel AI Panel
                   </div>
-                  <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">Live Voice Session</span>
+                  <span className="text-[11px] sm:text-xs font-semibold text-gray-500 dark:text-gray-400">Live Voice Session</span>
                 </div>
 
                 {/* Heading & Target Role */}
                 <div>
-                  <h2 className="text-2xl font-extrabold text-gray-950 dark:text-white font-display tracking-tight">
+                  <h2 className="text-xl sm:text-2xl font-extrabold text-gray-950 dark:text-white font-display tracking-tight">
                     Ready to join?
                   </h2>
-                  <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-0.5 sm:mt-1">
                     Connect live to begin your interview evaluation.
                   </p>
 
                   {/* Highlighted Candidate & Target Role card */}
-                  <div className="mt-4 p-3.5 rounded-2xl bg-[#FAF9F6] dark:bg-[#12151B] border border-[#EBE6DF] dark:border-[#222631] flex flex-col gap-2">
+                  <div className="mt-3 sm:mt-4 p-3 sm:p-3.5 rounded-xl sm:rounded-2xl bg-[#FAF9F6] dark:bg-[#12151B] border border-[#EBE6DF] dark:border-[#222631] flex flex-col gap-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-mono uppercase text-gray-500 dark:text-gray-400 font-bold">Candidate</span>
-                      <span className="text-sm font-bold text-gray-900 dark:text-white">{candidateName}</span>
+                      <span className="text-[10px] sm:text-xs font-mono uppercase text-gray-500 dark:text-gray-400 font-bold">Candidate</span>
+                      <span className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white truncate max-w-[180px] text-right">{candidateName}</span>
                     </div>
                     <div className="flex items-center justify-between pt-2 border-t border-[#EBE6DF] dark:border-[#222631]">
-                      <span className="text-xs font-mono uppercase text-gray-500 dark:text-gray-400 font-bold">Target Role</span>
+                      <span className="text-[10px] sm:text-xs font-mono uppercase text-gray-500 dark:text-gray-400 font-bold">Target Role</span>
                       <div className="flex items-center gap-1.5 flex-wrap justify-end">
-                        <span className="text-xs font-bold text-[#2563EB] dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 px-2.5 py-1 rounded-lg">
+                        <span className="text-[11px] sm:text-xs font-bold text-[#2563EB] dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 px-2 py-0.5 rounded-lg">
                           {role}
                         </span>
                         {level && (
-                          <span className="text-[11px] font-bold text-gray-700 dark:text-gray-300 bg-white dark:bg-[#1E232D] border border-[#EBE6DF] dark:border-[#2D333F] px-2 py-1 rounded-lg">
+                          <span className="text-[10px] sm:text-[11px] font-bold text-gray-700 dark:text-gray-300 bg-white dark:bg-[#1E232D] border border-[#EBE6DF] dark:border-[#2D333F] px-1.5 py-0.5 rounded-lg">
                             {level}
                           </span>
                         )}
@@ -720,17 +720,17 @@ export default function Room({ candidateName, role, level, durationMin, code, on
                 </div>
 
                 {/* Interviewers in the room */}
-                <div className="flex flex-col gap-2">
-                  <span className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 font-mono">
+                <div className="flex flex-col gap-1.5 sm:gap-2">
+                  <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 font-mono">
                     3 AI Interviewers in Room
                   </span>
-                  <div className="flex flex-col gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 gap-1.5 sm:gap-2">
                     {PANEL.map(p => (
-                      <div key={p.id} className="flex items-center gap-3 p-2 rounded-xl bg-gray-50 dark:bg-[#1A1E27] border border-gray-100 dark:border-[#222631]">
-                        <img src={AVATARS[p.id]} alt={p.name} className="w-8 h-8 rounded-full object-cover border border-gray-200 dark:border-gray-700" />
+                      <div key={p.id} className="flex items-center gap-2.5 sm:gap-3 p-1.5 sm:p-2 rounded-xl bg-gray-50 dark:bg-[#1A1E27] border border-gray-100 dark:border-[#222631]">
+                        <img src={AVATARS[p.id]} alt={p.name} className="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover border border-gray-200 dark:border-gray-700 shrink-0" />
                         <div className="flex-1 min-w-0">
                           <p className="text-xs font-bold text-gray-900 dark:text-white truncate">{p.name}</p>
-                          <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">{p.role}</p>
+                          <p className="text-[10px] sm:text-[11px] text-gray-500 dark:text-gray-400 truncate">{p.role}</p>
                         </div>
                         <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
                       </div>
@@ -740,9 +740,9 @@ export default function Room({ candidateName, role, level, durationMin, code, on
               </div>
 
               {/* Action Button & Errors */}
-              <div className="mt-6 flex flex-col gap-3">
+              <div className="mt-4 sm:mt-6 flex flex-col gap-2.5 sm:gap-3">
                 {joinError && (
-                  <div className="p-3 text-xs text-red-600 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900 rounded-xl flex items-center gap-2">
+                  <div className="p-2.5 sm:p-3 text-xs text-red-600 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900 rounded-xl flex items-center gap-2">
                     <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                     </svg>
@@ -753,7 +753,7 @@ export default function Room({ candidateName, role, level, durationMin, code, on
                 <button
                   onClick={handleJoin}
                   disabled={joining}
-                  className="w-full py-3.5 px-6 rounded-2xl bg-[#2563EB] hover:bg-blue-700 text-white font-bold text-sm sm:text-base shadow-xl hover:shadow-blue-500/25 transition-all flex items-center justify-center gap-3 cursor-pointer active:scale-98 disabled:opacity-50 disabled:cursor-wait"
+                  className="w-full py-3 sm:py-3.5 px-6 rounded-xl sm:rounded-2xl bg-[#2563EB] hover:bg-blue-700 text-white font-bold text-sm sm:text-base shadow-xl hover:shadow-blue-500/25 transition-all flex items-center justify-center gap-2.5 sm:gap-3 cursor-pointer active:scale-98 disabled:opacity-50 disabled:cursor-wait"
                 >
                   {joining ? (
                     <>
@@ -766,14 +766,14 @@ export default function Room({ candidateName, role, level, durationMin, code, on
                   ) : (
                     <>
                       <span>Join AI Panel</span>
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3" />
                       </svg>
                     </>
                   )}
                 </button>
 
-                <p className="text-[11px] text-center text-gray-500 dark:text-gray-400">
+                <p className="text-[10px] sm:text-[11px] text-center text-gray-500 dark:text-gray-400">
                   Microphone will connect live upon joining. Speak naturally.
                 </p>
               </div>
@@ -783,9 +783,9 @@ export default function Room({ candidateName, role, level, durationMin, code, on
       )}
 
       {/* ---------------------------------------------------- TOP HEADER BAR */}
-      <header className="h-[54px] sm:h-[58px] shrink-0 bg-white dark:bg-[#161920] border-b border-[#EBE6DF] dark:border-[#222631] px-3 sm:px-6 flex items-center justify-between z-20 shadow-xs gap-2 sm:gap-3">
+      <header className="h-[50px] sm:h-[58px] shrink-0 bg-white dark:bg-[#161920] border-b border-[#EBE6DF] dark:border-[#222631] px-2.5 sm:px-6 flex items-center justify-between z-20 shadow-xs gap-1.5 sm:gap-3">
         {/* Left: Brand, Candidate Name & Target Role */}
-        <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0 min-w-0">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-white dark:bg-[#1E232D] border border-[#EBE6DF] dark:border-[#2D333F] flex items-center justify-center shadow-2xs overflow-hidden p-1">
               <img src="/favicon.png" alt="Kyro Panel Logo" className="w-full h-full object-contain" />
@@ -798,11 +798,11 @@ export default function Room({ candidateName, role, level, durationMin, code, on
           <span className="w-px h-4 sm:h-5 bg-[#EBE6DF] dark:bg-[#222631]" />
 
           {/* Candidate Name & Role (Compact and responsive) */}
-          <div className="flex items-center gap-1.5 sm:gap-2">
-            <span className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white truncate max-w-[100px] sm:max-w-none">{candidateName}</span>
-            <span className="text-[10px] sm:text-[11px] font-semibold text-[#2563EB] dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 px-2 py-0.5 rounded-md border border-blue-200/60 dark:border-blue-800/60 inline-flex items-center gap-1 shrink-0">
+          <div className="flex items-center gap-1 sm:gap-2 min-w-0">
+            <span className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white truncate max-w-[80px] xs:max-w-[120px] sm:max-w-none">{candidateName}</span>
+            <span className="text-[10px] sm:text-[11px] font-semibold text-[#2563EB] dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 px-1.5 sm:px-2 py-0.5 rounded-md border border-blue-200/60 dark:border-blue-800/60 inline-flex items-center gap-1 shrink-0">
               <span>🎯</span>
-              <span className="truncate max-w-[90px] sm:max-w-none">{role}</span>
+              <span className="truncate max-w-[70px] xs:max-w-[100px] sm:max-w-none">{role}</span>
             </span>
             {level && (
               <span className="text-[10px] font-bold text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded-md border border-gray-200 dark:border-gray-700 hidden 2xl:inline">
@@ -840,7 +840,7 @@ export default function Room({ candidateName, role, level, durationMin, code, on
         </div>
 
         {/* Right: Connection, Timer, ThemeToggle, Leave Button */}
-        <div className="flex items-center gap-2.5 sm:gap-4 shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
           {/* Connection status */}
           <div className="hidden md:flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-semibold text-xs">
             <div className="flex items-end gap-[2px] h-3.5">
@@ -854,9 +854,9 @@ export default function Room({ candidateName, role, level, durationMin, code, on
           </div>
 
           {/* Interview Time Clock */}
-          <div className="flex items-center gap-2 border-l border-[#EBE6DF] dark:border-[#222631] pl-2.5 sm:pl-3">
-            <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-gray-100 dark:bg-[#1E232D] flex items-center justify-center text-gray-700 dark:text-gray-300 shrink-0">
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="flex items-center gap-1.5 sm:gap-2 border-l border-[#EBE6DF] dark:border-[#222631] pl-1.5 sm:pl-3">
+            <div className="w-5 h-5 sm:w-7 sm:h-7 rounded-lg bg-gray-100 dark:bg-[#1E232D] flex items-center justify-center text-gray-700 dark:text-gray-300 shrink-0">
+              <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
@@ -864,16 +864,12 @@ export default function Room({ candidateName, role, level, durationMin, code, on
               <span className="font-mono font-black text-xs sm:text-sm text-[#111827] dark:text-white tracking-tight leading-none">
                 {formatTimer(session ? elapsedSec : (model.elapsed || 0))}
               </span>
-              {/* Both halves used to be the literal 10, from when every
-                  interview was ten minutes. They come off what the company
-                  actually booked now, or the candidate would be told they are
-                  on turn 3 of 10 in a five-minute screen. */}
-              <span className="text-[10px] text-[#4B5565] dark:text-[#94A3B8] font-semibold leading-none mt-0.5">
+              <span className="text-[9px] sm:text-[10px] text-[#4B5565] dark:text-[#94A3B8] font-semibold leading-none mt-0.5">
                 {model.turns > 0
                   ? model.turns > model.durationMin
-                    ? `Turn ${model.turns} (in-depth)`
-                    : `Turn ${model.turns}/${model.durationMin}`
-                  : `${model.durationMin}m max`}
+                    ? `Turn ${model.turns}`
+                    : `T${model.turns}/${model.durationMin}`
+                  : `${model.durationMin}m`}
               </span>
             </div>
           </div>
@@ -884,57 +880,71 @@ export default function Room({ candidateName, role, level, durationMin, code, on
           {/* Leave Interview Button */}
           <button
             onClick={() => setConfirmEnd(true)}
-            className="border border-[#EBE6DF] dark:border-[#222631] hover:border-gray-400 text-gray-800 dark:text-gray-200 hover:text-gray-950 dark:hover:text-white bg-white dark:bg-[#161920] hover:bg-gray-50 dark:hover:bg-[#1E232D] text-xs font-bold px-3 sm:px-3.5 py-1.5 rounded-xl transition-colors shadow-2xs cursor-pointer whitespace-nowrap"
+            className="border border-[#EBE6DF] dark:border-[#222631] hover:border-gray-400 text-gray-800 dark:text-gray-200 hover:text-gray-950 dark:hover:text-white bg-white dark:bg-[#161920] hover:bg-gray-50 dark:hover:bg-[#1E232D] text-[11px] sm:text-xs font-bold px-2 sm:px-3.5 py-1 sm:py-1.5 rounded-lg sm:rounded-xl transition-colors shadow-2xs cursor-pointer whitespace-nowrap"
           >
-            Leave Interview
+            Leave
           </button>
         </div>
       </header>
 
       {/* ---------------------------------------------------- MAIN BODY GRID */}
-      <div className="flex-1 min-h-0 flex px-3 sm:px-5 py-2 sm:py-3 gap-3 sm:gap-4 bg-[#FAF9F6] dark:bg-[#0F1115] overflow-hidden">
+      <div className="flex-1 min-h-0 flex flex-col lg:flex-row px-2.5 sm:px-4 lg:px-5 py-2 sm:py-3 gap-2 sm:gap-3 lg:gap-4 bg-[#FAF9F6] dark:bg-[#0F1115] overflow-hidden">
+        {/* Mobile Top Strip: 3 AI Interviewers in a 3-column row */}
+        <div className="lg:hidden grid grid-cols-3 gap-1.5 sm:gap-2 h-[80px] sm:h-[105px] shrink-0">
+          {PANEL.map(p => (
+            <PanelistTile
+              key={p.id}
+              panelist={p}
+              speaking={currentSpeaker === p.id}
+              bid={bids.find(b => b.panelist === p.id)}
+              avatarUrl={AVATARS[p.id]}
+              onSelect={() => setActiveSpeakerId(p.id)}
+            />
+          ))}
+        </div>
+
         {/* LEFT / CENTER: Candidate Stage Area */}
-        <main className="flex-1 min-h-0 flex flex-col gap-2 sm:gap-2.5 min-w-0">
+        <main className="flex-1 min-h-0 flex flex-col gap-1.5 sm:gap-2.5 min-w-0">
           {/* Active Speaker Notification Bar */}
-          <div className="flex items-center gap-2 px-1 text-xs sm:text-sm font-semibold text-gray-800 dark:text-gray-200 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 px-1 text-xs sm:text-sm font-semibold text-gray-800 dark:text-gray-200 shrink-0">
             <div className="flex items-center justify-center text-[#2563EB] dark:text-blue-400">
-              <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M8.111 16.404a5.5 5.5 0 010-7.778M12 12h.01m3.878-4.404a5.5 5.5 0 010 7.778M5.636 18.364a9 9 0 010-12.728m12.728 0a9 9 0 010 12.728" />
               </svg>
             </div>
-            <span className="text-gray-600 dark:text-gray-400">Active Speaker:</span>
+            <span className="text-gray-600 dark:text-gray-400 text-[11px] sm:text-xs md:text-sm">Speaker:</span>
             {panelError ? (
-              <span className="font-semibold text-xs sm:text-sm text-red-600 flex items-center gap-1.5">
-                <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <span className="font-semibold text-xs text-red-600 flex items-center gap-1.5 truncate">
+                <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
-                {panelError}
+                <span className="truncate">{panelError}</span>
               </span>
             ) : speakerInfo ? (
-              <>
-                <span className="font-extrabold text-gray-950 dark:text-white text-xs sm:text-sm md:text-base">{speakerInfo.name}</span>
-                <span className="text-gray-500 dark:text-gray-400 font-medium text-xs sm:text-sm">({speakerInfo.role})</span>
-              </>
+              <div className="flex items-center gap-1 min-w-0">
+                <span className="font-extrabold text-gray-950 dark:text-white text-xs sm:text-sm truncate">{speakerInfo.name}</span>
+                <span className="text-gray-500 dark:text-gray-400 font-medium text-[11px] sm:text-xs truncate">({speakerInfo.role})</span>
+              </div>
             ) : agentStateLabel ? (
               <span
-                className={`font-semibold text-xs sm:text-sm flex items-center gap-1.5 ${
+                className={`font-semibold text-[11px] sm:text-xs flex items-center gap-1.5 truncate ${
                   agentState === 'thinking' ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'
                 }`}
               >
                 <span
-                  className={`w-2 h-2 rounded-full ${
+                  className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full shrink-0 ${
                     agentState === 'thinking' ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'
                   }`}
                 />
-                {agentStateLabel}
+                <span className="truncate">{agentStateLabel}</span>
               </span>
             ) : (
-              <span className="font-medium text-gray-500 dark:text-gray-400 text-xs sm:text-sm">None (Panel listening to candidate)</span>
+              <span className="font-medium text-gray-500 dark:text-gray-400 text-[11px] sm:text-xs truncate">Panel listening to candidate</span>
             )}
 
             {session && !session.rtm && (
               <span
-                className="ml-auto inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2 py-0.5"
+                className="ml-auto hidden xs:inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2 py-0.5"
                 title="Agora Signaling did not connect. Captions will only appear once each turn completes, and the panel's thinking/speaking state is unavailable."
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
@@ -944,7 +954,7 @@ export default function Room({ candidateName, role, level, durationMin, code, on
           </div>
 
           {/* Large Candidate Video Container */}
-          <div className="flex-1 min-h-0 rounded-2xl sm:rounded-3xl border border-[#EBE6DF] dark:border-[#222631] relative overflow-hidden bg-gradient-to-b from-[#161A22] to-[#0D1016] shadow-sm flex flex-col justify-between p-3.5 sm:p-5">
+          <div className="flex-1 min-h-[220px] rounded-xl sm:rounded-3xl border border-[#EBE6DF] dark:border-[#222631] relative overflow-hidden bg-gradient-to-b from-[#161A22] to-[#0D1016] shadow-sm flex flex-col justify-between p-2.5 sm:p-4 lg:p-5">
             {/* Live Camera Video Feed */}
             <video
               ref={bindRoomVideo}
@@ -966,30 +976,30 @@ export default function Room({ candidateName, role, level, durationMin, code, on
 
             {/* Camera Permission / Camera Off Fallback */}
             {(!cameraOn || cameraPermission !== 'granted') && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 sm:gap-4 bg-gradient-to-b from-[#181D26] to-[#0F1218] text-white p-4 sm:p-6 z-0">
-                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-white/10 border border-white/15 flex flex-col items-center justify-center shadow-xl backdrop-blur-md">
-                  <span className="font-display text-2xl sm:text-3xl font-extrabold tracking-wider text-white/90">
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2.5 sm:gap-4 bg-gradient-to-b from-[#181D26] to-[#0F1218] text-white p-3 sm:p-6 z-0">
+                <div className="w-16 h-16 sm:w-24 sm:h-24 rounded-2xl sm:rounded-3xl bg-white/10 border border-white/15 flex flex-col items-center justify-center shadow-xl backdrop-blur-md">
+                  <span className="font-display text-xl sm:text-3xl font-extrabold tracking-wider text-white/90">
                     {candidateName.split(' ').map(n => n[0]).join('')}
                   </span>
                 </div>
 
-                <div className="text-center max-w-sm">
-                  <h4 className="text-sm sm:text-base font-bold text-white">
+                <div className="text-center max-w-sm px-2">
+                  <h4 className="text-xs sm:text-base font-bold text-white">
                     {!cameraOn ? 'Camera is turned off' : 'Camera Access Needed'}
                   </h4>
-                  <p className="text-[11px] sm:text-xs text-gray-400 mt-1 leading-relaxed">
+                  <p className="text-[10px] sm:text-xs text-gray-400 mt-0.5 sm:mt-1 leading-relaxed">
                     {!cameraOn
                       ? 'Click the Camera button below to turn your video on.'
-                      : permissionError || 'Please allow camera and microphone access to enable your live video feed.'}
+                      : permissionError || 'Please allow camera and mic permissions.'}
                   </p>
                 </div>
 
                 {cameraPermission !== 'granted' && (
                   <button
                     onClick={requestCameraAccess}
-                    className="px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl bg-[#2563EB] hover:bg-blue-600 text-white font-bold text-xs shadow-md transition-all active:scale-95 cursor-pointer flex items-center gap-2"
+                    className="px-3 py-1.5 sm:px-5 sm:py-2.5 rounded-xl bg-[#2563EB] hover:bg-blue-600 text-white font-bold text-[11px] sm:text-xs shadow-md transition-all active:scale-95 cursor-pointer flex items-center gap-1.5 sm:gap-2"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                     </svg>
                     <span>Allow Camera Access</span>
@@ -1003,24 +1013,24 @@ export default function Room({ candidateName, role, level, durationMin, code, on
 
             {/* Top Left: Candidate Badge */}
             <div className="relative z-10 self-start">
-              <div className="flex items-center gap-2 bg-black/60 backdrop-blur-md border border-white/20 rounded-xl px-3 py-1.5 text-white shadow-sm">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="text-xs sm:text-sm font-bold tracking-tight">You (Candidate)</span>
+              <div className="flex items-center gap-1.5 sm:gap-2 bg-black/60 backdrop-blur-md border border-white/20 rounded-lg sm:rounded-xl px-2 sm:px-3 py-1 sm:py-1.5 text-white shadow-sm">
+                <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="text-[11px] sm:text-xs font-bold tracking-tight">You (Candidate)</span>
               </div>
             </div>
 
             {/* Bottom Floating Elements: Mic Status & Closed Captions */}
-            <div className="relative z-10 flex items-end justify-between gap-3 sm:gap-4 mt-auto">
+            <div className="relative z-10 flex flex-col xs:flex-row items-stretch xs:items-end justify-between gap-2 sm:gap-4 mt-auto">
               {/* Bottom Left: Mic On / Live Sound Wave Card */}
-              <div className="bg-white/95 dark:bg-[#161920]/95 backdrop-blur-md rounded-xl sm:rounded-2xl p-2.5 sm:p-3 shadow-lg border border-white/50 dark:border-white/10 flex items-center gap-2.5">
-                <div className="flex flex-col gap-1 min-w-[110px] sm:min-w-[125px]">
-                  <div className="flex items-center justify-between gap-1.5">
-                    <div className="flex items-center gap-1.5">
-                      <svg className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${micOn ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="bg-white/95 dark:bg-[#161920]/95 backdrop-blur-md rounded-lg sm:rounded-2xl p-1.5 sm:p-2.5 shadow-lg border border-white/50 dark:border-white/10 flex items-center gap-2 shrink-0">
+                <div className="flex flex-col gap-0.5 min-w-[95px] sm:min-w-[120px]">
+                  <div className="flex items-center justify-between gap-1">
+                    <div className="flex items-center gap-1">
+                      <svg className={`w-3 h-3 sm:w-3.5 sm:h-3.5 ${micOn ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                       </svg>
-                      <span className="text-[11px] sm:text-xs font-extrabold text-gray-900 dark:text-white">
-                        {micOn ? (session ? `Mic (${micVolume}%)` : 'Mic Ready') : 'Mic Muted'}
+                      <span className="text-[10px] sm:text-xs font-extrabold text-gray-900 dark:text-white">
+                        {micOn ? (session ? `Mic (${micVolume}%)` : 'Mic Ready') : 'Muted'}
                       </span>
                     </div>
                     {session && micOn && micVolume > 0 && (
@@ -1029,12 +1039,12 @@ export default function Room({ candidateName, role, level, durationMin, code, on
                   </div>
 
                   {/* Dynamic audio equalizer reflecting actual input volume */}
-                  <div className="flex items-center gap-[2px] h-3 px-0.5">
+                  <div className="flex items-center gap-[2px] h-2.5 sm:h-3 px-0.5">
                     {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(i => {
-                      const baseHeight = 2.5;
+                      const baseHeight = 2;
                       const factor = 1 + ((i * 3) % 5) * 0.25;
                       const activeHeight = micOn && micVolume > 0
-                        ? Math.min(12, Math.max(2.5, Math.round((micVolume / 100) * 12 * factor)))
+                        ? Math.min(12, Math.max(2, Math.round((micVolume / 100) * 12 * factor)))
                         : baseHeight;
                       return (
                         <span
@@ -1047,51 +1057,42 @@ export default function Room({ candidateName, role, level, durationMin, code, on
                       );
                     })}
                   </div>
-
-                  {session && micOn && micVolume === 0 && (
-                    <span className="text-[9px] text-amber-600 dark:text-amber-400 font-bold leading-tight">
-                      ⚠️ Low volume. Speak louder.
-                    </span>
-                  )}
                 </div>
               </div>
 
               {/* Bottom Center: Subtitles / Captions Box */}
               {captionsOn && (
-                <div className="flex-1 max-w-xl mx-auto bg-black/85 backdrop-blur-md text-white rounded-xl sm:rounded-2xl px-3.5 sm:px-5 py-2 sm:py-2.5 border border-white/15 shadow-xl flex items-start gap-2.5 sm:gap-3.5">
-                  <div className="w-6 h-5 rounded-md bg-white/20 text-white font-extrabold text-[10px] grid place-items-center shrink-0 mt-0.5">
+                <div className="flex-1 max-w-full sm:max-w-xl bg-black/85 backdrop-blur-md text-white rounded-lg sm:rounded-2xl px-2.5 sm:px-4 py-1.5 sm:py-2 border border-white/15 shadow-xl flex items-start gap-2 sm:gap-3">
+                  <div className="w-5 h-4 sm:w-6 sm:h-5 rounded-sm sm:rounded-md bg-white/20 text-white font-extrabold text-[9px] sm:text-[10px] grid place-items-center shrink-0 mt-0.5">
                     cc
                   </div>
-                  <div className="flex flex-col gap-1 min-w-0 flex-1">
+                  <div className="flex flex-col gap-0.5 min-w-0 flex-1">
                     {panelLine && (
-                      <p className="text-xs sm:text-sm font-medium leading-snug text-white/95 line-clamp-2">
+                      <p className="text-[11px] sm:text-xs md:text-sm font-medium leading-snug text-white/95 line-clamp-2">
                         <span className="font-bold text-[#93C5FD]">{panelSpeakerName}: </span>
                         {panelLine}
                       </p>
                     )}
                     {candidateLine && (
-                      <p className="text-xs sm:text-sm font-medium leading-snug text-white/80 line-clamp-2">
+                      <p className="text-[11px] sm:text-xs md:text-sm font-medium leading-snug text-white/80 line-clamp-2">
                         <span className="font-bold text-emerald-300">You: </span>
                         {candidateLine}
                       </p>
                     )}
                     {!panelLine && !candidateLine && (
-                      <p className="text-xs sm:text-sm font-medium leading-snug text-white/45 italic">
-                        Captions will appear here once the panel starts speaking.
+                      <p className="text-[11px] sm:text-xs font-medium leading-snug text-white/45 italic truncate">
+                        Captions will appear here once the panel speaks.
                       </p>
                     )}
                   </div>
                 </div>
               )}
-
-              {/* Spacer for symmetrical balance */}
-              <div className="w-8 sm:w-12 hidden md:block" />
             </div>
           </div>
         </main>
 
-        {/* RIGHT COLUMN: AI Interviewer Tiles & Synced Panel Context */}
-        <aside className="w-[270px] md:w-[290px] lg:w-[320px] xl:w-[350px] shrink-0 flex flex-col justify-between gap-2 sm:gap-2.5 min-h-0">
+        {/* RIGHT COLUMN: AI Interviewer Tiles & Synced Panel Context (Desktop Only) */}
+        <aside className="hidden lg:flex w-[270px] md:w-[290px] lg:w-[320px] xl:w-[350px] shrink-0 flex-col justify-between gap-2 sm:gap-2.5 min-h-0">
           {/* 3 AI Interviewer Tiles */}
           <div className="flex-1 flex flex-col justify-between gap-2 sm:gap-2.5 min-h-0">
             {PANEL.map(p => (
@@ -1146,15 +1147,15 @@ export default function Room({ candidateName, role, level, durationMin, code, on
       </div>
 
       {/* ---------------------------------------------------- BOTTOM CONTROLS BAR */}
-      <footer className="h-15 sm:h-16 shrink-0 bg-white dark:bg-[#161920] border-t border-[#EBE6DF] dark:border-[#222631] px-4 sm:px-8 flex items-center justify-between z-20 shadow-xs">
+      <footer className="h-14 sm:h-16 shrink-0 bg-white dark:bg-[#161920] border-t border-[#EBE6DF] dark:border-[#222631] px-2.5 sm:px-6 md:px-8 flex items-center justify-between z-20 shadow-xs">
         {/* Left Action Buttons */}
-        <div className="flex items-center gap-4 sm:gap-6 md:gap-7">
+        <div className="flex items-center gap-2.5 sm:gap-5 md:gap-7">
           {/* Mic Button */}
           <button
             onClick={toggleMic}
-            className="flex flex-col items-center gap-1 text-gray-700 dark:text-gray-300 hover:text-gray-950 dark:hover:text-white transition-colors cursor-pointer group"
+            className="flex flex-col items-center gap-0.5 sm:gap-1 text-gray-700 dark:text-gray-300 hover:text-gray-950 dark:hover:text-white transition-colors cursor-pointer group"
           >
-            <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center border transition-all shadow-2xs group-hover:scale-105 ${
+            <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center border transition-all shadow-2xs group-hover:scale-105 ${
               micOn
                 ? 'border-[#EBE6DF] dark:border-[#2D333F] bg-white dark:bg-[#1E232D] text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#252C39]'
                 : 'border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/50 text-red-600 dark:text-red-400'
@@ -1170,15 +1171,15 @@ export default function Room({ candidateName, role, level, durationMin, code, on
                 </svg>
               )}
             </div>
-            <span className="text-[10px] sm:text-[11px] font-semibold text-gray-700 dark:text-gray-300">Mic</span>
+            <span className="text-[9px] sm:text-[11px] font-semibold text-gray-700 dark:text-gray-300">Mic</span>
           </button>
 
           {/* Camera Button */}
           <button
             onClick={toggleCamera}
-            className="flex flex-col items-center gap-1 text-gray-700 dark:text-gray-300 hover:text-gray-950 dark:hover:text-white transition-colors cursor-pointer group"
+            className="flex flex-col items-center gap-0.5 sm:gap-1 text-gray-700 dark:text-gray-300 hover:text-gray-950 dark:hover:text-white transition-colors cursor-pointer group"
           >
-            <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center border transition-all shadow-2xs group-hover:scale-105 ${
+            <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center border transition-all shadow-2xs group-hover:scale-105 ${
               cameraOn
                 ? 'border-[#EBE6DF] dark:border-[#2D333F] bg-white dark:bg-[#1E232D] text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#252C39]'
                 : 'border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/50 text-red-600 dark:text-red-400'
@@ -1194,28 +1195,28 @@ export default function Room({ candidateName, role, level, durationMin, code, on
                 </svg>
               )}
             </div>
-            <span className="text-[10px] sm:text-[11px] font-semibold text-gray-700 dark:text-gray-300">Camera</span>
+            <span className="text-[9px] sm:text-[11px] font-semibold text-gray-700 dark:text-gray-300">Camera</span>
           </button>
 
           {/* Captions Button */}
           <button
             onClick={() => setCaptionsOn(!captionsOn)}
-            className="flex flex-col items-center gap-1 text-gray-700 dark:text-gray-300 hover:text-gray-950 dark:hover:text-white transition-colors cursor-pointer group"
+            className="flex flex-col items-center gap-0.5 sm:gap-1 text-gray-700 dark:text-gray-300 hover:text-gray-950 dark:hover:text-white transition-colors cursor-pointer group"
           >
-            <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center border transition-all shadow-2xs group-hover:scale-105 ${
+            <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center border transition-all shadow-2xs group-hover:scale-105 ${
               captionsOn
                 ? 'border-blue-200 dark:border-blue-900 bg-blue-50 dark:bg-blue-950/50 text-[#2563EB] dark:text-blue-400'
                 : 'border-[#EBE6DF] dark:border-[#2D333F] bg-white dark:bg-[#1E232D] text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#252C39]'
             }`}>
-              <span className="font-extrabold text-xs tracking-wider">CC</span>
+              <span className="font-extrabold text-[10px] sm:text-xs tracking-wider">CC</span>
             </div>
-            <span className="text-[10px] sm:text-[11px] font-semibold text-gray-700 dark:text-gray-300">Captions</span>
+            <span className="text-[9px] sm:text-[11px] font-semibold text-gray-700 dark:text-gray-300">Captions</span>
           </button>
 
-          {/* Screen Share */}
+          {/* Screen Share (Desktop only) */}
           <button
             onClick={() => setScreenSharing(!screenSharing)}
-            className="flex flex-col items-center gap-1 text-gray-700 dark:text-gray-300 hover:text-gray-950 dark:hover:text-white transition-colors cursor-pointer group"
+            className="hidden md:flex flex-col items-center gap-1 text-gray-700 dark:text-gray-300 hover:text-gray-950 dark:hover:text-white transition-colors cursor-pointer group"
           >
             <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center border transition-all shadow-2xs group-hover:scale-105 ${
               screenSharing
@@ -1232,9 +1233,9 @@ export default function Room({ candidateName, role, level, durationMin, code, on
           {/* Raise Hand */}
           <button
             onClick={() => setHandRaised(!handRaised)}
-            className="flex flex-col items-center gap-1 text-gray-700 dark:text-gray-300 hover:text-gray-950 dark:hover:text-white transition-colors cursor-pointer group"
+            className="hidden xs:flex flex-col items-center gap-0.5 sm:gap-1 text-gray-700 dark:text-gray-300 hover:text-gray-950 dark:hover:text-white transition-colors cursor-pointer group"
           >
-            <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center border transition-all shadow-2xs group-hover:scale-105 ${
+            <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center border transition-all shadow-2xs group-hover:scale-105 ${
               handRaised
                 ? 'border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400'
                 : 'border-[#EBE6DF] dark:border-[#2D333F] bg-white dark:bg-[#1E232D] text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#252C39]'
@@ -1243,7 +1244,7 @@ export default function Room({ candidateName, role, level, durationMin, code, on
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 11.5V14m0-2.5v-6a1.5 1.5 0 113 0m-3 6a1.5 1.5 0 00-3 0v2a7.5 7.5 0 0015 0v-5a1.5 1.5 0 00-3 0m-6-3V11m0-5.5v-1a1.5 1.5 0 013 0v1m0 0V11m0-5.5a1.5 1.5 0 013 0v3m0 0V11" />
               </svg>
             </div>
-            <span className="text-[10px] sm:text-[11px] font-semibold text-gray-700 dark:text-gray-300">Raise Hand</span>
+            <span className="text-[9px] sm:text-[11px] font-semibold text-gray-700 dark:text-gray-300">Hand</span>
           </button>
         </div>
 
@@ -1252,7 +1253,7 @@ export default function Room({ candidateName, role, level, durationMin, code, on
           <button
             onClick={() => setConfirmEnd(true)}
             title="End Interview"
-            className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-[#EF4444] hover:bg-red-600 text-white flex items-center justify-center shadow-lg hover:shadow-red-500/30 transition-all active:scale-95 cursor-pointer"
+            className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-[#EF4444] hover:bg-red-600 text-white flex items-center justify-center shadow-lg hover:shadow-red-500/30 transition-all active:scale-95 cursor-pointer"
           >
             <svg className="w-5 h-5 sm:w-6 sm:h-6 transform rotate-[135deg]" fill="currentColor" viewBox="0 0 24 24">
               <path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56a.977.977 0 00-1.01.24l-2.2 2.2a15.053 15.053 0 01-6.59-6.59l2.2-2.21a.96.96 0 00.25-1A11.36 11.36 0 018.5 3.99c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1 0 9.39 7.61 17 17 17 .55 0 1-.45 1-1v-3.49c.01-.55-.44-1-1-.12z" />
@@ -1261,31 +1262,44 @@ export default function Room({ candidateName, role, level, durationMin, code, on
         </div>
 
         {/* Right Action Buttons */}
-        <div className="flex items-center gap-4 sm:gap-6 md:gap-7">
+        <div className="flex items-center gap-2.5 sm:gap-5 md:gap-7">
+          {/* Context / Bids Drawer Toggle (visible on mobile to view bids) */}
+          <button
+            onClick={() => setShowContextDrawer(true)}
+            className="flex flex-col items-center gap-0.5 sm:gap-1 text-gray-700 dark:text-gray-300 hover:text-gray-950 dark:hover:text-white transition-colors cursor-pointer group"
+          >
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center border border-[#EBE6DF] dark:border-[#2D333F] bg-white dark:bg-[#1E232D] text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#252C39] shadow-2xs group-hover:scale-105">
+              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-[#2563EB] dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+            </div>
+            <span className="text-[9px] sm:text-[11px] font-semibold text-gray-700 dark:text-gray-300">Context</span>
+          </button>
+
           {/* Interview Guide */}
           <button
             onClick={() => setShowGuideModal(true)}
-            className="flex flex-col items-center gap-1 text-gray-700 dark:text-gray-300 hover:text-gray-950 dark:hover:text-white transition-colors cursor-pointer group"
+            className="hidden sm:flex flex-col items-center gap-1 text-gray-700 dark:text-gray-300 hover:text-gray-950 dark:hover:text-white transition-colors cursor-pointer group"
           >
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center border border-[#EBE6DF] dark:border-[#2D333F] bg-white dark:bg-[#1E232D] text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#252C39] shadow-2xs group-hover:scale-105">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center border border-[#EBE6DF] dark:border-[#2D333F] bg-white dark:bg-[#1E232D] text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#252C39] shadow-2xs group-hover:scale-105">
               <svg className="w-4 h-4 sm:w-5 sm:h-5 text-gray-700 dark:text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
               </svg>
             </div>
-            <span className="text-[10px] sm:text-[11px] font-semibold text-gray-700 dark:text-gray-300">Guide</span>
+            <span className="text-[9px] sm:text-[11px] font-semibold text-gray-700 dark:text-gray-300">Guide</span>
           </button>
 
           {/* Help */}
           <button
             onClick={() => setShowHelpModal(true)}
-            className="flex flex-col items-center gap-1 text-gray-700 dark:text-gray-300 hover:text-gray-950 dark:hover:text-white transition-colors cursor-pointer group"
+            className="hidden sm:flex flex-col items-center gap-1 text-gray-700 dark:text-gray-300 hover:text-gray-950 dark:hover:text-white transition-colors cursor-pointer group"
           >
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center border border-[#EBE6DF] dark:border-[#2D333F] bg-white dark:bg-[#1E232D] text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#252C39] shadow-2xs group-hover:scale-105">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center border border-[#EBE6DF] dark:border-[#2D333F] bg-white dark:bg-[#1E232D] text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#252C39] shadow-2xs group-hover:scale-105">
               <svg className="w-4 h-4 sm:w-5 sm:h-5 text-gray-700 dark:text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            <span className="text-[10px] sm:text-[11px] font-semibold text-gray-700 dark:text-gray-300">Help</span>
+            <span className="text-[9px] sm:text-[11px] font-semibold text-gray-700 dark:text-gray-300">Help</span>
           </button>
         </div>
       </footer>
