@@ -274,6 +274,29 @@ export function buildJoinBody(opts: {
       turn_detection: {
         mode: 'default',
         config: {
+          // How much noise it takes to cut a panelist off mid-question.
+          //
+          // Left unset, the engine barges in on the first thing the microphone
+          // hears — the documented default is 160ms, which is a cough, a chair,
+          // or a headset picking up a room. The symptom is not obvious from the
+          // room: the tile says "Speaking", the caption is on screen and the
+          // question is never heard, because the caption comes from us the
+          // moment we answer and the audio comes from Agora afterwards. A
+          // candidate sat through several of those and reported the panel had
+          // gone silent.
+          //
+          // Agora's own guidance is 300-500ms for a noisy environment. The
+          // speaking_ variant is the one that matters here — it governs
+          // interrupting an agent that is already talking — so it is set higher
+          // still. Deliberate interruption survives; a room does not.
+          start_of_speech: {
+            mode: 'vad',
+            vad_config: {
+              interrupt_duration_ms: 500,
+              speaking_interrupt_duration_ms: 700,
+              prefix_padding_ms: 800,
+            },
+          },
           end_of_speech: {
             mode: 'vad',
             vad_config: { silence_duration_ms: 1100 },

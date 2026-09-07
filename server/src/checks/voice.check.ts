@@ -103,5 +103,29 @@ for (const phrase of filler?.content?.static_config?.phrases ?? []) {
 console.log(`voice  agent starts as ${panelistById(GREETER).name} (${startingVoice})`);
 console.log('       greeting introduces all three, and every voice id is distinct');
 console.log('       filler words are disabled so questions are always in the speaker’s own voice');
+console.log('       and background noise cannot barge in on a question mid-sentence');
+
+// --- background noise must not cut a panelist off ---------------------------
+//
+// Unset, the engine interrupts the agent on the first sound the microphone
+// picks up (160ms by default), and the room gives no sign of it: the tile still
+// says "Speaking" and the caption is still on screen, because both come from
+// our server the moment we answer, while the audio comes from Agora afterwards.
+// A candidate reported the panel had gone silent; it was being barged in on by
+// their own headset.
+const vad = (body.properties as {
+  turn_detection: { config: { start_of_speech?: { vad_config: Record<string, number> } } };
+}).turn_detection.config.start_of_speech;
+
+assert.ok(vad, 'interruption has to be configured, or the default barges in on a cough');
+assert.ok(
+  vad.vad_config.speaking_interrupt_duration_ms >= 300,
+  `interrupting a speaking panelist takes ${vad.vad_config.speaking_interrupt_duration_ms}ms — Agora's own floor for a noisy room is 300`,
+);
+assert.ok(
+  vad.vad_config.interrupt_duration_ms >= 300,
+  'and so does interrupting one who has not started yet',
+);
+
 console.log('\nself-check passed');
 
