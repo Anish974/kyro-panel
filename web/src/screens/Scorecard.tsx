@@ -62,7 +62,7 @@ export default function Scorecard({ scorecard, onBack }: Props) {
   }
 
   return (
-    <div className="h-full overflow-y-auto bg-[#FAF9F6] dark:bg-[#0F1115] text-[#181A20] dark:text-[#F9FAFB] font-sans select-none transition-colors duration-200">
+    <div className="h-full overflow-y-auto bg-[#FAF9F6] dark:bg-[#0F1115] text-gray-900 dark:text-gray-100 font-sans select-none transition-colors duration-200">
       {/* Header */}
       <header className="h-16 sm:h-[72px] sticky top-0 z-10 border-b border-[#EBE6DF] dark:border-[#222631] bg-white dark:bg-[#161920] px-3.5 sm:px-10 flex items-center justify-between shadow-xs">
         <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
@@ -102,7 +102,7 @@ export default function Scorecard({ scorecard, onBack }: Props) {
                 </span>
               )}
             </div>
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight text-[#181A20] dark:text-[#F9FAFB] font-display">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight text-gray-950 dark:text-white font-display">
               {scorecard.role}
             </h1>
             <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 font-medium leading-relaxed">
@@ -154,8 +154,8 @@ export default function Scorecard({ scorecard, onBack }: Props) {
                     className="w-11 h-11 sm:w-13 sm:h-13 rounded-xl sm:rounded-2xl object-cover border border-[#EBE6DF] dark:border-[#222631] shadow-2xs shrink-0"
                   />
                   <div className="flex flex-col min-w-0">
-                    <span className="text-sm sm:text-base font-extrabold text-[#181A20] dark:text-[#F9FAFB] truncate">{p.name}</span>
-                    <span className="text-xs text-gray-500 dark:text-gray-400 font-semibold truncate">{p.role}</span>
+                    <span className="text-sm sm:text-base font-extrabold text-gray-950 dark:text-white truncate">{p.name}</span>
+                    <span className="text-xs text-gray-600 dark:text-gray-400 font-semibold truncate">{p.role}</span>
                   </div>
                 </div>
 
@@ -317,7 +317,7 @@ export default function Scorecard({ scorecard, onBack }: Props) {
         {scorecard.transcript && scorecard.transcript.length > 0 && (
           <section className="flex flex-col gap-3 sm:gap-4">
             <div className="flex items-center justify-between flex-wrap gap-2">
-              <h2 className="text-base sm:text-lg font-extrabold text-[#181A20] dark:text-[#F9FAFB] font-display">Full Transcript</h2>
+              <h2 className="text-base sm:text-lg font-extrabold text-gray-950 dark:text-white font-display">Full Transcript</h2>
 
               <div className="flex items-center gap-2">
                 <span className="text-xs font-semibold text-gray-400 dark:text-gray-500 mr-1">
