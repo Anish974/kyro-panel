@@ -627,6 +627,23 @@ export async function runPanel(answer: string): Promise<TurnDecision> {
     } else {
       model.nudgeSkill('impact', 0.75);
     }
+  } else if (mentionsCustomer) {
+    model.nudgeSkill('impact', 0.8);
+  }
+
+  if (SIGNALS.hr.test(answer)) {
+    model.nudgeSkill('ownership', 0.8);
+  }
+
+  if (/\b(because|why|instead|tradeoff|bottleneck|resolv|debug|constraint|trade-off)\w*/i.test(answer)) {
+    model.nudgeSkill('problemSolving', 0.8);
+  }
+
+  const words = answer.trim().split(/\s+/).filter(Boolean);
+  if (words.length >= 10 && !/\b(repeat|audible|can't hear|cannot hear)\b/i.test(answer)) {
+    model.nudgeSkill('communication', 0.8);
+  } else if (words.length < 4) {
+    model.nudgeSkill('communication', 0.3);
   }
 
   // Difficulty follows the panel's own read of the answer, not a keyword count.

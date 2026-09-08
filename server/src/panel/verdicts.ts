@@ -197,7 +197,15 @@ RULES:
 - If the interview was too short or never touched your axis, say so plainly and score low-confidence. Do not pad.
 - AUDIO & CONNECTIVITY GLITCHES: If the candidate mentions audio or connectivity problems (e.g. "you are not audible", "I cannot hear you", "sir you are not audible", "voice is breaking", or asks to repeat), these are real WebRTC audio glitches, NEVER candidate evasiveness. Under NO circumstances should you penalize a candidate, lower communication ratings, or criticize them for "false audio complaints" or "defensive claims". Judge strictly the technical, product, and leadership substance of the questions they answered.
 - verdict is one of: hire, lean_hire, lean_no_hire, no_hire. score is 0.0-5.0.
-- The reference score is what the panel tracked live during the interview. Treat it as a prior, not an instruction — move off it when the transcript justifies it.
+- BASE YOUR SCORE DIRECTLY ON QUESTIONS ASKED & TOPIC RELEVANCE:
+  * Count the questions YOU actually asked the candidate from the transcript below.
+  * For each question you asked, evaluate if the candidate answered what you asked directly and on-topic with real substance.
+  * Score 3.75 - 5.0 (hire): Candidate answered all or almost all questions directly on-topic with deep substance, concrete decisions/metrics, and clear domain competence.
+  * Score 3.0 - 3.7 (lean_hire): Candidate answered questions on-topic with solid understanding, though missing some depth or edge cases.
+  * Score 2.0 - 2.9 (lean_no_hire): Answers were superficial, partially off-topic, or missed the core point of the questions asked.
+  * Score 0.5 - 1.9 (no_hire): Candidate dodged questions, gave irrelevant/evasive non-answers, or demonstrated severe lack of competence on the topic asked.
+  * Score 0.0 (no_hire): Zero questions asked or zero candidate responses on your axis. Confidence is 0.0.
+  * CRITICAL: DO NOT default to 2.5 or any arbitrary middle score. Every score must be strictly justified by the ratio of questions asked vs how well and relevantly they were answered.
 
 Answer with one JSON object, no prose around it. Use only the competency keys listed for that panelist:
 {"technical": {"verdict": "...", "score": 0.0, "confidence": 0.0, "rationale": "...",
@@ -216,27 +224,17 @@ function transcriptBlock(): string {
 function referenceBlock(fallbacks: PanelistVerdict[], durationSec: number): string {
   const m = getModel();
   const asked = questionsAsked();
-  const skills = (Object.keys(COMPETENCIES) as CompetencyId[])
-    .map(c => `${COMPETENCIES[c]} ${m.skills[c].toFixed(2)}`)
-    .join(', ');
-
-  // Minutes, and the same number the card will show. Handed seconds, the model
-  // narrates them — "the interview lasted only 6 seconds" — and the card was
-  // reporting a different figure anyway, because the room measures the real
-  // speaking time while the model's clock starts when the agent joins.
   const minutes = Math.max(1, Math.round(durationSec / 60));
 
   return [
     `Candidate: ${m.profile?.name ?? 'unknown'} — ${m.profile?.role ?? 'unknown role'}${m.profile?.level ? ` (${m.profile.level})` : ''}`,
     `Questions answered: ${m.turns} of a target ${concludeAtTurn()}, over about ${minutes} minute${minutes === 1 ? '' : 's'} of a ${m.durationMin}-minute interview.`,
-    `Competency scores the panel tracked live (0-1): ${skills}`,
-    `Gaps the panel noted: ${m.gaps.length ? m.gaps.join('; ') : 'none'}`,
-    `Reference scores out of 5: ${fallbacks.map(f => `${f.panelist} ${f.score}`).join(', ')}`,
-    '',
     `Questions each of you actually asked: ${PANEL.map(p => `${p.id} ${asked[p.id]}`).join(', ')}.`,
-    'If you asked none, you did not test your axis. Say that plainly and score it',
-    'low-confidence. Do not mark the candidate down for failing to volunteer what',
-    'nobody asked them for.',
+    `Topic relevance scores calculated from transcript: ${fallbacks.map(f => `${f.panelist} ${f.score}/5.0`).join(', ')}.`,
+    `Gaps the panel noted: ${m.gaps.length ? m.gaps.join('; ') : 'none'}`,
+    '',
+    'If you asked zero questions and the candidate never touched your axis, score 0.0 with 0.0 confidence.',
+    'Grade each question on how directly and relevantly the candidate addressed your specific question.',
   ].join('\n');
 }
 

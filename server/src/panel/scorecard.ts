@@ -26,11 +26,59 @@ const WEIGHTS: Record<PanelistId, Partial<Record<CompetencyId, number>>> = {
   hr: { ownership: 0.5, communication: 0.3, problemSolving: 0.2 },
 };
 
-function verdictFor(score: number): Verdict {
+export function verdictFor(score: number): Verdict {
   if (score >= 3.75) return 'hire';
   if (score >= 3) return 'lean_hire';
-  if (score >= 2.25) return 'lean_no_hire';
+  if (score >= 2.0) return 'lean_no_hire';
   return 'no_hire';
+}
+
+/** Evaluates how relevant, complete, and on-topic a candidate response was for a panelist's axis. */
+function answerTopicRelevance(panelist: PanelistId, text: string): number {
+  const words = text.trim().split(/\s+/).filter(Boolean);
+  if (words.length < 3) return 0;
+
+  // Audio glitch complaints or short repeat queries carry no topic signal
+  if (/\b(audible|hear you|voice is breaking|can't hear|cannot hear)\b/i.test(text) && words.length < 12) {
+    return 0;
+  }
+
+  const matchesAxis = SIGNALS[panelist].test(text);
+
+  if (panelist === 'technical') {
+    if (!matchesAxis) return 0.1;
+    const hasArchOrDeepTech =
+      /\b(redis|kafka|postgres|mongo|sql|aws|docker|k8s|kubernetes|cloud|deploy|server|cluster|linux|network|infra|latenc|scale|shard|index|cache|queue|broker|api|replica|partition|concurrency|throughput|benchmark|protocol)\w*/i.test(
+        text,
+      );
+    if (hasArchOrDeepTech && words.length >= 10) return 1.0;
+    if (words.length >= 6) return 0.75;
+    return 0.45;
+  }
+
+  if (panelist === 'product') {
+    if (!matchesAxis) return 0.1;
+    const hasImpactOrMetrics =
+      /\b(user|customer|buyer|client|metric|impact|revenue|churn|conversion|retention|growth|feedback|adoption|outcome|business|sla)\w*/i.test(
+        text,
+      );
+    if (hasImpactOrMetrics && words.length >= 10) return 1.0;
+    if (words.length >= 6) return 0.75;
+    return 0.45;
+  }
+
+  if (panelist === 'hr') {
+    if (!matchesAxis) return 0.15;
+    const hasOwnershipOrTeam =
+      /\b(team|lead|mentor|disagree|pushback|stakeholder|colleague|decision|resolve|conflict|ownership|feedback|collaborat)\w*/i.test(
+        text,
+      );
+    if (hasOwnershipOrTeam && words.length >= 10) return 1.0;
+    if (words.length >= 6) return 0.75;
+    return 0.45;
+  }
+
+  return 0.2;
 }
 
 function buildVerdict(id: PanelistId): PanelistVerdict {
@@ -38,13 +86,20 @@ function buildVerdict(id: PanelistId): PanelistVerdict {
   const weights = WEIGHTS[id];
   const entries = Object.entries(weights) as [CompetencyId, number][];
 
-  const ratings: Partial<Record<CompetencyId, number>> = {};
-  for (const [competency] of entries) {
-    ratings[competency] = Math.round(model.skills[competency] * 5 * 10) / 10;
+  // If candidate never gave an answer or turns === 0: strictly no_hire with 0 score
+  if (model.turns === 0) {
+    const ratings: Partial<Record<CompetencyId, number>> = {};
+    for (const [c] of entries) ratings[c] = 0;
+    return {
+      panelist: id,
+      verdict: 'no_hire',
+      score: 0,
+      confidence: 0,
+      rationale: 'Interview concluded early before candidate responses were recorded. Insufficient data to evaluate.',
+      evidence: [],
+      ratings,
+    };
   }
-
-  const score =
-    Math.round(entries.reduce((sum, [c, w]) => sum + model.skills[c] * w, 0) * 5 * 10) / 10;
 
   // Only what the candidate said counts as evidence — never the panel's own words.
   const quote = (t: { text: string; t: number }) => ({
@@ -52,13 +107,17 @@ function buildVerdict(id: PanelistId): PanelistVerdict {
     t: t.t,
   });
 
-  const onMyAxis = model.transcript.filter(
-    t => t.speaker === 'candidate' && SIGNALS[id].test(t.text),
+  const questionsAsked = model.transcript.filter(
+    (t, i) => t.speaker === id && model.transcript.slice(i + 1).some(next => next.speaker === 'candidate'),
+  ).length;
+
+  const directAnswers = model.transcript.filter(
+    (t, i) =>
+      t.speaker === 'candidate' &&
+      t.text.trim() !== '' &&
+      model.transcript[i - 1]?.speaker === id,
   );
 
-  // A panelist whose keywords never came up would otherwise write a verdict
-  // citing nothing. What they actually reacted to is the answer immediately
-  // before each of their own turns, so fall back to that.
   const answered = model.transcript.filter(
     (t, i) =>
       t.speaker === 'candidate' &&
@@ -66,32 +125,70 @@ function buildVerdict(id: PanelistId): PanelistVerdict {
       model.transcript[i + 1]?.speaker === id,
   );
 
+  const onMyAxis = model.transcript.filter(
+    t => t.speaker === 'candidate' && t.text.trim() !== '' && SIGNALS[id].test(t.text),
+  );
+
+  // Pool all candidate turns that either answered this panelist directly or addressed this domain
+  const relevantMap = new Map<number, (typeof model.transcript)[0]>();
+  for (const t of directAnswers) relevantMap.set(t.t + (t.text.length), t);
+  for (const t of onMyAxis) relevantMap.set(t.t + (t.text.length), t);
+  if (relevantMap.size === 0) {
+    for (const t of answered) relevantMap.set(t.t + (t.text.length), t);
+  }
+  const relevantTurns = Array.from(relevantMap.values());
+
   const evidence = (onMyAxis.length ? onMyAxis : answered).slice(-2).map(quote);
 
-  // The weakest thing this panelist grades on is what they write up.
-  const weakest = entries.reduce((a, b) => (model.skills[a[0]] <= model.skills[b[0]] ? a : b))[0];
+  // Score strictly derived from topic relevance of responses to questions asked
+  let topicRatio = 0;
+  if (relevantTurns.length > 0) {
+    const sum = relevantTurns.reduce((acc, t) => acc + answerTopicRelevance(id, t.text), 0);
+    const denom = Math.max(questionsAsked, relevantTurns.length, 1);
+    topicRatio = Math.min(1.0, sum / denom);
+  } else {
+    topicRatio = 0;
+  }
+
+  const score = Math.round(topicRatio * 5.0 * 10) / 10;
+
+  const allCandidate = model.transcript.filter(t => t.speaker === 'candidate' && t.text.trim() !== '');
+  const hasProblemSolving = allCandidate.some(t =>
+    /\b(because|why|instead|tradeoff|bottleneck|resolv|debug|constraint|trade-off)\w*/i.test(t.text),
+  );
+  const hasClearComm = allCandidate.every(t => t.text.trim().split(/\s+/).length >= 6);
+
+  const ratings: Partial<Record<CompetencyId, number>> = {};
+  for (const [competency] of entries) {
+    if (competency === 'problemSolving') {
+      const ps = hasProblemSolving ? Math.min(5.0, score + 0.3) : Math.max(0, score - 0.3);
+      ratings[competency] = Math.round(ps * 10) / 10;
+    } else if (competency === 'communication') {
+      const comm = hasClearComm ? Math.min(5.0, score + 0.2) : Math.max(0, score - 0.4);
+      ratings[competency] = Math.round(comm * 10) / 10;
+    } else {
+      ratings[competency] = score;
+    }
+  }
+
+  const weakest = entries.reduce((a, b) => (ratings[a[0]]! <= ratings[b[0]]! ? a : b))[0];
   const gap = model.gaps.length ? ` Open with the panel: ${model.gaps[0]}.` : '';
-  const rationale = evidence.length
-    ? `${COMPETENCIES[weakest]} was the weakest part of what I heard (${ratings[weakest]}/5).${gap}`
-    : model.turns === 0
-      ? `Interview concluded early before candidate responses were recorded. Insufficient data to evaluate.`
+  const rationale = questionsAsked === 0 && onMyAxis.length === 0
+    ? 'I asked no questions on my axis during the session, so no signal was collected to evaluate this domain.'
+    : evidence.length
+      ? `${COMPETENCIES[weakest]} was the lowest-scoring area on my axis (${ratings[weakest]}/5). Topic relevance to questions asked was ${Math.round(topicRatio * 100)}%.${gap}`
       : `Limited candidate responses on this domain during the session (${model.turns} turns completed). Confidence is low.${gap}`;
 
-  // Confidence is evidence-bound and turn-bound, under exactly the same two
-  // ceilings the LLM write-up obeys in verdicts.ts. They used to differ, and
-  // they differed the wrong way round: this path returned 0.9 off five turns
-  // while the write-up was capped at 0.75 for the same interview, so a card
-  // whose write-up had FAILED claimed more certainty than one that worked.
-  const raw = 0.35 + evidence.length * 0.2 + model.turns * 0.03;
+  const raw = 0.2 + evidence.length * 0.2 + model.turns * 0.04;
+  const confidence = questionsAsked === 0 && onMyAxis.length === 0
+    ? 0.0
+    : Math.min(raw, evidence.length ? confidenceCeiling() : 0.4);
 
   return {
     panelist: id,
     verdict: verdictFor(score),
     score,
-    confidence:
-      model.turns === 0
-        ? 0.2
-        : Math.min(raw, evidence.length ? confidenceCeiling() : 0.4),
+    confidence,
     rationale,
     evidence,
     ratings,
