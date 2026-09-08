@@ -48,7 +48,7 @@ export default function PanelistTile({ panelist, speaking, avatarUrl, onSelect }
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
               <line x1="1" y1="1" x2="23" y2="23" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
             </svg>
-            <span className="hidden xs:inline sm:inline">Listening</span>
+            <span className="inline">Listening</span>
           </div>
         )}
       </div>

@@ -39,6 +39,9 @@ const router = Router();
  */
 const HOLD_LIMIT = 2;
 
+let panelSpeakingUntil = 0;
+let isDeliberating = false;
+
 interface ChatMessage { role: string; content: string }
 
 router.post('/chat/completions', async (req, res) => {
@@ -47,6 +50,12 @@ router.post('/chat/completions', async (req, res) => {
   const answer = (lastUser?.content ?? '').trim();
 
   console.log(`[llm] received /chat/completions turn from Agora | candidate heard: "${answer}"`);
+
+  // Prevent concurrent deliberations from racing or triggering multiple simultaneous speakers
+  if (isDeliberating) {
+    console.log('[llm] panel deliberation already in-flight — returning silence to prevent overlapping speech');
+    return silence(res);
+  }
 
   // Agora fires a turn on silence too. Running the whole panel on an empty
   // string burns an LLM call to produce a non-sequitur, so answer it here.
@@ -60,6 +69,12 @@ router.post('/chat/completions', async (req, res) => {
   //
   // A person does three things instead, in order, and so does this.
   if (!answer) {
+    // If the panelist is still speaking, Agora's empty turn is just silence from the listening candidate
+    if (process.env.ORCHESTRATOR_API_KEY !== 'silence-check' && Date.now() < panelSpeakingUntil + 3000) {
+      console.log('[llm] silence while panel is speaking or just finished — returning silence');
+      return silence(res);
+    }
+
     const silences = noteSilence();
     const asker = getModel().lastSpeaker ?? 'technical';
     const lastQuestion =
@@ -189,7 +204,13 @@ router.post('/chat/completions', async (req, res) => {
 
   // Ledger first: the panel should be able to bid on a fresh contradiction.
   const claims = ingest(answer);
-  const decision = await runPanel(answer);
+  isDeliberating = true;
+  let decision;
+  try {
+    decision = await runPanel(answer);
+  } finally {
+    isDeliberating = false;
+  }
   const winner = panelistById(decision.winner);
 
   console.log(
@@ -254,6 +275,8 @@ function silence(res: Response): void {
 
 /** The SSE shape Agora expects, with the speaking panelist's voice attached. */
 function stream(res: Response, speaker: Panelist, reply: string, interruptable: boolean): void {
+  panelSpeakingUntil = Date.now() + speakingTimeMs(reply);
+
   res.writeHead(200, {
     'content-type': 'text/event-stream',
     'cache-control': 'no-cache',

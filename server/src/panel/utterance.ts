@@ -157,6 +157,10 @@ const DANGLING = /\b(and|so|but|or|because|the|a|an|to|of|for|with|in|on|at|i'?m
 /** A finished sentence, however short. ASR punctuates; a cut-off turn does not. */
 const TERMINATED = /[.?!]\s*$/;
 
+/** Meta pacing remarks when panelists talk over each other or candidate asks for one by one. */
+const PACING =
+  /\b((ask|speak|go|talk) (one by one|one at a time)|one by one|one at a time|wait wait|stop talking (together|at once)|don'?t speak together|too fast|can you ask one by one)\b/i;
+
 export function classify(text: string): UtteranceKind {
   const t = text.trim();
   if (!t) return 'answer'; // The empty case is handled before this, in the route.
@@ -165,6 +169,7 @@ export function classify(text: string): UtteranceKind {
   if (t.length > SHORT) return 'answer';
 
   if (AUDIO_CHECK.test(t) || BARE_CHECK.test(t)) return 'audio-check';
+  if (PACING.test(t)) return 'clarify';
 
   // They have asked to stop. Nothing else about the utterance matters, and
   // nothing below this line gets to talk them out of it.
@@ -230,6 +235,6 @@ export function replyTo(kind: Exclude<UtteranceKind, 'answer'>, lastQuestion: st
   // Repeating the actual question beats "could you elaborate" — the candidate
   // asked because they lost it, so give it back to them verbatim.
   return lastQuestion
-    ? `Of course. ${lastQuestion}`
+    ? `Of course. Let us take it one at a time: ${lastQuestion}`
     : 'Of course — take your time and tell us a little about yourself to start.';
 }

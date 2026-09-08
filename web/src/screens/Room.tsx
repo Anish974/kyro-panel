@@ -799,10 +799,10 @@ export default function Room({ candidateName, role, level, durationMin, code, on
 
           {/* Candidate Name & Role (Compact and responsive) */}
           <div className="flex items-center gap-1 sm:gap-2 min-w-0">
-            <span className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white truncate max-w-[80px] xs:max-w-[120px] sm:max-w-none">{candidateName}</span>
+            <span className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white truncate max-w-[100px] sm:max-w-none">{candidateName}</span>
             <span className="text-[10px] sm:text-[11px] font-semibold text-[#2563EB] dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 px-1.5 sm:px-2 py-0.5 rounded-md border border-blue-200/60 dark:border-blue-800/60 inline-flex items-center gap-1 shrink-0">
               <span>🎯</span>
-              <span className="truncate max-w-[70px] xs:max-w-[100px] sm:max-w-none">{role}</span>
+              <span className="truncate max-w-[90px] sm:max-w-none">{role}</span>
             </span>
             {level && (
               <span className="text-[10px] font-bold text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded-md border border-gray-200 dark:border-gray-700 hidden 2xl:inline">
@@ -944,7 +944,7 @@ export default function Room({ candidateName, role, level, durationMin, code, on
 
             {session && !session.rtm && (
               <span
-                className="ml-auto hidden xs:inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2 py-0.5"
+                className="ml-auto hidden sm:inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2 py-0.5"
                 title="Agora Signaling did not connect. Captions will only appear once each turn completes, and the panel's thinking/speaking state is unavailable."
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
@@ -1020,9 +1020,9 @@ export default function Room({ candidateName, role, level, durationMin, code, on
             </div>
 
             {/* Bottom Floating Elements: Mic Status & Closed Captions */}
-            <div className="relative z-10 flex flex-col xs:flex-row items-stretch xs:items-end justify-between gap-2 sm:gap-4 mt-auto">
+            <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-end justify-between gap-2 sm:gap-4 mt-auto">
               {/* Bottom Left: Mic On / Live Sound Wave Card */}
-              <div className="bg-white/95 dark:bg-[#161920]/95 backdrop-blur-md rounded-lg sm:rounded-2xl p-1.5 sm:p-2.5 shadow-lg border border-white/50 dark:border-white/10 flex items-center gap-2 shrink-0">
+              <div className="bg-white/95 dark:bg-[#161920]/95 backdrop-blur-md rounded-lg sm:rounded-2xl p-1.5 sm:p-2.5 shadow-lg border border-white/50 dark:border-white/10 flex items-center gap-2 shrink-0 w-fit self-start sm:self-auto">
                 <div className="flex flex-col gap-0.5 min-w-[95px] sm:min-w-[120px]">
                   <div className="flex items-center justify-between gap-1">
                     <div className="flex items-center gap-1">
@@ -1233,7 +1233,7 @@ export default function Room({ candidateName, role, level, durationMin, code, on
           {/* Raise Hand */}
           <button
             onClick={() => setHandRaised(!handRaised)}
-            className="hidden xs:flex flex-col items-center gap-0.5 sm:gap-1 text-gray-700 dark:text-gray-300 hover:text-gray-950 dark:hover:text-white transition-colors cursor-pointer group"
+            className="hidden sm:flex flex-col items-center gap-0.5 sm:gap-1 text-gray-700 dark:text-gray-300 hover:text-gray-950 dark:hover:text-white transition-colors cursor-pointer group"
           >
             <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center border transition-all shadow-2xs group-hover:scale-105 ${
               handRaised

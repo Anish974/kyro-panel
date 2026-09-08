@@ -74,7 +74,7 @@ const lateStageTurn = (): number => model.concludeAtTurn() - 2;
  * ends up asking nothing at all, which verdicts.ts then has to cap at 0.2
  * confidence. On a screen, rotation matters more than follow-up.
  */
-const floorLimit = (): number => (model.concludeAtTurn() >= 9 ? 2 : 1);
+const floorLimit = (): number => 2;
 
 /**
  * Before a share rule kicks in, so a panelist who opens strongly is not fought

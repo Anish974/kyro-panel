@@ -39,16 +39,16 @@ function answerTopicRelevance(panelist: PanelistId, text: string): number {
   if (words.length < 3) return 0;
 
   // Audio glitch complaints or short repeat queries carry no topic signal
-  if (/\b(audible|hear you|voice is breaking|can't hear|cannot hear)\b/i.test(text) && words.length < 12) {
+  if (/\b(audible|hear you|voice is breaking|can't hear|cannot hear|wait wait|one by one)\b/i.test(text) && words.length < 15) {
     return 0;
   }
 
   const matchesAxis = SIGNALS[panelist].test(text);
 
   if (panelist === 'technical') {
-    if (!matchesAxis) return 0.1;
+    if (!matchesAxis) return 0.25;
     const hasArchOrDeepTech =
-      /\b(redis|kafka|postgres|mongo|sql|aws|docker|k8s|kubernetes|cloud|deploy|server|cluster|linux|network|infra|latenc|scale|shard|index|cache|queue|broker|api|replica|partition|concurrency|throughput|benchmark|protocol)\w*/i.test(
+      /\b(redis|kafka|postgres|mongo|sql|aws|docker|k8s|kubernetes|cloud|deploy|server|cluster|linux|network|infra|latenc|scale|shard|index|cache|queue|broker|api|replica|partition|concurrency|throughput|benchmark|protocol|system|software|device|hardware|controller|dms|drone|utms|mavlink|mqtt|iot|flight|planner)\w*/i.test(
         text,
       );
     if (hasArchOrDeepTech && words.length >= 10) return 1.0;
@@ -57,9 +57,9 @@ function answerTopicRelevance(panelist: PanelistId, text: string): number {
   }
 
   if (panelist === 'product') {
-    if (!matchesAxis) return 0.1;
+    if (!matchesAxis) return 0.25;
     const hasImpactOrMetrics =
-      /\b(user|customer|buyer|client|metric|impact|revenue|churn|conversion|retention|growth|feedback|adoption|outcome|business|sla)\w*/i.test(
+      /\b(user|customer|buyer|client|metric|impact|revenue|churn|conversion|retention|growth|feedback|adoption|outcome|business|sla|workflow|traditional|alternative|solution|solve|problem|benefit|advantage|productivity|efficient|efficiency|automation|feature)\w*/i.test(
         text,
       );
     if (hasImpactOrMetrics && words.length >= 10) return 1.0;
@@ -68,9 +68,9 @@ function answerTopicRelevance(panelist: PanelistId, text: string): number {
   }
 
   if (panelist === 'hr') {
-    if (!matchesAxis) return 0.15;
+    if (!matchesAxis) return 0.25;
     const hasOwnershipOrTeam =
-      /\b(team|lead|mentor|disagree|pushback|stakeholder|colleague|decision|resolve|conflict|ownership|feedback|collaborat)\w*/i.test(
+      /\b(team|lead|mentor|disagree|pushback|stakeholder|colleague|decision|resolve|conflict|ownership|feedback|collaborat|role|intern|internship|responsib|initiative|experience)\w*/i.test(
         text,
       );
     if (hasOwnershipOrTeam && words.length >= 10) return 1.0;
@@ -78,7 +78,7 @@ function answerTopicRelevance(panelist: PanelistId, text: string): number {
     return 0.45;
   }
 
-  return 0.2;
+  return 0.3;
 }
 
 function buildVerdict(id: PanelistId): PanelistVerdict {
@@ -138,13 +138,27 @@ function buildVerdict(id: PanelistId): PanelistVerdict {
   }
   const relevantTurns = Array.from(relevantMap.values());
 
-  const evidence = (onMyAxis.length ? onMyAxis : answered).slice(-2).map(quote);
+  const candidateQuotes = (onMyAxis.length ? onMyAxis : answered)
+    .filter(t => !/\b(wait wait|one by one|one at a time|can you repeat|am i audible)\b/i.test(t.text))
+    .slice(-2)
+    .map(quote);
+  const evidence = candidateQuotes.length ? candidateQuotes : (onMyAxis.length ? onMyAxis : answered).slice(-1).map(quote);
 
   // Score strictly derived from topic relevance of responses to questions asked
   let topicRatio = 0;
-  if (relevantTurns.length > 0) {
-    const sum = relevantTurns.reduce((acc, t) => acc + answerTopicRelevance(id, t.text), 0);
-    const denom = Math.max(questionsAsked, relevantTurns.length, 1);
+  const substantiveTurns = relevantTurns.filter(t => {
+    const w = t.text.trim().split(/\s+/).filter(Boolean);
+    if (w.length < 5) return false;
+    if (/\b(wait wait|one by one|one at a time|can you repeat|say that again|am i audible)\b/i.test(t.text) && w.length < 15) {
+      return false;
+    }
+    return true;
+  });
+
+  const turnsToScore = substantiveTurns.length > 0 ? substantiveTurns : relevantTurns;
+  if (turnsToScore.length > 0) {
+    const sum = turnsToScore.reduce((acc, t) => acc + answerTopicRelevance(id, t.text), 0);
+    const denom = Math.max(1, Math.min(questionsAsked, turnsToScore.length));
     topicRatio = Math.min(1.0, sum / denom);
   } else {
     topicRatio = 0;

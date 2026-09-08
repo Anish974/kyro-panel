@@ -413,6 +413,29 @@ export async function startAgent(orchestratorUrl: string): Promise<RunningAgent>
   }
 
   const channel = channelName();
+
+  // Ensure any lingering orphan agent from a previous session, page reload or dyno restart is stopped first
+  try {
+    const listRes = await fetch(`${BASE}/${appId}/agents`, {
+      headers: { authorization: auth(customerId, customerSecret) },
+    });
+    if (listRes.ok) {
+      const listData = (await listRes.json().catch(() => null)) as { data?: { list?: { agent_id: string; channel?: string }[] } } | null;
+      const lingering = listData?.data?.list ?? [];
+      for (const a of lingering) {
+        if (!a.channel || a.channel === channel) {
+          console.log(`[agent] stopping orphan agent ${a.agent_id} in channel ${a.channel ?? channel}`);
+          await fetch(`${BASE}/${appId}/agents/${a.agent_id}/leave`, {
+            method: 'POST',
+            headers: { authorization: auth(customerId, customerSecret) },
+          }).catch(() => {});
+        }
+      }
+    }
+  } catch (err) {
+    // Non-fatal cleanup attempt
+  }
+
   const body = buildJoinBody({
     channel,
     token: mint(creds, channel, AGENT_UID).token,

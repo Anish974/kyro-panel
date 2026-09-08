@@ -59,7 +59,7 @@ Ask one question at a time. Two sentences maximum.`;
 /** Default system prompts for offline checks and fallbacks. */
 /** What makes each panelist want the floor. */
 export const SIGNALS: Record<PanelistId, RegExp> = {
-  technical: /\b(docker|k8s|kubernetes|aws|gcp|cloud|deploy|container|cluster|server|linux|network|monitor|telemetry|log|metrics|infra|terraform|nginx|gateway|proxy|redis|queue|shard|latenc|database|cache|async|architect|scale|throughput|index|api|replica|partition|frontend|render|hook|component|state|query|schema|pipeline|model)\w*/i,
-  product: /\b(customer|user|buyer|revenue|checkout|business|impact|conversion|churn|price|adoption|analytics|metric|roadmap|sla)\w*/i,
-  hr: /\b(team|conflict|disagree|lead|mentor|deadline|pushback|own|decid|stakeholder|manager|culture|communicat|feedback)\w*/i,
+  technical: /\b(docker|k8s|kubernetes|aws|gcp|cloud|deploy|container|cluster|server|linux|network|monitor|telemetry|log|metrics|infra|terraform|nginx|gateway|proxy|redis|queue|shard|latenc|database|cache|async|architect|scale|throughput|index|api|replica|partition|frontend|render|hook|component|state|query|schema|pipeline|model|software|system|systems|device|devices|hardware|code|program|build|built|develop|developed|control|controller|controlling|dms|drone|drones|utms|mavlink|mqtt|iot|socket|websocket|planner|concurrency|multithread|thread|algorithm|engine|service|module)\w*/i,
+  product: /\b(customer|user|users|buyer|revenue|checkout|business|impact|conversion|churn|price|adoption|analytics|metric|roadmap|sla|workflow|traditional|alternative|solution|solve|solving|problem|benefit|advantage|productivity|efficient|efficiency|automation|feature|features|requirement)\w*/i,
+  hr: /\b(team|conflict|disagree|lead|mentor|deadline|pushback|own|decid|stakeholder|manager|culture|communicat|feedback|role|intern|internship|responsib|collaborat|initiative|experience)\w*/i,
 };

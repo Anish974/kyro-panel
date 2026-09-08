@@ -92,7 +92,7 @@ export default function CompanyPortal({ onBack, onSelectScorecard, localHistory 
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 sm:gap-2">
               <span className="font-display font-extrabold text-base sm:text-xl text-gray-950 dark:text-white shrink-0">Kyro Panel</span>
-              <span className="hidden xs:inline-flex items-center px-2 py-0.5 rounded-md text-[10px] sm:text-[11px] font-extrabold bg-[#F4F1EA] dark:bg-[#1E232D] text-[#78644E] dark:text-[#CBB9A4] border border-[#E6DAC8] dark:border-[#2D333F] truncate">
+              <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-md text-[10px] sm:text-[11px] font-extrabold bg-[#F4F1EA] dark:bg-[#1E232D] text-[#78644E] dark:text-[#CBB9A4] border border-[#E6DAC8] dark:border-[#2D333F] truncate">
                 Recruiter Portal
               </span>
             </div>
