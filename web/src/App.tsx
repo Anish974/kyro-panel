@@ -34,7 +34,7 @@ export default function App() {
   // The write-up failed. Kept with the duration it was asked for so a retry
   // sends the same number — see endInterview for why we retry rather than
   // invent a card.
-  const [scorecardError, setScorecardError] = useState<{ message: string; durationSec: number } | null>(null);
+  const [scorecardError, setScorecardError] = useState<{ message: string; durationSec?: number } | null>(null);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
 
   // Global Keyboard Shortcuts Listener
@@ -123,7 +123,7 @@ export default function App() {
       throw new Error(`The server could not write the scorecard (${res.status}).`);
     } catch (err) {
       console.warn('Could not fetch the scorecard from the server:', err);
-      setScorecardError({ message: (err as Error).message, durationSec: durationParam });
+      setScorecardError({ message: (err as Error).message, durationSec: actualDurationSec });
       setDeliberating(false);
     }
   }
@@ -188,7 +188,7 @@ export default function App() {
       return (
         <div className="min-h-screen bg-[#FAF9F6] dark:bg-[#0F1115] grid place-items-center px-4">
           <div className="max-w-md w-full rounded-3xl border border-[#EBE6DF] dark:border-[#222631] bg-white dark:bg-[#161920] p-8 flex flex-col gap-4 shadow-xs text-center">
-            <h1 className="font-display text-xl font-extrabold text-gray-950 dark:text-white">
+            <h1 className="font-display text-xl font-extrabold text-gray-900 dark:text-white">
               The scorecard did not come back
             </h1>
             <p className="text-sm text-[#4B5565] dark:text-[#94A3B8] leading-relaxed">

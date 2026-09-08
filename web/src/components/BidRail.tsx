@@ -114,7 +114,7 @@ export default function BidRail({ model, bids, isOpen, onClose }: Props) {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2.5">
                           <span className="w-2.5 h-2.5 rounded-full" style={{ background: p.color }} />
-                          <span className="text-sm font-bold text-gray-950 dark:text-white">{p.name}</span>
+                          <span className="text-sm font-bold text-gray-900 dark:text-white">{p.name}</span>
                           <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">({p.role.split(' ')[0]})</span>
                         </div>
                         {won && (
@@ -158,7 +158,7 @@ export default function BidRail({ model, bids, isOpen, onClose }: Props) {
                 <div key={id} className="flex flex-col gap-1.5">
                   <div className="flex items-center justify-between text-xs md:text-sm">
                     <span className="font-semibold text-gray-800 dark:text-gray-300">{COMPETENCIES[id]}</span>
-                    <span className="font-mono font-bold text-gray-950 dark:text-white">{(model.skills[id] * 100).toFixed(0)}%</span>
+                    <span className="font-mono font-bold text-gray-900 dark:text-white">{(model.skills[id] * 100).toFixed(0)}%</span>
                   </div>
                   <div className="h-2.5 rounded-full bg-[#F4F1EA] dark:bg-gray-800 overflow-hidden">
                     <div

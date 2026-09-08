@@ -55,7 +55,7 @@ export default function PanelistTile({ panelist, speaking, avatarUrl, onSelect }
 
       {/* Bottom Left Info Box */}
       <div className="absolute bottom-1.5 left-1.5 sm:bottom-2 sm:left-2 z-10 bg-black/65 sm:bg-white/95 sm:dark:bg-[#161920]/95 backdrop-blur-md rounded-lg sm:rounded-xl px-1.5 sm:px-2.5 py-0.5 sm:py-1 shadow-sm border border-white/20 sm:border-[#EBE6DF] sm:dark:border-[#222631] flex flex-col gap-0.5 max-w-[92%] sm:max-w-[85%]">
-        <span className="text-[11px] sm:text-xs lg:text-sm font-extrabold text-white sm:text-gray-950 sm:dark:text-white tracking-tight leading-tight truncate">
+        <span className="text-[11px] sm:text-xs lg:text-sm font-extrabold text-white sm:text-gray-900 sm:dark:text-white tracking-tight leading-tight truncate">
           {panelist.name}
         </span>
         <span className="text-[9px] sm:text-[10px] lg:text-xs text-gray-200 sm:text-gray-600 sm:dark:text-gray-300 font-semibold leading-tight truncate">

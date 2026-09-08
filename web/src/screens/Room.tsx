@@ -690,7 +690,7 @@ export default function Room({ candidateName, role, level, durationMin, code, on
 
                 {/* Heading & Target Role */}
                 <div>
-                  <h2 className="text-xl sm:text-2xl font-extrabold text-gray-950 dark:text-white font-display tracking-tight">
+                  <h2 className="text-xl sm:text-2xl font-extrabold text-gray-900 dark:text-white font-display tracking-tight">
                     Ready to join?
                   </h2>
                   <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-0.5 sm:mt-1">
@@ -880,7 +880,7 @@ export default function Room({ candidateName, role, level, durationMin, code, on
           {/* Leave Interview Button */}
           <button
             onClick={() => setConfirmEnd(true)}
-            className="border border-[#EBE6DF] dark:border-[#222631] hover:border-gray-400 text-gray-800 dark:text-gray-200 hover:text-gray-950 dark:hover:text-white bg-white dark:bg-[#161920] hover:bg-gray-50 dark:hover:bg-[#1E232D] text-[11px] sm:text-xs font-bold px-2 sm:px-3.5 py-1 sm:py-1.5 rounded-lg sm:rounded-xl transition-colors shadow-2xs cursor-pointer whitespace-nowrap"
+            className="border border-[#EBE6DF] dark:border-[#222631] hover:border-gray-400 text-gray-800 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white bg-white dark:bg-[#161920] hover:bg-gray-50 dark:hover:bg-[#1E232D] text-[11px] sm:text-xs font-bold px-2 sm:px-3.5 py-1 sm:py-1.5 rounded-lg sm:rounded-xl transition-colors shadow-2xs cursor-pointer whitespace-nowrap"
           >
             Leave
           </button>
@@ -922,7 +922,7 @@ export default function Room({ candidateName, role, level, durationMin, code, on
               </span>
             ) : speakerInfo ? (
               <div className="flex items-center gap-1 min-w-0">
-                <span className="font-extrabold text-gray-950 dark:text-white text-xs sm:text-sm truncate">{speakerInfo.name}</span>
+                <span className="font-extrabold text-gray-900 dark:text-white text-xs sm:text-sm truncate">{speakerInfo.name}</span>
                 <span className="text-gray-500 dark:text-gray-400 font-medium text-[11px] sm:text-xs truncate">({speakerInfo.role})</span>
               </div>
             ) : agentStateLabel ? (
@@ -1153,7 +1153,7 @@ export default function Room({ candidateName, role, level, durationMin, code, on
           {/* Mic Button */}
           <button
             onClick={toggleMic}
-            className="flex flex-col items-center gap-0.5 sm:gap-1 text-gray-700 dark:text-gray-300 hover:text-gray-950 dark:hover:text-white transition-colors cursor-pointer group"
+            className="flex flex-col items-center gap-0.5 sm:gap-1 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors cursor-pointer group"
           >
             <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center border transition-all shadow-2xs group-hover:scale-105 ${
               micOn
@@ -1177,7 +1177,7 @@ export default function Room({ candidateName, role, level, durationMin, code, on
           {/* Camera Button */}
           <button
             onClick={toggleCamera}
-            className="flex flex-col items-center gap-0.5 sm:gap-1 text-gray-700 dark:text-gray-300 hover:text-gray-950 dark:hover:text-white transition-colors cursor-pointer group"
+            className="flex flex-col items-center gap-0.5 sm:gap-1 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors cursor-pointer group"
           >
             <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center border transition-all shadow-2xs group-hover:scale-105 ${
               cameraOn
@@ -1201,7 +1201,7 @@ export default function Room({ candidateName, role, level, durationMin, code, on
           {/* Captions Button */}
           <button
             onClick={() => setCaptionsOn(!captionsOn)}
-            className="flex flex-col items-center gap-0.5 sm:gap-1 text-gray-700 dark:text-gray-300 hover:text-gray-950 dark:hover:text-white transition-colors cursor-pointer group"
+            className="flex flex-col items-center gap-0.5 sm:gap-1 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors cursor-pointer group"
           >
             <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center border transition-all shadow-2xs group-hover:scale-105 ${
               captionsOn
@@ -1216,7 +1216,7 @@ export default function Room({ candidateName, role, level, durationMin, code, on
           {/* Screen Share (Desktop only) */}
           <button
             onClick={() => setScreenSharing(!screenSharing)}
-            className="hidden md:flex flex-col items-center gap-1 text-gray-700 dark:text-gray-300 hover:text-gray-950 dark:hover:text-white transition-colors cursor-pointer group"
+            className="hidden md:flex flex-col items-center gap-1 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors cursor-pointer group"
           >
             <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center border transition-all shadow-2xs group-hover:scale-105 ${
               screenSharing
@@ -1233,7 +1233,7 @@ export default function Room({ candidateName, role, level, durationMin, code, on
           {/* Raise Hand */}
           <button
             onClick={() => setHandRaised(!handRaised)}
-            className="hidden sm:flex flex-col items-center gap-0.5 sm:gap-1 text-gray-700 dark:text-gray-300 hover:text-gray-950 dark:hover:text-white transition-colors cursor-pointer group"
+            className="hidden sm:flex flex-col items-center gap-0.5 sm:gap-1 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors cursor-pointer group"
           >
             <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center border transition-all shadow-2xs group-hover:scale-105 ${
               handRaised
@@ -1266,7 +1266,7 @@ export default function Room({ candidateName, role, level, durationMin, code, on
           {/* Context / Bids Drawer Toggle (visible on mobile to view bids) */}
           <button
             onClick={() => setShowContextDrawer(true)}
-            className="flex flex-col items-center gap-0.5 sm:gap-1 text-gray-700 dark:text-gray-300 hover:text-gray-950 dark:hover:text-white transition-colors cursor-pointer group"
+            className="flex flex-col items-center gap-0.5 sm:gap-1 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors cursor-pointer group"
           >
             <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center border border-[#EBE6DF] dark:border-[#2D333F] bg-white dark:bg-[#1E232D] text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#252C39] shadow-2xs group-hover:scale-105">
               <svg className="w-4 h-4 sm:w-5 sm:h-5 text-[#2563EB] dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1279,7 +1279,7 @@ export default function Room({ candidateName, role, level, durationMin, code, on
           {/* Interview Guide */}
           <button
             onClick={() => setShowGuideModal(true)}
-            className="hidden sm:flex flex-col items-center gap-1 text-gray-700 dark:text-gray-300 hover:text-gray-950 dark:hover:text-white transition-colors cursor-pointer group"
+            className="hidden sm:flex flex-col items-center gap-1 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors cursor-pointer group"
           >
             <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center border border-[#EBE6DF] dark:border-[#2D333F] bg-white dark:bg-[#1E232D] text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#252C39] shadow-2xs group-hover:scale-105">
               <svg className="w-4 h-4 sm:w-5 sm:h-5 text-gray-700 dark:text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1292,7 +1292,7 @@ export default function Room({ candidateName, role, level, durationMin, code, on
           {/* Help */}
           <button
             onClick={() => setShowHelpModal(true)}
-            className="hidden sm:flex flex-col items-center gap-1 text-gray-700 dark:text-gray-300 hover:text-gray-950 dark:hover:text-white transition-colors cursor-pointer group"
+            className="hidden sm:flex flex-col items-center gap-1 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors cursor-pointer group"
           >
             <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center border border-[#EBE6DF] dark:border-[#2D333F] bg-white dark:bg-[#1E232D] text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#252C39] shadow-2xs group-hover:scale-105">
               <svg className="w-4 h-4 sm:w-5 sm:h-5 text-gray-700 dark:text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">

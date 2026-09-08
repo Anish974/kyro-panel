@@ -71,7 +71,7 @@ export default function Landing({ onCompany, onCandidate }: Props) {
             alt="Kyro Panel Logo"
             className="w-10 h-10 md:w-12 md:h-12 object-contain transition-transform group-hover:scale-105 drop-shadow-xs"
           />
-          <span className="font-display font-extrabold text-2xl sm:text-3xl tracking-tight text-gray-950 dark:text-white">
+          <span className="font-display font-extrabold text-2xl sm:text-3xl tracking-tight text-gray-900 dark:text-white">
             Kyro Panel
           </span>
         </div>
@@ -80,7 +80,7 @@ export default function Landing({ onCompany, onCandidate }: Props) {
           <ThemeToggle />
           <button
             onClick={onCandidate}
-            className="hidden sm:inline-flex text-xs font-bold text-gray-600 dark:text-gray-300 hover:text-gray-950 dark:hover:text-white px-3 py-2 transition-colors cursor-pointer"
+            className="hidden sm:inline-flex text-xs font-bold text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-2 transition-colors cursor-pointer"
           >
             Candidate Practice
           </button>
@@ -97,7 +97,7 @@ export default function Landing({ onCompany, onCandidate }: Props) {
       <section className="relative min-h-[calc(100vh-73px)] flex flex-col justify-between items-center px-6 py-4 sm:py-6 max-w-[1140px] w-full mx-auto">
         {/* Top: Headline */}
         <div className="text-center pt-1 max-w-3xl mx-auto">
-          <h1 className="font-display text-2xl sm:text-3xl md:text-4xl lg:text-[40px] font-extrabold tracking-tight leading-tight text-gray-950 dark:text-white">
+          <h1 className="font-display text-2xl sm:text-3xl md:text-4xl lg:text-[40px] font-extrabold tracking-tight leading-tight text-gray-900 dark:text-white">
             Three AI interviewers.
             <br />
             <span className="bg-gradient-to-r from-gray-900 via-gray-700 to-indigo-600 dark:from-white dark:via-gray-200 dark:to-indigo-400 bg-clip-text text-transparent">
@@ -150,7 +150,7 @@ export default function Landing({ onCompany, onCandidate }: Props) {
         {/* Dual Audience Section: Built for Candidates & Hiring Teams */}
         <section className="flex flex-col gap-6">
           <div className="text-center max-w-xl mx-auto">
-            <h2 className="font-display text-2xl sm:text-3xl font-extrabold text-gray-950 dark:text-white">
+            <h2 className="font-display text-2xl sm:text-3xl font-extrabold text-gray-900 dark:text-white">
               Built for both sides of the hiring table
             </h2>
             <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
@@ -165,7 +165,7 @@ export default function Landing({ onCompany, onCandidate }: Props) {
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold bg-blue-50 dark:bg-blue-950/50 text-[#2563EB] dark:text-blue-400 border border-blue-200/60 dark:border-blue-800/60 mb-5">
                   Candidate
                 </div>
-                <h3 className="font-display text-2xl font-extrabold text-gray-950 dark:text-white leading-snug">
+                <h3 className="font-display text-2xl font-extrabold text-gray-900 dark:text-white leading-snug">
                   Practice high-pressure panel interviews with unvarnished feedback
                 </h3>
                 <p className="mt-3 text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
@@ -205,7 +205,7 @@ export default function Landing({ onCompany, onCandidate }: Props) {
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold bg-purple-50 dark:bg-purple-950/50 text-[#8B5CF6] dark:text-purple-400 border border-purple-200/60 dark:border-purple-800/60 mb-5">
                   For Hiring Teams
                 </div>
-                <h3 className="font-display text-2xl font-extrabold text-gray-950 dark:text-white leading-snug">
+                <h3 className="font-display text-2xl font-extrabold text-gray-900 dark:text-white leading-snug">
                   Comprehensive 3-way candidate evaluations in a single automated round
                 </h3>
                 <p className="mt-3 text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
@@ -244,7 +244,7 @@ export default function Landing({ onCompany, onCandidate }: Props) {
         {/* How It Works Feature Cards */}
         <section className="flex flex-col gap-8">
           <div className="text-center max-w-xl mx-auto">
-            <h2 className="font-display text-2xl sm:text-3xl font-extrabold text-gray-950 dark:text-white">
+            <h2 className="font-display text-2xl sm:text-3xl font-extrabold text-gray-900 dark:text-white">
               How the Coordinated Panel works
             </h2>
             <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
@@ -258,7 +258,7 @@ export default function Landing({ onCompany, onCandidate }: Props) {
                 <div className="w-10 h-10 rounded-xl bg-[#F4F1EA] dark:bg-[#1E232D] border border-[#E6DAC8] dark:border-[#2D333F] flex items-center justify-center text-lg mb-4">
                   🎙️
                 </div>
-                <h3 className="font-bold text-base text-gray-950 dark:text-white">Real-Time Floor Bidding</h3>
+                <h3 className="font-bold text-base text-gray-900 dark:text-white">Real-Time Floor Bidding</h3>
                 <p className="mt-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
                   After every answer, panelists score their desire to speak based on what was said. The highest bidder takes the floor naturally.
                 </p>
@@ -270,7 +270,7 @@ export default function Landing({ onCompany, onCandidate }: Props) {
                 <div className="w-10 h-10 rounded-xl bg-[#F4F1EA] dark:bg-[#1E232D] border border-[#E6DAC8] dark:border-[#2D333F] flex items-center justify-center text-lg mb-4">
                   🧠
                 </div>
-                <h3 className="font-bold text-base text-gray-950 dark:text-white">Unified Shared Context</h3>
+                <h3 className="font-bold text-base text-gray-900 dark:text-white">Unified Shared Context</h3>
                 <p className="mt-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
                   All interviewers share one continuous memory. If the Technical Architect uncovers a weak spot, the PM follows up directly without asking you to repeat yourself.
                 </p>
@@ -282,7 +282,7 @@ export default function Landing({ onCompany, onCandidate }: Props) {
                 <div className="w-10 h-10 rounded-xl bg-[#F4F1EA] dark:bg-[#1E232D] border border-[#E6DAC8] dark:border-[#2D333F] flex items-center justify-center text-lg mb-4">
                   📊
                 </div>
-                <h3 className="font-bold text-base text-gray-950 dark:text-white">3 Independent Verdicts</h3>
+                <h3 className="font-bold text-base text-gray-900 dark:text-white">3 Independent Verdicts</h3>
                 <p className="mt-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
                   We never blend verdicts into a single misleading average. You get individual appraisals quoting exact transcript lines with timestamps.
                 </p>
@@ -304,7 +304,7 @@ export default function Landing({ onCompany, onCandidate }: Props) {
                   className="w-full rounded-2xl border border-[#EBE6DF] dark:border-[#222631] shadow-sm bg-white dark:bg-[#161920]"
                 />
                 <figcaption className="mt-3">
-                  <span className="font-bold text-sm text-gray-950 dark:text-white">{shot.title}</span>
+                  <span className="font-bold text-sm text-gray-900 dark:text-white">{shot.title}</span>
                   <span className="block text-sm text-gray-600 dark:text-gray-400">{shot.caption}</span>
                 </figcaption>
               </figure>
@@ -315,7 +315,7 @@ export default function Landing({ onCompany, onCandidate }: Props) {
         {/* Expandable FAQs Section - At the bottom with divider */}
         <section className="flex flex-col gap-6 pt-10 border-t border-[#EBE6DF]/80 dark:border-[#222631]/80 pb-6">
           <div className="text-center max-w-xl mx-auto">
-            <h2 className="font-display text-2xl sm:text-3xl font-extrabold text-gray-950 dark:text-white">
+            <h2 className="font-display text-2xl sm:text-3xl font-extrabold text-gray-900 dark:text-white">
               Frequently Asked Questions
             </h2>
             <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">

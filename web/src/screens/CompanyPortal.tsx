@@ -91,7 +91,7 @@ export default function CompanyPortal({ onBack, onSelectScorecard, localHistory 
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 sm:gap-2">
-              <span className="font-display font-extrabold text-base sm:text-xl text-gray-950 dark:text-white shrink-0">Kyro Panel</span>
+              <span className="font-display font-extrabold text-base sm:text-xl text-gray-900 dark:text-white shrink-0">Kyro Panel</span>
               <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-md text-[10px] sm:text-[11px] font-extrabold bg-[#F4F1EA] dark:bg-[#1E232D] text-[#78644E] dark:text-[#CBB9A4] border border-[#E6DAC8] dark:border-[#2D333F] truncate">
                 Recruiter Portal
               </span>
@@ -127,7 +127,7 @@ export default function CompanyPortal({ onBack, onSelectScorecard, localHistory 
         {/* Top Header Banner & Stats */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-5 sm:gap-6 bg-white dark:bg-[#161920] rounded-2xl sm:rounded-3xl p-5 sm:p-8 border border-[#EBE6DF] dark:border-[#222631] shadow-xs">
           <div className="flex flex-col gap-1.5">
-            <h1 className="text-xl sm:text-3xl font-extrabold text-gray-950 dark:text-white font-display tracking-tight">
+            <h1 className="text-xl sm:text-3xl font-extrabold text-gray-900 dark:text-white font-display tracking-tight">
               Candidate Assessments &amp; Scorecards
             </h1>
             <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 font-medium">
@@ -138,7 +138,7 @@ export default function CompanyPortal({ onBack, onSelectScorecard, localHistory 
           <div className="grid grid-cols-3 gap-2 sm:gap-6 border-t md:border-t-0 md:border-l border-[#EBE6DF] dark:border-[#222631] pt-4 md:pt-0 md:pl-8">
             <div className="flex flex-col">
               <span className="text-[10px] sm:text-[11px] font-extrabold tracking-wider text-gray-400 uppercase font-mono">Candidates</span>
-              <span className="text-xl sm:text-2xl font-display font-extrabold text-gray-950 dark:text-white mt-0.5">{totalCount}</span>
+              <span className="text-xl sm:text-2xl font-display font-extrabold text-gray-900 dark:text-white mt-0.5">{totalCount}</span>
             </div>
             <div className="flex flex-col">
               <span className="text-[10px] sm:text-[11px] font-extrabold tracking-wider text-gray-400 uppercase font-mono">Hires</span>
@@ -267,7 +267,7 @@ export default function CompanyPortal({ onBack, onSelectScorecard, localHistory 
                               {sc.candidateName.split(' ').map(n => n[0]).join('')}
                             </div>
                             <div className="flex flex-col">
-                              <span className="text-sm font-bold text-gray-950 dark:text-white">{sc.candidateName}</span>
+                              <span className="text-sm font-bold text-gray-900 dark:text-white">{sc.candidateName}</span>
                               <span className="text-[11px] text-gray-400 dark:text-gray-500 font-mono">{formatDate(sc.timestamp)}</span>
                             </div>
                           </div>
