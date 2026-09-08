@@ -790,7 +790,7 @@ export default function Room({ candidateName, role, level, durationMin, code, on
             <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-white dark:bg-[#1E232D] border border-[#EBE6DF] dark:border-[#2D333F] flex items-center justify-center shadow-2xs overflow-hidden p-1">
               <img src="/favicon.png" alt="Kyro Panel Logo" className="w-full h-full object-contain" />
             </div>
-            <span className="font-display font-extrabold text-xs sm:text-sm md:text-base tracking-tight text-gray-900 dark:text-white shrink-0">
+            <span className="font-display font-black text-xs sm:text-sm md:text-base tracking-tight text-gray-950 dark:text-white shrink-0">
               Kyro Panel
             </span>
           </div>

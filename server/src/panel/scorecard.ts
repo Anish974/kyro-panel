@@ -8,7 +8,7 @@ import {
   type Verdict,
 } from '@kyro/shared';
 import { SIGNALS } from './personas.js';
-import { getModel } from './model.js';
+import { concludeAtTurn, getModel } from './model.js';
 import { confidenceCeiling, writeVerdicts } from './verdicts.js';
 
 // The artefact the hiring team actually reads. Three separate verdicts built
@@ -164,9 +164,25 @@ function buildVerdict(id: PanelistId): PanelistVerdict {
     topicRatio = 0;
   }
 
-  const score = Math.round(topicRatio * 5.0 * 10) / 10;
+  const rawScore = Math.round(topicRatio * 5.0 * 10) / 10;
 
   const allCandidate = model.transcript.filter(t => t.speaker === 'candidate' && t.text.trim() !== '');
+  const hasEarlyExit = allCandidate.some(t =>
+    /\b(urgent call|emergency|pick it up|leave right now|end (this|it) right now|disconnect|have to go)\b/i.test(t.text),
+  );
+  const completionRatio = Math.min(1.0, model.turns / Math.max(3, concludeAtTurn()));
+
+  // A candidate who exits early or abandons after 1-2 questions cannot receive a Hire / Lean Hire score
+  let score = rawScore;
+  if (hasEarlyExit || model.turns < 3) {
+    if (questionsAsked > 0 && directAnswers.length === 0) {
+      score = Math.min(1.0, rawScore);
+    } else if (hasEarlyExit) {
+      score = Math.min(1.5, Math.round(rawScore * completionRatio * 10) / 10);
+    } else if (model.turns < 3) {
+      score = Math.min(2.0, Math.round(rawScore * completionRatio * 10) / 10);
+    }
+  }
   const hasProblemSolving = allCandidate.some(t =>
     /\b(because|why|instead|tradeoff|bottleneck|resolv|debug|constraint|trade-off)\w*/i.test(t.text),
   );
