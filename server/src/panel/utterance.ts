@@ -49,6 +49,26 @@ const THINKING =
   /\b(let me think|give me a (second|moment|minute)|hold on|one (second|moment|minute)|i need a (second|moment|minute)|let me (gather|collect) my thoughts|thinking(\s+about (it|that))?|bear with me|just a (sec|second|moment))\b/i;
 
 /**
+ * Asking the panel, in so many words, to hold on.
+ *
+ * THINKING_MAX exists because "let me think" is a fragment that can be glued to
+ * the front of a real answer — "Give me a second. Actually no, we used a
+ * separate table" is an answer, and the cap is what stops it being waved off.
+ *
+ * An ask addressed to the panel in the second person cannot be glued to
+ * anything: nobody prefixes their own answer with "can you wait". That is the
+ * whole difference, and it is why only those phrasings live here, uncapped —
+ * everything of the "give me a second" shape stays under THINKING_MAX.
+ *
+ * Without this, "Wait. I have answer. Great. Can you wait for a minute?" ran to
+ * 53 characters, missed THINKING_MAX by thirteen, and was graded as a technical
+ * answer — so the panel asked its next question over a candidate who had just
+ * asked it to wait, and the answer they were gathering was never heard.
+ */
+const PAUSE_REQUEST =
+  /\b((can|could|would|will) (you|u|the panel|everyone) (please )?(wait|hold on|hold|give me a (minute|moment|second))|please (wait|hold on)|can i (have|get|take) (a|another|one more) (minute|moment|second))\b/i;
+
+/**
  * The candidate telling us we put words in their mouth.
  *
  * Speech-to-text turns "what to do about the bug" into "what to on the bot",
@@ -185,6 +205,10 @@ export function classify(text: string): UtteranceKind {
   // Clarify before thinking: "give me a second" is a pause, but "could you say
   // that again, give me a second" is really a request to repeat.
   if (CLARIFY.test(t)) return 'clarify';
+  // An explicit "hold on" needs no length cap — see PAUSE_REQUEST. Checked
+  // before BARE_QUESTION too, which would otherwise read "can you wait for a
+  // minute?" as a question to hand the last one back for.
+  if (PAUSE_REQUEST.test(t)) return 'thinking';
   // Thinking phrases are short by nature, and the cap is what stops one from
   // swallowing the answer that follows it. "Sorry, I was thinking. We stored the
   // tag as a column on the users table." is an answer that happens to open with

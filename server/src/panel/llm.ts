@@ -23,14 +23,17 @@ export const LLM_ENABLED = Boolean(BASE && MODEL && KEY);
 /**
  * How long the panel will wait for the model before it speaks from keywords.
  *
- * This is a ceiling on dead air, not a budget to spend: three drafts are about
- * 210 output tokens, which flash-lite finishes in under two seconds, so a call
- * still running at nine has hit a throttle and is not coming back in time. The
- * candidate has then been sitting in silence for nine seconds and the honest
- * move is a canned question, immediately, rather than five more seconds of
- * nothing followed by the same canned question.
+ * This is a ceiling on dead air, not a budget to spend: three bids and one
+ * question are about 150 output tokens, which flash-lite finishes in under two
+ * seconds, so a call still running at six has hit a throttle and is not coming
+ * back in time. Waiting the rest of the way out buys nothing — the fallback
+ * that fires at nine seconds is the same sentence it fires at six.
+ *
+ * It was nine. A throttled key then put five separate nine-second silences into
+ * one interview, and the candidate filled them asking whether anyone was there.
+ * Six is the same trade with three fewer seconds of it.
  */
-const TIMEOUT_MS = 9000;
+const TIMEOUT_MS = 6000;
 
 /** Out of quota, or the provider itself is having a moment. Worth a second key. */
 const worthRetrying = (status: number): boolean => status === 429 || status >= 500;

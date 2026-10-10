@@ -4,7 +4,7 @@
 // bidding logic is wrong — not the test.
 
 import assert from 'node:assert';
-import { CUSTOMER_GAP, context, runPanel } from '../panel/bidding.js';
+import { CUSTOMER_GAP, context, draftFallback, runPanel } from '../panel/bidding.js';
 import * as model from '../panel/model.js';
 
 model.reset();
@@ -62,6 +62,48 @@ assert.ok(
   prompt.includes('{"bids": {"technical": {...}, "product": {...}, "hr": {...}}'),
   'all three still bid, because the room draws a tile per panelist from them',
 );
+
+// 6. The prompt carries every question already asked, not just the last three.
+//
+// It used to carry six transcript lines and nothing else, so a question that
+// scrolled out of that window had, as far as the model could see, never been
+// asked. One interview got "which process is listening on port 80" three times
+// in three minutes that way.
+model.reset();
+model.addTurn({ speaker: 'technical', text: 'Which process is listening on port 80?' });
+for (let i = 0; i < 4; i++) {
+  model.addTurn({ speaker: 'candidate', text: `filler answer number ${i}` });
+  model.addTurn({ speaker: 'product', text: `filler question number ${i}?` });
+}
+
+const long = context('and that is how we shipped it.');
+const recentBlock = long.slice(long.indexOf('Recent exchange:'), long.indexOf('ALREADY ASKED'));
+assert.ok(
+  !recentBlock.includes('port 80'),
+  'sanity: the port 80 question has scrolled out of the six-line window',
+);
+assert.ok(
+  long.includes('ALREADY ASKED'),
+  'the prompt must list what has already been asked',
+);
+assert.ok(
+  long.includes('- Which process is listening on port 80?'),
+  'including a question the recent-exchange window no longer shows',
+);
+
+// 7. A fallback line is never repeated inside one interview.
+//
+// The picker used to index on the turn number, so a long interview wrapped
+// round and asked its opening question again, word for word.
+model.reset();
+const spoken = new Set<string>();
+for (let i = 0; i < 5; i++) {
+  const line = draftFallback('technical');
+  assert.ok(!spoken.has(line), `fallback repeated inside one interview: "${line}"`);
+  spoken.add(line);
+  model.addTurn({ speaker: 'candidate', text: `answer ${i} with enough words to count` });
+  model.addTurn({ speaker: 'technical', text: line });
+}
 
 console.log('bids  ', byId);
 console.log('turn 1', first.winner, '|', first.bids[0].reason);

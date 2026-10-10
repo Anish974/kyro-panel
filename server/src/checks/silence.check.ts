@@ -88,10 +88,37 @@ assert.ok(
   `a candidate who spoke starts again at the first step, got "${afterSpeaking}"`,
 );
 
+// 5. A pause the candidate asked for is a pause, not a cue to keep talking.
+//
+// Agora posts an empty turn on every 1.1 seconds of silence, so "take your
+// time" used to be followed by the ladder above almost immediately — a
+// candidate who said "can you wait for a minute?" heard the next question
+// before they had finished thinking.
+const grant = await say('Can you wait for a minute?');
+assert.ok(/take your time/i.test(grant), `a request to wait is granted, got "${grant}"`);
+assert.equal(
+  await say(''),
+  '',
+  'the panel says nothing while the pause it just granted is still running',
+);
+assert.equal(
+  await say(''),
+  '',
+  'and it does not start climbing the ladder on the second empty turn either',
+);
+
+// Speaking ends the pause on the spot — they are not thinking any more.
+await say('Right, so we keyed the cache by tenant and let it expire hourly.');
+assert.ok(
+  /take your time/i.test(await say('')),
+  'once they have answered, silence is ordinary silence again',
+);
+
 server.close();
 
 console.log('silence  first, the question is handed back');
 console.log('         second, the panel offers to move on');
 console.log('         third, it moves on — and none of it costs a turn');
 console.log('         and speaking again resets the ladder');
+console.log('         a pause the candidate asked for is actually taken');
 console.log('\nself-check passed');

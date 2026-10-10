@@ -39,7 +39,24 @@ const router = Router();
  */
 const HOLD_LIMIT = 2;
 
+/**
+ * How long "take your time" actually buys the candidate.
+ *
+ * Saying it and then talking three seconds later is worse than not saying it:
+ * the candidate asked for room to think and got a countdown. Agora posts an
+ * empty turn on every 1.1s of silence, so without this the pause the panel just
+ * granted was over before the candidate had finished drawing breath — one asked
+ * "can you wait for a minute?" and was asked the next question straight away.
+ *
+ * Fifteen seconds, not a minute. A minute of a dead room reads as a broken
+ * call, and the ladder that follows this opens by handing the question back —
+ * which is the right thing to say to someone who is still thinking.
+ */
+const PAUSE_GRANT_MS = 15000;
+
 let panelSpeakingUntil = 0;
+/** Set when the panel grants a pause. Until then, silence is not a problem. */
+let quietUntil = 0;
 let isDeliberating = false;
 
 interface ChatMessage { role: string; content: string }
@@ -72,6 +89,14 @@ router.post('/chat/completions', async (req, res) => {
     // If the panelist is still speaking, Agora's empty turn is just silence from the listening candidate
     if (process.env.ORCHESTRATOR_API_KEY !== 'silence-check' && Date.now() < panelSpeakingUntil + 3000) {
       console.log('[llm] silence while panel is speaking or just finished — returning silence');
+      return silence(res);
+    }
+
+    // A pause the panel itself granted. Nothing is wrong, nobody is stuck, and
+    // the ladder below must not start climbing — every rung of it is the panel
+    // talking to someone who asked it not to.
+    if (Date.now() < quietUntil) {
+      console.log('[llm] inside the pause the panel granted — staying quiet');
       return silence(res);
     }
 
@@ -117,8 +142,10 @@ router.post('/chat/completions', async (req, res) => {
     );
   }
 
-  // They said something, so whatever the silence was, it is over.
+  // They said something, so whatever the silence was, it is over — and so is
+  // any pause the panel was holding for them.
   breakSilence();
+  quietUntil = 0;
 
   // Show what we heard before the panel spends a second thinking about it.
   // Without this the room looks deaf while the LLM call is in flight.
@@ -164,6 +191,10 @@ router.post('/chat/completions', async (req, res) => {
     // the same invented premise — which is how one candidate was asked about a
     // bot he had never mentioned three times running.
     if (kind === 'correction') notePremiseDenied();
+
+    // "Take your time" has to be backed by actually taking it — see
+    // PAUSE_GRANT_MS. Set after breakSilence above, which clears it.
+    if (kind === 'thinking') quietUntil = Date.now() + PAUSE_GRANT_MS;
 
     console.log(`[llm] ${kind} — answering without spending a turn (turns stay at ${model.turns})`);
     return stream(res, panelistById(asker), replyTo(kind, lastQuestion), true);

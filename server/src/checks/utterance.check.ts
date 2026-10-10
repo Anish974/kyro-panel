@@ -53,6 +53,36 @@ for (const t of [
   assert.equal(classify(t), 'clarify', `"${t}" is a clarifying question`);
 }
 
+// 2b. Asking the panel to hold on. Longer than THINKING_MAX on purpose — an
+//     explicit ask is not a fragment, so the forty-character cap must not
+//     reach it. The first line is verbatim from an interview where it was
+//     graded as a technical answer and the panel talked over the candidate.
+for (const t of [
+  'Wait. I have answer. Great. Can you wait for a minute?',
+  'can you wait for a minute',
+  'could you please wait a moment',
+  'please wait',
+  'can I have a minute',
+]) {
+  assert.equal(classify(t), 'thinking', `"${t}" is the candidate asking us to wait`);
+}
+
+// The second person is what makes it a request rather than a preamble: only the
+// panel can be asked to wait, so nobody opens their own answer that way. "Give
+// me a second" can and does open one, which is why it stays under the cap.
+assert.equal(
+  classify('Give me a second. Actually no, we used a separate table for unpaid users.'),
+  'answer',
+  'a pause phrase with an answer attached is still the answer',
+);
+
+// And an answer that happens to contain the word wait is still an answer.
+assert.equal(
+  classify('We wait for the write to land on the replica before we acknowledge it.'),
+  'answer',
+  'a real answer about waiting must not be read as a request for time',
+);
+
 // 3. Asking for a moment to think. A hard question deserves a pause, and
 //    graded as an answer "let me think" scores near zero on every axis and
 //    costs a question the candidate never got to use.

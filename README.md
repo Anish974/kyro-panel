@@ -1,8 +1,13 @@
-# Kyro Panel
+﻿# Kyro Panel
 
 **Three AI interviewers on one voice call, arguing over who asks you next.**
 
 🌐 **Live Deployment / Hosted App**: [https://kyro-panel.onrender.com/](https://kyro-panel.onrender.com/)
+
+<div align="center">
+  <img src="docs/demo.gif" alt="Kyro Panel Product Walkthrough Demo" width="100%" />
+</div>
+
 
 Built for EchoSphere: Agora Hackathon 2026 — track *Coordinated AI Interview Panel*.
 

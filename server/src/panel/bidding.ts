@@ -13,9 +13,16 @@ export const CUSTOMER_GAP = 'impact never quantified — no number, no user name
 // one, the keyword scorer below runs instead, so the Agora contract stays
 // testable offline and the self-checks never touch the network.
 
-// More than one line each, rotated by turn: a panelist who falls back twice in
-// one interview must not ask the same sentence twice. The candidate hears the
-// repeat long before they notice the LLM hiccuped.
+// More than one line each, and never one that has already been asked: a
+// panelist who falls back twice in one interview must not ask the same sentence
+// twice. The candidate hears the repeat long before they notice the LLM
+// hiccuped — one interview reached turn 12 on a throttled key and heard the
+// opening product question again, word for word.
+//
+// Deliberately level-neutral. These fire when the model is unreachable, so
+// nothing here can be pitched at the candidate's level; a line that asks an
+// intern what scope they cut is worse than a plain one. Every line works asked
+// of a first internship and asked of a staff engineer.
 // Every line here ends in a question mark, because usableReply() rejects a
 // drafted reply that asks nothing and these are what it falls back TO. Two of
 // them were statements — "Describe a disagreement you had on a project" — and
@@ -24,18 +31,24 @@ export const CUSTOMER_GAP = 'impact never quantified — no number, no user name
 const FALLBACK_REPLIES: Record<PanelistId, readonly string[]> = {
   technical: [
     'Tell me about the most technically demanding thing you have built — what made it hard?',
-    'Pick a system you have worked on and tell me where it breaks first under load.',
-    'What is a technical decision you made that you would do differently today?',
+    'Pick something you have worked on and tell me where it would break first.',
+    'What is a technical decision you made that you would make differently today?',
+    'Walk me through the last thing you had to debug — how did you find the cause?',
+    'What is a tool or technology you have used recently, and what did you use it for?',
   ],
   product: [
     'Who actually used what you built, and how did you know whether it helped them?',
-    'Tell me about a time you had to cut scope — what did you keep, and why?',
     'What problem were you really solving, and for whom?',
+    'How did you decide what to work on first?',
+    'What did the people using your work ask for that you never got to build?',
+    'If you had to hand your last project to someone else tomorrow, what would you warn them about?',
   ],
   hr: [
     'Tell me about something you owned end to end — what were you personally on the hook for?',
     'What is a disagreement you had on a project, and how did it end?',
     'When a deadline started slipping, what did you actually do about it?',
+    'What is the last thing you had to learn quickly, and how did you go about it?',
+    'When you were stuck for more than a day, what did you do next?',
   ],
 };
 
@@ -58,6 +71,18 @@ interface Draft extends Bidding {
   /** Set only when this panelist wants to open a role-play. */
   scenario?: string;
 }
+/**
+ * Every question the panel has already put to the candidate, in order.
+ *
+ * The prompt only carries the last six transcript lines, which is three turns.
+ * That is enough to follow up on and nowhere near enough to avoid repeating:
+ * one interview had Arjun ask which process is listening on port 80 three
+ * times in three minutes, because by the third one the first had scrolled out
+ * of the window and, as far as the model could see, had never been asked.
+ */
+const questionsAsked = (): string[] =>
+  model.getModel().transcript.filter(t => t.speaker !== 'candidate').map(t => t.text);
+
 /** Two turns before the close, the panel starts steering toward it. */
 const lateStageTurn = (): number => model.concludeAtTurn() - 2;
 
@@ -190,6 +215,7 @@ export function context(answer: string, eligible: PanelistId[] = PANEL.map(p => 
   const budget = model.concludeAtTurn();
   const closing = model.shouldConclude();
   const denied = model.takePremiseDenied();
+  const asked = questionsAsked();
   const recent = m.transcript
     .slice(-6)
     .map(t => `${t.speaker === 'candidate' ? 'CANDIDATE' : t.speaker.toUpperCase()}: ${t.text}`)
@@ -202,6 +228,22 @@ export function context(answer: string, eligible: PanelistId[] = PANEL.map(p => 
     'Recent exchange:',
     recent || '(nothing yet — this is the opening)',
     '',
+    asked.length
+      ? [
+          'ALREADY ASKED — every question this panel has put to the candidate:',
+          ...asked.map(q => `- ${q}`),
+          '',
+          'Do not ask any of these again, in any wording, and do not return to a topic',
+          'one of them already covered. The recent exchange above is only the last few',
+          'lines; this list is the whole interview.',
+          '',
+          'ONE EXCEPTION: if the candidate has just asked you to repeat, rephrase or',
+          'explain the last question, say it again — in full, and in plainer words if',
+          'they said they did not follow it. Answering "I already asked that" to',
+          'someone who asked to hear it again is not what this rule is for.',
+          '',
+        ].join('\n')
+      : '',
     `Target Experience Level: ${level}`,
     `Competency scores so far (0-1): ${JSON.stringify(m.skills)}`,
     `Open gaps the panel noticed: ${m.gaps.length ? m.gaps.join('; ') : 'none'}`,
@@ -515,13 +557,25 @@ function draftWithKeywords(id: PanelistId, answer: string, gapIsNew: boolean): D
     reason,
     intent,
     reply:
-      model.getModel().turns <= 1
+      // The opening line is subject to the same rule as the rest: a silent
+      // start followed by a thin introduction is two fallbacks inside the first
+      // two turns, and both of them used to be this sentence.
+      model.getModel().turns <= 1 && !questionsAsked().includes(OPENING_REPLIES[id])
         ? OPENING_REPLIES[id]
-        : FALLBACK_REPLIES[id][model.getModel().turns % FALLBACK_REPLIES[id].length],
+        : // First line nobody has used yet. Modulo alone repeated: it indexes on
+          // the turn, so a long interview wraps round and asks question one
+          // again, and two panelists falling back on the same turn is not the
+          // only way to collide. The modulo stays as the last resort, for when
+          // the list really is exhausted.
+          FALLBACK_REPLIES[id].find(q => !questionsAsked().includes(q)) ??
+          FALLBACK_REPLIES[id][model.getModel().turns % FALLBACK_REPLIES[id].length],
     // Keywords cannot judge an answer, so they must not move the difficulty.
     quality: 0.5,
   };
 }
+
+/** The fallback line this panelist would use right now. Exported for the check. */
+export const draftFallback = (id: PanelistId): string => draftWithKeywords(id, '', false).reply;
 
 /**
  * A question to move on with when the candidate has said nothing at all.
